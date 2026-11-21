@@ -26,7 +26,7 @@ Run this in a compatible client executor for an experience you own or are author
 
 ```lua
 local Library = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/voidhub9-dotcom/Aqua/main/Source.lua"
+    "https://raw.githubusercontent.com/voidhub9-dotcom/VoidHub-UI/main/Source.lua"
 ))()
 
 local Window = Library:CreateVoidHubWindow({
@@ -73,7 +73,7 @@ The enhanced factory defaults to **VoidHub**, the monochrome `VoidHub` palette, 
 
 ```lua
 loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/voidhub9-dotcom/Aqua/main/Example.lua"
+    "https://raw.githubusercontent.com/voidhub9-dotcom/VoidHub-UI/main/Example.lua"
 ))()
 ```
 
@@ -262,7 +262,7 @@ The distribution has exactly four root files:
 | [`Readme.MD`](Readme.MD) | Installation, usage, API overview, and license |
 | [`llms.txt`](llms.txt) | Compact API guidance for coding assistants |
 
-Repository: [voidhub9-dotcom/Aqua](https://github.com/voidhub9-dotcom/Aqua)
+Repository: [voidhub9-dotcom/VoidHub-UI](https://github.com/voidhub9-dotcom/VoidHub-UI)
 
 ## License
 
