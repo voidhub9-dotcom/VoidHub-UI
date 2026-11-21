@@ -184,11 +184,11 @@ end
 
 Library.Theme = {
     Background = Color3.fromRGB(7, 17, 31),
-    Surface = Color3.fromRGB(11, 26, 46),
-    Surface2 = Color3.fromRGB(16, 36, 61),
-    Surface3 = Color3.fromRGB(25, 55, 85),
-    Stroke = Color3.fromRGB(31, 65, 96),
-    StrokeHover = Color3.fromRGB(61, 132, 189),
+    Surface = Color3.fromRGB(13, 27, 43),
+    Surface2 = Color3.fromRGB(17, 34, 56),
+    Surface3 = Color3.fromRGB(29, 54, 80),
+    Stroke = Color3.fromRGB(36, 61, 86),
+    StrokeHover = Color3.fromRGB(69, 115, 156),
     Accent = Color3.fromRGB(56, 189, 248),
     AccentDark = Color3.fromRGB(6, 31, 49),
     Text = Color3.fromRGB(235, 247, 255),
@@ -276,7 +276,7 @@ Library.ThemePresets = {
     Coffee = preset({ 20, 16, 13 }, { 25, 20, 16 }, { 30, 24, 19 }, { 48, 39, 31 }, { 45, 36, 29 }, { 104, 82, 62 }, { 214, 170, 124 }, { 32, 22, 12 }, { 240, 230, 218 }, { 142, 124, 108 }),
 }
 
-Library.ThemePresets.Aqua = preset({ 7, 17, 31 }, { 11, 26, 46 }, { 16, 36, 61 }, { 25, 55, 85 }, { 31, 65, 96 }, { 61, 132, 189 }, { 56, 189, 248 }, { 6, 31, 49 }, { 235, 247, 255 }, { 151, 181, 203 })
+Library.ThemePresets.Aqua = preset({ 7, 17, 31 }, { 13, 27, 43 }, { 17, 34, 56 }, { 29, 54, 80 }, { 36, 61, 86 }, { 69, 115, 156 }, { 56, 189, 248 }, { 6, 31, 49 }, { 235, 247, 255 }, { 151, 181, 203 })
 Library.ThemeName = "Aqua"
 
 Library.Assets = {
@@ -451,15 +451,17 @@ local Fonts = Library.Fonts
 local TOUCH = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 Library.Touch = TOUCH
 
-local SIDEBAR_WIDTH = 188
+local SIDEBAR_WIDTH = 176
 local HEADER_HEIGHT = 62
-local TAB_TILE_HEIGHT = 34
+local TAB_TILE_HEIGHT = TOUCH and 44 or 38
 local CARD_HEIGHT = TOUCH and 54 or 48
 local CARD_HEIGHT_DESC = TOUCH and 70 or 64
 local DROPDOWN_OPTION_HEIGHT = TOUCH and 40 or 34
 local CHIP_HEIGHT = TOUCH and 34 or 28
 local PROFILE_HEIGHT = 64
 local SEARCH_WIDTH = 176
+local TOOL_HEIGHT = TOUCH and 40 or 34
+local SEARCH_INSET = TOOL_HEIGHT + 26
 local STACK_BELOW = 440
 
 -- Elements read their geometry from one of these. Cards stand alone on a tab,
@@ -4704,15 +4706,25 @@ function Library.Window(_, opts)
         BackgroundTransparency = 1,
         Parent = sidebar,
     })
-    local logo = create("ImageLabel", {
+    local logoTile = create("Frame", {
         AnchorPoint = Vector2.new(0, 0.5),
-        Position = UDim2.new(0, 14, 0.5, 0),
-        Size = UDim2.fromOffset(32, 32),
+        Position = UDim2.new(0, 12, 0.5, 0),
+        Size = UDim2.fromOffset(36, 36),
+        BackgroundColor3 = Theme.Surface2,
+        BorderSizePixel = 0,
+        Parent = header,
+    })
+    corner(logoTile, UDim.new(0, 9))
+    stroke(logoTile, Theme.Stroke)
+    local logo = create("ImageLabel", {
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.fromScale(0.5, 0.5),
+        Size = UDim2.fromOffset(30, 30),
         BackgroundTransparency = 1,
         Image = "",
         ImageColor3 = Theme.Accent,
         ScaleType = Enum.ScaleType.Fit,
-        Parent = header,
+        Parent = logoTile,
     })
     applyIcon(logo, opts.Icon or Assets.Logo, true)
     local subtitle = opts.Version or opts.Subtitle
@@ -4720,7 +4732,7 @@ function Library.Window(_, opts)
         Position = UDim2.new(0, 56, 0.5, subtitle and -15 or -9),
         Size = UDim2.new(1, -68, 0, 18),
         Text = self.Title,
-        TextSize = 14,
+        TextSize = 15,
         FontFace = Fonts.Bold,
         Parent = header,
     })
@@ -4736,11 +4748,28 @@ function Library.Window(_, opts)
         })
     end
 
+    create("Frame", {
+        Position = UDim2.fromOffset(12, HEADER_HEIGHT - 1),
+        Size = UDim2.new(1, -24, 0, 1),
+        BackgroundColor3 = Theme.Stroke,
+        BorderSizePixel = 0,
+        Parent = sidebar,
+    })
+    label({
+        Position = UDim2.fromOffset(16, HEADER_HEIGHT + 9),
+        Size = UDim2.new(1, -32, 0, 16),
+        Text = "WORKSPACE",
+        TextSize = 10,
+        FontFace = Fonts.Bold,
+        TextColor3 = Theme.Muted,
+        Parent = sidebar,
+    })
     local profileEnabled = opts.Profile ~= false
+    local tabTop = HEADER_HEIGHT + 30
     local tabList = create("ScrollingFrame", {
         Name = "Tabs",
-        Position = UDim2.fromOffset(0, HEADER_HEIGHT),
-        Size = UDim2.new(1, 0, 1, -(HEADER_HEIGHT + (profileEnabled and PROFILE_HEIGHT + 4 or 12))),
+        Position = UDim2.fromOffset(0, tabTop),
+        Size = UDim2.new(1, 0, 1, -(tabTop + (profileEnabled and PROFILE_HEIGHT + 4 or 12))),
         BackgroundTransparency = 1,
         BorderSizePixel = 0,
         ScrollBarThickness = 0,
@@ -4756,20 +4785,19 @@ function Library.Window(_, opts)
         Position = UDim2.fromOffset(8, 2),
         Size = UDim2.new(1, -16, 0, TAB_TILE_HEIGHT),
         BackgroundColor3 = Theme.Surface3,
-        BackgroundTransparency = 0.35,
+        BackgroundTransparency = 0.22,
         BorderSizePixel = 0,
         Visible = false,
         Parent = tabList,
     })
-    corner(indicator, UDim.new(0, 7))
-    -- The active tab is just a quiet neutral fill with white text; the bar
-    -- is kept for callers but stays hidden.
+    corner(indicator, UDim.new(0, 8))
+    -- The accent is structural, so it follows the indicator even when the
+    -- optional open-window effects are disabled.
     local pill = create("Frame", {
         AnchorPoint = Vector2.new(0, 0.5),
-        Position = UDim2.new(0, 0, 0.5, 0),
-        Size = UDim2.fromOffset(2, 14),
+        Position = UDim2.new(0, 4, 0.5, 0),
+        Size = UDim2.fromOffset(3, 16),
         BackgroundColor3 = Theme.Accent,
-        Visible = false,
         BorderSizePixel = 0,
         Parent = indicator,
     })
@@ -4787,7 +4815,7 @@ function Library.Window(_, opts)
     })
     create("UIListLayout", {
         SortOrder = Enum.SortOrder.LayoutOrder,
-        Padding = UDim.new(0, 2),
+        Padding = UDim.new(0, 4),
         Parent = stack,
     })
     self._tabStack = stack
@@ -4827,35 +4855,38 @@ function Library.Window(_, opts)
     })
 
     local minimizeButton = create("TextButton", {
-        AnchorPoint = Vector2.new(1, 0),
-        Position = UDim2.new(1, -14, 0, 14),
-        Size = UDim2.fromOffset(34, 34),
+        Name = "Minimize",
+        AnchorPoint = Vector2.new(1, 0.5),
+        Position = UDim2.new(1, -16, 0, HEADER_HEIGHT / 2),
+        Size = UDim2.fromOffset(TOOL_HEIGHT, TOOL_HEIGHT),
         BackgroundColor3 = Theme.Surface2,
-        BackgroundTransparency = 1,
+        BackgroundTransparency = 0.3,
+        BorderSizePixel = 0,
         Text = "",
         AutoButtonColor = false,
         ZIndex = 5,
         Parent = content,
     })
     minimizeButton:SetAttribute("NoDrag", true)
-    -- A bare "minimize" arrows glyph, no box: muted at rest, full text
-    -- colour and a touch smaller on hover, as if pulling in.
+    corner(minimizeButton, UDim.new(0, 8))
+    local minimizeStroke = stroke(minimizeButton, Theme.Stroke)
     local minimizeGlyph = create("ImageLabel", {
         AnchorPoint = Vector2.new(0.5, 0.5),
         Position = UDim2.fromScale(0.5, 0.5),
-        Size = UDim2.fromOffset(20, 20),
+        Size = UDim2.fromOffset(16, 16),
         BackgroundTransparency = 1,
         ImageColor3 = Theme.Muted,
         ScaleType = Enum.ScaleType.Fit,
         Parent = minimizeButton,
     })
     applyIcon(minimizeGlyph, "minimize-2")
-    minimizeButton.MouseEnter:Connect(function()
-        tween(minimizeGlyph, { ImageColor3 = Theme.Text, Size = UDim2.fromOffset(18, 18) }, 0.2, Enum.EasingStyle.Quint)
-    end)
-    minimizeButton.MouseLeave:Connect(function()
-        tween(minimizeGlyph, { ImageColor3 = Theme.Muted, Size = UDim2.fromOffset(20, 20) }, 0.25, Enum.EasingStyle.Quint)
-    end)
+    local function paintMinimize(active)
+        tween(minimizeButton, { BackgroundTransparency = active and 0 or 0.3 }, 0.16)
+        tween(minimizeStroke, { Color = active and Theme.StrokeHover or Theme.Stroke }, 0.16)
+        tween(minimizeGlyph, { ImageColor3 = active and Theme.Text or Theme.Muted }, 0.16)
+    end
+    minimizeButton.MouseEnter:Connect(function() paintMinimize(true) end)
+    minimizeButton.MouseLeave:Connect(function() paintMinimize(false) end)
     minimizeButton.MouseButton1Click:Connect(function()
         self:Minimize()
     end)
@@ -8782,47 +8813,47 @@ function Tab:Groupbox(opts, icon)
     })
     box:SetAttribute("NoDrag", true)
     corner(box, UDim.new(0, 10))
-    stroke(box)
+    stroke(box, Theme.Stroke, 0.08)
     create("UIListLayout", {
         SortOrder = Enum.SortOrder.LayoutOrder,
         Parent = box,
     })
 
-    -- The header is a filled strip: icon and bold title on the left, a
-    -- chevron on the right. Pressing anywhere on it folds the box.
+    -- Let the panel read as one surface. The icon and hairline separate
+    -- its heading from the controls instead of a second full-width fill.
     local header = create("TextButton", {
-        Size = UDim2.new(1, 0, 0, 40),
-        BackgroundColor3 = Theme.Surface3,
+        Size = UDim2.new(1, 0, 0, TOUCH and 44 or 42),
+        BackgroundTransparency = 1,
         BorderSizePixel = 0,
         Text = "",
         AutoButtonColor = false,
         LayoutOrder = 1,
         Parent = box,
     })
-    corner(header, UDim.new(0, 10))
-    -- Squares the strip's lower corners so it meets the body flat.
-    local headerFill = create("Frame", {
-        AnchorPoint = Vector2.new(0, 1),
-        Position = UDim2.fromScale(0, 1),
-        Size = UDim2.new(1, 0, 0, 10),
-        BackgroundColor3 = Theme.Surface3,
-        BorderSizePixel = 0,
-        Parent = header,
-    })
     local titleX = 14
     if opts.Icon then
-        local headerIcon = create("ImageLabel", {
+        local iconTile = create("Frame", {
             AnchorPoint = Vector2.new(0, 0.5),
             Position = UDim2.new(0, 14, 0.5, 0),
+            Size = UDim2.fromOffset(24, 24),
+            BackgroundColor3 = Theme.Surface3,
+            BorderSizePixel = 0,
+            ZIndex = 2,
+            Parent = header,
+        })
+        corner(iconTile, UDim.new(0, 6))
+        local headerIcon = create("ImageLabel", {
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.fromScale(0.5, 0.5),
             Size = UDim2.fromOffset(14, 14),
             BackgroundTransparency = 1,
             ImageColor3 = Theme.Accent,
             ScaleType = Enum.ScaleType.Fit,
             ZIndex = 2,
-            Parent = header,
+            Parent = iconTile,
         })
         applyIcon(headerIcon, opts.Icon)
-        titleX = 37
+        titleX = 46
     end
     local collapseButton = create("ImageLabel", {
         AnchorPoint = Vector2.new(1, 0.5),
@@ -8859,7 +8890,7 @@ function Tab:Groupbox(opts, icon)
             Size = UDim2.fromOffset(13, 13),
             BackgroundTransparency = 1,
             ImageColor3 = Theme.Muted,
-            ImageTransparency = TOUCH and 0 or 0.45,
+            ImageTransparency = TOUCH and 0 or 0.18,
             ScaleType = Enum.ScaleType.Fit,
             ZIndex = 3,
             Parent = popButton,
@@ -8870,7 +8901,7 @@ function Tab:Groupbox(opts, icon)
         Position = UDim2.fromOffset(titleX, 0),
         Size = UDim2.new(1, -(titleX + (canPop and 66 or 40)), 1, 0),
         Text = opts.Name or "Groupbox",
-        TextSize = 13,
+        TextSize = 14,
         FontFace = Fonts.Bold,
         ZIndex = 2,
         Parent = header,
@@ -8879,6 +8910,7 @@ function Tab:Groupbox(opts, icon)
     local rule = create("Frame", {
         Size = UDim2.new(1, 0, 0, 1),
         BackgroundColor3 = Theme.Stroke,
+        BackgroundTransparency = 0.25,
         BorderSizePixel = 0,
         LayoutOrder = 2,
         Parent = box,
@@ -8995,14 +9027,12 @@ function Tab:Groupbox(opts, icon)
             end
         end
         local motion = instant and 0 or 0.3
-        -- Folded, the strip is the whole box: the hairline under it drops out
-        -- of the layout once the body has closed, so the box ends exactly at
-        -- the strip and both share the same rounded corners.
+        -- Drop the hairline once the body closes, so the collapsed panel
+        -- ends cleanly at the header.
         if value then
             local function fold()
                 if generation == current and collapsed then
                     rule.Visible = false
-                    headerFill.Visible = false
                 end
             end
             if duration > 0 then
@@ -9012,7 +9042,6 @@ function Tab:Groupbox(opts, icon)
             end
         else
             rule.Visible = true
-            headerFill.Visible = true
         end
         tween(collapseButton, { Rotation = value and -90 or 0 }, motion, Enum.EasingStyle.Quint)
     end
@@ -9021,7 +9050,7 @@ function Tab:Groupbox(opts, icon)
         local duration = on and 0.15 or 0.25
         tween(collapseButton, { ImageColor3 = on and Theme.Text or Theme.Muted }, duration)
         if popIcon and not TOUCH then
-            tween(popIcon, { ImageTransparency = on and 0 or 0.45 }, duration)
+            tween(popIcon, { ImageTransparency = on and 0 or 0.18 }, duration)
         end
     end
     header.MouseEnter:Connect(function()
@@ -14196,9 +14225,9 @@ function Window:_resetSearch()
     end
 end
 
--- Page titles stop short of the search box and close button.
+-- Page titles stop short of the search field and minimize button.
 function Window:_fitTitle(tab)
-    local right = self.SearchBox and (self._searchWidth or SEARCH_WIDTH) + 72 or 56
+    local right = self.SearchBox and (self._searchWidth or SEARCH_WIDTH) + SEARCH_INSET + 12 or SEARCH_INSET
     local reserve = tab._titleX + right
     tab._title.Size = UDim2.new(1, -reserve, 0, 24)
     if tab._desc then
@@ -14207,12 +14236,13 @@ function Window:_fitTitle(tab)
 end
 
 function Window:_buildSearch(content)
-    -- A recessed field: darker than the header, hairline stroke, icon
-    -- inset left and a clear button that only shows while there is text.
+    -- A full-height field aligned with Minimize. The clear target includes
+    -- the space around its glyph, not just the 12-pixel drawing.
     local holder = create("Frame", {
-        AnchorPoint = Vector2.new(1, 0),
-        Position = UDim2.new(1, -56, 0, 14),
-        Size = UDim2.fromOffset(SEARCH_WIDTH, 34),
+        Name = "Search",
+        AnchorPoint = Vector2.new(1, 0.5),
+        Position = UDim2.new(1, -SEARCH_INSET, 0, HEADER_HEIGHT / 2),
+        Size = UDim2.fromOffset(SEARCH_WIDTH, TOOL_HEIGHT),
         BackgroundTransparency = 1,
         BorderSizePixel = 0,
         ZIndex = 5,
@@ -14220,35 +14250,37 @@ function Window:_buildSearch(content)
     })
     holder:SetAttribute("NoDrag", true)
     local field = create("Frame", {
-        AnchorPoint = Vector2.new(0, 0.5),
-        Position = UDim2.fromScale(0, 0.5),
-        Size = UDim2.new(1, 0, 0, 28),
-        BackgroundColor3 = Theme.Background,
-        BackgroundTransparency = 0.2,
+        Size = UDim2.fromScale(1, 1),
+        BackgroundColor3 = Theme.Surface,
+        BackgroundTransparency = 0.1,
         BorderSizePixel = 0,
         Parent = holder,
     })
-    corner(field, UDim.new(0, 6))
+    corner(field, UDim.new(0, 8))
     local fieldStroke = stroke(field, Theme.Stroke, 0, 1)
-    local _, icon = glowIcon(field, "search", Theme.Muted, UDim2.new(0, 9, 0.5, 0))
+    local _, icon = glowIcon(field, "search", Theme.Muted, UDim2.new(0, 10, 0.5, 0))
     icon.Parent.AnchorPoint = Vector2.new(0, 0.5)
-    icon.Parent.Size = UDim2.fromOffset(13, 13)
-    local clear = create("ImageButton", {
-        AnchorPoint = Vector2.new(1, 0.5),
-        Position = UDim2.new(1, -7, 0.5, 0),
-        Size = UDim2.fromOffset(14, 14),
+    icon.Parent.Size = UDim2.fromOffset(14, 14)
+    local clear = create("TextButton", {
+        Name = "Clear",
+        AnchorPoint = Vector2.new(1, 0),
+        Position = UDim2.fromScale(1, 0),
+        Size = UDim2.new(0, 28, 1, 0),
         BackgroundTransparency = 1,
-        ImageColor3 = Theme.Muted,
+        Text = "",
+        AutoButtonColor = false,
         Visible = false,
         Parent = field,
     })
-    applyIcon(clear, "x")
+    local clearHolder, clearIcon = glowIcon(clear, "x", Theme.Muted, UDim2.fromScale(0.5, 0.5))
+    clearHolder.AnchorPoint = Vector2.new(0.5, 0.5)
+    clearHolder.Size = UDim2.fromOffset(12, 12)
     local box = create("TextBox", {
-        Position = UDim2.fromOffset(28, 0),
-        Size = UDim2.new(1, -52, 1, 0),
+        Position = UDim2.fromOffset(32, 0),
+        Size = UDim2.new(1, -40, 1, 0),
         BackgroundTransparency = 1,
         Text = "",
-        PlaceholderText = "Search",
+        PlaceholderText = "Search controls",
         PlaceholderColor3 = Theme.Muted,
         TextColor3 = Theme.Text,
         TextSize = 13,
@@ -14259,10 +14291,10 @@ function Window:_buildSearch(content)
         Parent = field,
     })
     clear.MouseEnter:Connect(function()
-        tween(clear, { ImageColor3 = Theme.Text }, 0.1)
+        tween(clearIcon, { ImageColor3 = Theme.Text }, 0.1)
     end)
     clear.MouseLeave:Connect(function()
-        tween(clear, { ImageColor3 = Theme.Muted }, 0.15)
+        tween(clearIcon, { ImageColor3 = Theme.Muted }, 0.15)
     end)
     clear.MouseButton1Click:Connect(function()
         box.Text = ""
@@ -14270,6 +14302,7 @@ function Window:_buildSearch(content)
     end)
     box:GetPropertyChangedSignal("Text"):Connect(function()
         clear.Visible = box.Text ~= ""
+        box.Size = UDim2.new(1, clear.Visible and -60 or -40, 1, 0)
     end)
     holder.MouseEnter:Connect(function()
         if not box:IsFocused() then
@@ -14284,7 +14317,7 @@ function Window:_buildSearch(content)
     self.SearchBox = box
 
     -- Results float over the window under the box, like a dropdown popup.
-    local rowHeight = TOUCH and 40 or 34
+    local rowHeight = TOUCH and 52 or 46
     local maxRows = 8
     local popup = create("Frame", {
         AnchorPoint = Vector2.new(1, 0),
@@ -14308,7 +14341,7 @@ function Window:_buildSearch(content)
     })
     local panel = create("Frame", {
         Size = UDim2.fromScale(1, 1),
-        BackgroundColor3 = Theme.Background,
+        BackgroundColor3 = Theme.Surface,
         BorderSizePixel = 0,
         ClipsDescendants = true,
         Parent = popup,
@@ -14335,7 +14368,7 @@ function Window:_buildSearch(content)
     })
     local noResults = label({
         Size = UDim2.new(1, 0, 0, rowHeight),
-        Text = "No results",
+        Text = "No matches found",
         TextSize = 13,
         FontFace = Fonts.Regular,
         TextColor3 = Theme.Muted,
@@ -14463,7 +14496,6 @@ function Window:_buildSearch(content)
         table.clear(rows)
         results = self:_searchResults(query)
         selected = 1
-        local accent = colorToHex(Theme.Accent)
         for index, result in ipairs(results) do
             if index > 50 then
                 break
@@ -14478,88 +14510,40 @@ function Window:_buildSearch(content)
                 Parent = list,
             })
             corner(button, UDim.new(0, 7))
-            -- One line of breadcrumbs: tab, sub tab and groupbox in muted
-            -- text, each split by a chevron, ending on the match in accent.
-            local crumbs = create("Frame", {
-                Position = UDim2.fromOffset(10, 0),
-                Size = UDim2.new(1, -20, 1, 0),
+            local image = create("ImageLabel", {
+                AnchorPoint = Vector2.new(0, 0.5),
+                Position = UDim2.new(0, 10, 0.5, 0),
+                Size = UDim2.fromOffset(16, 16),
                 BackgroundTransparency = 1,
-                ClipsDescendants = true,
+                ImageColor3 = Theme.Muted,
+                ScaleType = Enum.ScaleType.Fit,
                 Parent = button,
             })
-            create("UIListLayout", {
-                FillDirection = Enum.FillDirection.Horizontal,
-                VerticalAlignment = Enum.VerticalAlignment.Center,
-                SortOrder = Enum.SortOrder.LayoutOrder,
-                Padding = UDim.new(0, 5),
-                Parent = crumbs,
-            })
-            local part = 0
-            local firstIcon = nil
-            local function crumbIcon(icon)
-                if not icon then
-                    return
-                end
-                part += 1
-                local image = create("ImageLabel", {
-                    Size = UDim2.fromOffset(14, 14),
-                    BackgroundTransparency = 1,
-                    ImageColor3 = Theme.Muted,
-                    ScaleType = Enum.ScaleType.Fit,
-                    LayoutOrder = part,
-                    Parent = crumbs,
-                })
-                applyIcon(image, icon)
-                firstIcon = firstIcon or image
-            end
-            local function crumbText(text, color, rich)
-                part += 1
-                return label({
-                    Size = UDim2.new(0, 0, 1, 0),
-                    AutomaticSize = Enum.AutomaticSize.X,
-                    Text = text,
-                    RichText = rich == true,
-                    TextSize = 13,
-                    FontFace = color and Fonts.Medium or Fonts.Regular,
-                    TextColor3 = color or Theme.Muted,
-                    TextTruncate = Enum.TextTruncate.None,
-                    LayoutOrder = part,
-                    Parent = crumbs,
-                })
-            end
-            local function chevron()
-                crumbText(">")
-            end
-            local tab, sub, group = result.Tab, result.Sub, result.Group
-            local onTab = result.Kind == "Tab"
-            local onSub = result.Kind == "Page"
-            local onGroup = result.Kind == "Groupbox"
-            crumbIcon(tab._iconName or "layout-grid")
-            if not onTab then
-                crumbText(tab.Name)
-                if sub then
-                    chevron()
-                    crumbIcon(sub._iconName or "layers")
-                    if not onSub then
-                        crumbText(sub.Name)
-                    end
-                end
-                if group and not onGroup then
-                    chevron()
-                    crumbText(group.Name)
-                end
-                if not onSub then
-                    chevron()
-                end
-            end
-            -- The match itself: accent, with the typed part in bold.
+            applyIcon(image, result.Icon or self._searchIcons[result.Kind] or "layout-grid")
+            -- The match gets a line of its own so long parent paths
+            -- can't push the important part out of the popup.
             local name = result.Name
             local stop = result.At + #query
             local marked = escape(string.sub(name, 1, result.At - 1))
                 .. "<b>" .. escape(string.sub(name, result.At, stop - 1)) .. "</b>"
                 .. escape(string.sub(name, stop))
-            crumbText(marked, Theme.Accent, true)
-            local image = firstIcon
+            label({
+                Position = UDim2.fromOffset(36, rowHeight / 2 - 18),
+                Size = UDim2.new(1, -46, 0, 18),
+                Text = marked,
+                RichText = true,
+                TextSize = 13,
+                Parent = button,
+            })
+            label({
+                Position = UDim2.fromOffset(36, rowHeight / 2),
+                Size = UDim2.new(1, -46, 0, 15),
+                Text = result.Path or "Tab",
+                TextSize = 11,
+                FontFace = Fonts.Regular,
+                TextColor3 = Theme.Muted,
+                Parent = button,
+            })
             local isTap = tapGuard(button, function()
                 return list
             end)
@@ -14607,7 +14591,7 @@ function Window:_buildSearch(content)
     end)
     box.FocusLost:Connect(function(enterPressed)
         tween(fieldStroke, { Color = Theme.Stroke }, 0.2)
-        tween(field, { BackgroundTransparency = 0.2 }, 0.2)
+        tween(field, { BackgroundTransparency = 0.1 }, 0.2)
         tween(icon, { ImageColor3 = Theme.Muted }, 0.2)
         if enterPressed and open then
             choose(results[selected])
@@ -14637,12 +14621,22 @@ function Window:_buildSearch(content)
 
     local function fit()
         local width = content.AbsoluteSize.X / self.Scale.Scale
-        local searchWidth = math.clamp(math.floor(width * 0.32), 110, SEARCH_WIDTH)
-        holder.Size = UDim2.fromOffset(searchWidth, 34)
+        if width <= 0 then return end
+        local searchWidth = math.clamp(math.floor(width * 0.31), 100, SEARCH_WIDTH)
+        holder.Size = UDim2.fromOffset(searchWidth, TOOL_HEIGHT)
+        box.PlaceholderText = searchWidth >= 132 and "Search controls" or "Search"
         if searchWidth ~= self._searchWidth then
             self._searchWidth = searchWidth
             for _, tab in ipairs(self.Tabs) do
                 self:_fitTitle(tab)
+            end
+        end
+        if open then
+            local previousSize = shownSize
+            measure()
+            place()
+            if (shownSize - previousSize).Magnitude >= 1 then
+                tween(popup, { Size = UDim2.fromOffset(shownSize.X, shownSize.Y) }, 0.15)
             end
         end
     end
@@ -16470,7 +16464,7 @@ function Window:Tab(opts, icon)
         LayoutOrder = #self.Tabs + 1,
         Parent = self._tabStack,
     })
-    corner(button, UDim.new(0, 7))
+    corner(button, UDim.new(0, 8))
     local buttonStroke = stroke(button, Theme.Stroke, 1)
     buttonStroke.Enabled = false
     tab._button = button
@@ -16479,7 +16473,7 @@ function Window:Tab(opts, icon)
     if hasIcon then
         local iconImage = create("ImageLabel", {
             AnchorPoint = Vector2.new(0.5, 0.5),
-            Position = UDim2.new(0, 20, 0.5, 0),
+            Position = UDim2.new(0, 23, 0.5, 0),
             Size = UDim2.fromOffset(16, 16),
             BackgroundTransparency = 1,
             ImageColor3 = Theme.Muted,
@@ -16493,8 +16487,8 @@ function Window:Tab(opts, icon)
         tab._icon = iconImage
     end
     tab._label = label({
-        Position = UDim2.fromOffset(hasIcon and 38 or 14, 0),
-        Size = UDim2.new(1, hasIcon and -46 or -22, 1, 0),
+        Position = UDim2.fromOffset(hasIcon and 42 or 16, 0),
+        Size = UDim2.new(1, hasIcon and -54 or -28, 1, 0),
         Text = tab.Name,
         TextSize = 13,
         TextColor3 = Theme.Muted,
@@ -16511,30 +16505,51 @@ function Window:Tab(opts, icon)
     tab._page = page
     local titleX = 24
     if hasIcon then
-        local holder = glowIcon(page, opts.Icon, Theme.Accent, UDim2.new(0, 24, 0, 32))
-        holder.Size = UDim2.fromOffset(20, 20)
-        titleX = 54
+        local badge = create("Frame", {
+            AnchorPoint = Vector2.new(0, 0.5),
+            Position = UDim2.fromOffset(24, HEADER_HEIGHT / 2),
+            Size = UDim2.fromOffset(30, 30),
+            BackgroundColor3 = Theme.Surface2,
+            BorderSizePixel = 0,
+            Parent = page,
+        })
+        corner(badge, UDim.new(0, 8))
+        stroke(badge, Theme.Stroke)
+        local holder = glowIcon(badge, opts.Icon, Theme.Accent, UDim2.fromScale(0.5, 0.5))
+        holder.AnchorPoint = Vector2.new(0.5, 0.5)
+        holder.Size = UDim2.fromOffset(16, 16)
+        titleX = 64
     end
     tab._titleX = titleX
     tab._title = label({
-        Position = UDim2.fromOffset(titleX, 20),
+        Position = UDim2.fromOffset(titleX, opts.Desc and 10 or HEADER_HEIGHT / 2 - 12),
         Size = UDim2.new(1, -titleX, 0, 24),
         Text = opts.PageTitle or tab.Name,
         TextSize = 22,
+        FontFace = Fonts.Bold,
         Parent = page,
     })
     if opts.Desc then
         tab._desc = label({
-            Position = UDim2.fromOffset(titleX, 44),
+            Position = UDim2.fromOffset(titleX, 36),
             Size = UDim2.new(1, -titleX, 0, 16),
             Text = opts.Desc,
-            TextSize = 13,
+            TextSize = 12,
             FontFace = Fonts.Regular,
             TextColor3 = Theme.Muted,
             Parent = page,
         })
     end
-    local listTop = opts.Desc and 70 or 58
+    create("Frame", {
+        Name = "HeaderDivider",
+        Position = UDim2.fromOffset(24, HEADER_HEIGHT - 1),
+        Size = UDim2.new(1, -40, 0, 1),
+        BackgroundColor3 = Theme.Stroke,
+        BackgroundTransparency = 0.25,
+        BorderSizePixel = 0,
+        Parent = page,
+    })
+    local listTop = HEADER_HEIGHT + 10
     tab._headerBottom = listTop
     tab._iconName = opts.Icon
     buildContainer(tab, page, listTop, opts.Icon or "layout-grid", opts.EmptyText or "Nothing here yet")
@@ -16854,7 +16869,7 @@ function Window:_placeIndicator(tab)
         indicator.Visible = true
         indicator.Position = UDim2.fromOffset(8, targetY)
         indicator.BackgroundTransparency = 1
-        tween(indicator, { BackgroundTransparency = 0.35 }, 0.3)
+        tween(indicator, { BackgroundTransparency = 0.22 }, 0.3)
     end
     tween(indicator, { Position = UDim2.fromOffset(8, targetY) }, 0.45, Enum.EasingStyle.Quint)
 end
@@ -17177,6 +17192,7 @@ function Window:SelectTab(tab)
     self._transitionGeneration = generation
 
     if previous then
+        previous._label.FontFace = Fonts.Medium
         tween(previous._label, { TextColor3 = Theme.Muted }, 0.3)
         if previous._icon then
             tintIcon(previous._icon, Theme.Muted, false, 0.3)
@@ -17197,9 +17213,10 @@ function Window:SelectTab(tab)
 
     tween(tab._button, { BackgroundTransparency = 1 }, 0.2)
     tween(tab._stroke, { Transparency = 1 }, 0.2)
+    tab._label.FontFace = Fonts.Bold
     tween(tab._label, { TextColor3 = Theme.Text }, 0.3)
     if tab._icon then
-        tintIcon(tab._icon, Theme.Text, true, 0.3)
+        tintIcon(tab._icon, Theme.Accent, true, 0.3)
     end
 
     self:_placeIndicator(tab)
@@ -17513,7 +17530,7 @@ function Window:_buildOpenEffects(enabled)
     effects.TabStroke.Transparency = 1
     self._openEffectClock, self._openEffectKick = 0, 0
     self._openEffectPulse = 1
-    local accumulator, wasShown, wasPillShown, lastPress = 0, false, false, -1
+    local accumulator, wasShown, lastPress = 0, false, -1
     self:_listen("Began", function(input)
         if not self._openEffectsEnabled or not self._introDone or not self.Open
             or self.Minimized or not root.Visible or not isPress(input) then
@@ -17542,14 +17559,6 @@ function Window:_buildOpenEffects(enabled)
             if not shown then
                 effects.Ripple.Visible = false
                 self._openEffectPulse = 1
-            end
-        end
-        if windowShown ~= wasPillShown then
-            wasPillShown = windowShown
-            -- The pill marks the active tab: it is chrome, not decoration, so
-            -- it stays up even when the open effects are turned off.
-            if self._indicatorPill then
-                self._indicatorPill.Visible = windowShown
             end
         end
         if not shown then return end
@@ -20089,7 +20098,7 @@ local Window = Library:CreateAquaHubWindow({
     ToggleButton = { Platform = "Mobile", Icon = "layout-grid" },
 })
 
-local Main = Window:CreateTab({ Name = "Main", Icon = "waves" })
+local Main = Window:CreateTab({ Name = "Main", Desc = "Controls and appearance", Icon = "waves" })
 local Core = Main:CreateGroupbox({ Name = "Aqua Hub", Side = "Left", Icon = "waves" })
 Core:CreateToggle({
     Name = "Notifications", Desc = "Useful feedback, when you need it.",
@@ -20111,7 +20120,7 @@ Core:CreateButton({
 })
 
 local Identity = Main:CreateGroupbox({ Name = "Your interface", Side = "Right", Icon = "sparkles" })
-Identity:CreateParagraph({ Name = "Aqua Hub by von63rd", Content = "A clean blue workspace with split groupboxes, smooth motion, a Dynamic Island, your server logo and portable appearance profiles." })
+Identity:CreateParagraph({ Name = "Aqua Hub by von63rd", Content = "Split groupboxes, smooth motion, and portable appearance profiles." })
 Identity:CreateDropdown({
     Name = "Quick palette", Options = { "Aqua", "Aqua Ice", "Aqua Mono", "Midnight" },
     CurrentOption = "Aqua", AllowNone = false,
@@ -20127,7 +20136,7 @@ Identity:CreateButton({
 Identity:CreateButton({ Name = "Clear background", Callback = function() Window:SetBackgroundStyle({ Source = "None" }) end })
 Identity:CreateStatus({ Name = "Status", Value = "<Success>Ready</Success>", Style = "Row", Pin = true })
 
-local Elements = Window:CreateTab({ Name = "Elements", Icon = "sliders-horizontal" })
+local Elements = Window:CreateTab({ Name = "Elements", Desc = "Inputs and readouts", Icon = "sliders-horizontal" })
 local Inputs = Elements:CreateGroupbox({ Name = "Inputs", Side = "Left" })
 Inputs:CreateInput({ Name = "Display name", CurrentValue = "von63rd", Placeholder = "Your name" })
 Inputs:CreateKeybind({ Name = "Demo shortcut", CurrentKeybind = "F", Callback = function() Window:Notify({ Title = "Shortcut", Content = "Demo key pressed." }) end })

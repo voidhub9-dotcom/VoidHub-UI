@@ -80,6 +80,8 @@ loadstring(game:HttpGet(
 
 The showcase does not require a second copy of `Source.lua`. It demonstrates selected controls and appearance features without gameplay automation.
 
+The [Aqua Workspace mockup](design/aqua-workspace.svg) shows the refreshed navigation, panels, and search results. Drag the SVG onto a Figma design canvas to use it as a reference.
+
 ## Tabs, groupboxes, and controls
 
 Create tabs on the window, then place groupboxes on a tab. Groupboxes can use `Side = "Left"` or `Side = "Right"`; controls added directly to a tab are full-width cards.
