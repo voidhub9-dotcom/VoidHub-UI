@@ -1,6 +1,6 @@
-# Aqua Hub UI — Roblox client executor library
+# VoidHub UI — Roblox client executor library
 
-> Aqua Hub is a single-file Luau UI library for Roblox client executor scripts, branded Aqua Hub by von63rd with a blue Aqua appearance layer: a window with a sidebar of tabs, sub tabs, two-column collapsible groupboxes and native controls and readouts (toggles, sliders, dropdowns, statuses, tables and more), plus configs, live themes, coloured text, window-wide search and a draggable Dynamic Island minimize. This file is a guide for language models writing scripts with it. Follow it exactly; the README covers setup; the readable source defines every option.
+> VoidHub is a monochrome Luau UI library by von63rd. It provides tabs, sub-tabs, responsive groupboxes, window-wide search, native controls, appearance profiles, and a draggable minimized island. Use the README and readable source to verify options. Keep demonstration callbacks UI-only and integrate only with permitted features of experiences you own.
 
 Load it once, build the window, add tabs, put groupboxes on tabs (or sub tabs), and put elements in groupboxes. Every element with a `Flag` is saved by configs. Individual element handles expose the applicable `Set` / `Get` methods, plus common visibility, disabled, dependency, tooltip, and destroy methods. Collection constructors return collections; do not assume every constructor has the same value methods.
 
@@ -9,7 +9,7 @@ Load it once, build the window, add tabs, put groupboxes on tabs (or sub tabs), 
 Repository: [voidhub9-dotcom/Aqua](https://github.com/voidhub9-dotcom/Aqua)
 
 - [Readme.MD](Readme.MD): the branded setup guide, common examples, capability notes and license.
-- [Example.lua](Example.lua): the complete library embedded with a standalone Aqua Hub showcase of selected native controls and the appearance editor. It does not demonstrate every element; use the API tables below and the readable source for less common options.
+- [Example.lua](Example.lua): the complete library embedded with a standalone VoidHub showcase of selected native controls and the appearance editor. It does not demonstrate every element; use the API tables below and the readable source for less common options.
 - [Source.lua](Source.lua): the complete readable library and appearance extension; returns `Library`. This is what scripts `loadstring`. It is not the original upstream minified build.
 
 ## Loading
@@ -20,37 +20,37 @@ This is NOT a Roblox Studio project. Do not instruct users to create ModuleScrip
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/voidhub9-dotcom/Aqua/main/Source.lua"))()
 ```
 
-Optional, before native `CreateWindow`: `Library:LoadFont({ Name = "ValleySans" })`, `Library:SetDefaultTheme("Nebula")`, `Library:PreloadIcons()`. With `CreateAquaHubWindow`, pass `Theme = "Nebula"` in the options to select that starting preset instead of the wrapper default.
+Optional, before native `CreateWindow`: `Library:LoadFont({ Name = "ValleySans" })`, `Library:SetDefaultTheme("Nebula")`, `Library:PreloadIcons()`. With `CreateVoidHubWindow`, pass `Theme = "Nebula"` to override the default `VoidHub` preset.
 
 ## Skeleton to start from
 
 ```lua
-local Window = Library:CreateAquaHubWindow({
-    Name = "Aqua Hub",                       -- title, also names the ScreenGui
+local Window = Library:CreateVoidHubWindow({
+    Name = "VoidHub",                       -- title, also names the ScreenGui
     LoadingSubtitle = "by von63rd",
     ToggleUIKeybind = "RightControl",      -- hides and shows the window
     ConfigurationSaving = { Enabled = true, FolderName = "MyHub" },
-    Home = { Discord = "dsc.gg/myhub" },   -- built-in first tab; false removes it
+    Home = false,                           -- omit the built-in first tab
 })
 
-local Main = Window:CreateTab({ Name = "Main", Icon = "swords" })     -- Icon: any lucide name
-local Farm = Main:CreateGroupbox({ Name = "Farming", Side = "Left" })  -- or Main:AddLeftGroupbox("Farming", "sprout")
+local Main = Window:CreateTab({ Name = "Main", Icon = "layout-grid" })
+local Controls = Main:CreateGroupbox({ Name = "Preferences", Side = "Left" })
 local Info = Main:CreateGroupbox({ Name = "Info", Side = "Right" })
 
-local AutoFarm = Farm:CreateToggle({
-    Name = "Auto Farm",
-    Flag = "AutoFarm",                     -- unique; makes it saveable and reachable as Window.Flags.AutoFarm
+local Preview = Controls:CreateToggle({
+    Name = "Preview",
+    Flag = "Preview",                      -- unique; makes it saveable and reachable as Window.Flags.Preview
     CurrentValue = false,
     Callback = function(On)
         -- runs on every change, and once at creation when CurrentValue is true
     end,
 })
 
-Farm:CreateSlider({ Name = "Range", Range = { 5, 50 }, Increment = 1, CurrentValue = 20, Suffix = " studs", Flag = "Range", Callback = function(V) end })
-Farm:CreateDropdown({ Name = "Mobs", Options = { "Bandit", "Wolf" }, MultipleOptions = true, Flag = "Mobs", Callback = function(List) end })
+Controls:CreateSlider({ Name = "Intensity", Range = { 0, 100 }, Increment = 1, CurrentValue = 20, Suffix = "%", Flag = "Intensity" })
+Controls:CreateDropdown({ Name = "Panels", Options = { "Info", "Stats" }, MultipleOptions = true, Flag = "Panels" })
 
 Info:CreateStatus({ Name = "State", Style = "Row", Pin = true, Update = function()
-    return AutoFarm.Value and "<Success>Farming</Success>" or "<Muted>Idle</Muted>"
+    return Preview.Value and "<Success>Previewing</Success>" or "<Muted>Idle</Muted>"
 end })
 
 local Settings = Window:CreateTab({ Name = "Settings", Icon = "settings" })
@@ -128,8 +128,8 @@ Minimizing folds the window into a Dynamic Island at the top of the screen. Play
 
 ## Theme
 
-- `Library:SetTheme("Aqua")` or `Library:SetTheme({ Accent = Color3.fromRGB(56, 189, 248) })`; every colour cross-fades live.
-- Presets: Aqua (fresh library and enhanced factory default), Aqua Ice, Aqua Mono, Midnight, Nebula, Synthwave, Sakura, Velvet, Rose, Crimson, Sunset, Amber, Gold, Cyber, Toxic, Matcha, Emerald, Aurora, Ocean, Frost, Abyss, Mono, Halloween, Haunted, Christmas, Valentine, Lunar, Tropical, Dracula, Coffee.
+- `Library:SetTheme("VoidHub")` or `Library:SetTheme({ Accent = Color3.fromRGB(230, 230, 230) })`; palette changes tween live.
+- Presets: VoidHub (default), Aqua, Aqua Ice, Aqua Mono, Midnight, Nebula, Synthwave, Sakura, Velvet, Rose, Crimson, Sunset, Amber, Gold, Cyber, Toxic, Matcha, Emerald, Aurora, Ocean, Frost, Abyss, Mono, Halloween, Haunted, Christmas, Valentine, Lunar, Tropical, Dracula, Coffee.
 - `Tab:CreateThemeManager({ Side = "Right" })` gives players presets, weather, dim, transparency, drag skeleton, adaptive size, UI scale, density, background image and colour pickers. All of it is saved in configs under the hidden `__Theme` flag.
 - Read colours from `Library.Theme.Accent` and so on; don't cache them across theme changes.
 
@@ -139,21 +139,22 @@ Minimizing folds the window into a Dynamic Island at the top of the screen. Play
 - [README: Flags and configuration](Readme.MD#flags-and-configuration): persistence, flag scope, executor file APIs, and configuration caveats.
 - Icons use Lucide names or supported custom assets. Optional custom fonts need file and custom-asset APIs; see `Library:LoadFont` in the source.
 
-## Aqua Hub factories and defaults
+## VoidHub factories and defaults
 
-- `Library:CreateAquaHubWindow(options)` calls native `CreateWindow` and attaches appearance methods. Defaults: title `Aqua Hub`, subtitle `by von63rd`, `DefaultTheme = "Aqua"` when no theme is supplied, and `ConfigurationSaving = { Enabled = false, FolderName = "AquaHub" }` when absent. An explicit `Title` is respected as well as `Name`.
-- Legacy `CreateKawiXDWindow` and `CreateNullFireWindow` are aliases of the new factory. `Library.AquaHub` (also exposed through legacy metadata aliases) reports `Name = "Aqua Hub"`, `Author = "von63rd"`, `Version = "1.1.0"`, `AppearanceVersion = 1`.
-- Native `Library:CreateWindow(options)` is still available. It defaults to title `Aqua Hub`, subtitle `by von63rd`, config folder `AquaHub`, and a fresh blue `Aqua` palette, but does not attach the appearance methods. Prior library themes and a saved player default can affect its palette. The enhanced factory explicitly requests `Aqua` unless overridden; saved player defaults still take precedence.
+- `Library:CreateVoidHubWindow(options)` calls native `CreateWindow` and attaches appearance methods. Defaults: title `VoidHub`, subtitle `by von63rd`, `DefaultTheme = "VoidHub"` when no theme is supplied, and legacy config folder `AquaHub` to retain existing data.
+- Legacy `CreateAquaHubWindow`, `CreateKawiXDWindow`, and `CreateNullFireWindow` are aliases. `Library.VoidHub` reports `Name = "VoidHub"`, `Author = "von63rd"`, `Version = "1.2.0"`, `AppearanceVersion = 1`.
+- Native `Library:CreateWindow(options)` does not attach the appearance methods. Saved player defaults can still override the factory theme.
 - **The source does not enforce `ConfigurationSaving.Enabled`: `Enabled = false` does not disable native file operations, asset caching or hidden size flags.** Use `FolderName`, flags, `CreateConfigManager` and explicit `LoadAutoload` for native persistence. Appearance export is explicit and distinct from native config persistence.
-- The default in-game hub logo is `rbxassetid://89294804014911` (`Library.Assets.Logo`). It is not recolored by the theme. The supplied Discord-server PNG is displayed directly in the README via a GitHub release asset, without adding a fifth root file.
+- The default logo is `rbxassetid://101833678008843` (`Library.Assets.Logo`). It is not recolored. Change it with `Icon` or `Image`.
+- `Window:SelectTab(tab)` and `Tab:SelectSubTab(subTab)` accept an object, exact name, or one-based index. `OpenEffects = false` or `Window:SetOpenEffects(false)` disables the one-shot opening sheen.
 
-## Aqua appearance extension
+## VoidHub appearance extension
 
-Native presets remain available. The default `Aqua` preset uses cyan-blue #38BDF8 on navy #07111F. Additional presets: `Aqua Ice` and `Aqua Mono`. Historical preset names are privately mapped to these names rather than shown as old brands in theme menus.
+The default `VoidHub` preset uses `#0B0B0B` background, `#121212` surface, `#191919` panels, `#E6E6E6` accent, `#F5F5F5` text, and `#A7A7A7` muted text. Legacy palettes remain selectable.
 
 `Library:RegisterTheme(name, palette) -> true | false, error`: a nonblank name of at most 64 characters and at least one native palette key. Values are `Color3` or six-digit hex strings (optional `#`); omitted keys inherit the current theme. Use `Library:SetTheme(name)` to apply it.
 
-On a window from `CreateAquaHubWindow`:
+On a window from `CreateVoidHubWindow`:
 
 - `Window:SetBackgroundStyle(options) -> true | false, error`: `{ Source, Transparency, Tint, ScaleType, TileSize, Dim }`. Source is a preset, accessible asset ID, supported URL/file, or `"None"`; `false`/empty also clears. `Transparency` and `Dim` are 0..1; `Tint` is Color3/hex; `ScaleType` is `"Crop"`, `"Fit"`, `"Tile"`, or `"Stretch"`; `TileSize = { X, Y }` with dimensions 1..4096. Partial updates preserve omitted fields. Invalid/unresolved sources preserve the previous background. Actual asset display still depends on permissions and image availability.
 - `Window:GetBackgroundStyle()` returns a detached normalized table, including hex `Tint`.
@@ -167,7 +168,7 @@ Profiles do not automatically save to disk or include control flags/gameplay sta
 
 ## Attribution and distribution
 
-The native API is preserved; Aqua Hub by von63rd adds blue branding and the appearance extension. Exactly four root files are distributed: `Source.lua`, `Example.lua`, `Readme.MD`, `llms.txt`. Do not reference a bundled docs site, source tree, build scripts, or extra asset folders. See Readme.MD for attribution and the existing license text. Native icons, fonts, images and some Home features can access external resources when used.
+The native API is preserved; VoidHub by von63rd adds blue branding and the appearance extension. Exactly four root files are distributed: `Source.lua`, `Example.lua`, `Readme.MD`, `llms.txt`. Do not reference a bundled docs site, source tree, build scripts, or extra asset folders. See Readme.MD for attribution and the existing license text. Native icons, fonts, images and some Home features can access external resources when used.
 
 ## Extended UI API: source-exact rules
 

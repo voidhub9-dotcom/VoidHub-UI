@@ -1,4 +1,4 @@
--- Aqua Hub by von63rd. Single-file Roblox Luau UI library.
+-- VoidHub by von63rd. Single-file Roblox Luau UI library.
 -- Native UI base contributors: PookiePepelsss and joustingmatch; see Readme.MD for credits and MIT license.
 
 -- The library lives in its own function so its locals don't count against
@@ -183,16 +183,16 @@ local function finishElement(tab, opts, element, frame, kind)
 end
 
 Library.Theme = {
-    Background = Color3.fromRGB(7, 17, 31),
-    Surface = Color3.fromRGB(13, 27, 43),
-    Surface2 = Color3.fromRGB(17, 34, 56),
-    Surface3 = Color3.fromRGB(29, 54, 80),
-    Stroke = Color3.fromRGB(36, 61, 86),
-    StrokeHover = Color3.fromRGB(69, 115, 156),
-    Accent = Color3.fromRGB(56, 189, 248),
-    AccentDark = Color3.fromRGB(6, 31, 49),
-    Text = Color3.fromRGB(235, 247, 255),
-    Muted = Color3.fromRGB(151, 181, 203),
+    Background = Color3.fromRGB(11, 11, 11),
+    Surface = Color3.fromRGB(18, 18, 18),
+    Surface2 = Color3.fromRGB(25, 25, 25),
+    Surface3 = Color3.fromRGB(38, 38, 38),
+    Stroke = Color3.fromRGB(48, 48, 48),
+    StrokeHover = Color3.fromRGB(98, 98, 98),
+    Accent = Color3.fromRGB(230, 230, 230),
+    AccentDark = Color3.fromRGB(24, 24, 24),
+    Text = Color3.fromRGB(245, 245, 245),
+    Muted = Color3.fromRGB(167, 167, 167),
     Warning = Color3.fromRGB(240, 176, 108),
     Success = Color3.fromRGB(150, 220, 170),
     Error = Color3.fromRGB(240, 120, 120),
@@ -277,12 +277,13 @@ Library.ThemePresets = {
 }
 
 Library.ThemePresets.Aqua = preset({ 7, 17, 31 }, { 13, 27, 43 }, { 17, 34, 56 }, { 29, 54, 80 }, { 36, 61, 86 }, { 69, 115, 156 }, { 56, 189, 248 }, { 6, 31, 49 }, { 235, 247, 255 }, { 151, 181, 203 })
-Library.ThemeName = "Aqua"
+Library.ThemePresets.VoidHub = table.clone(Library.Theme)
+Library.ThemeName = "VoidHub"
 
 Library.Assets = {
     Shadow = "rbxassetid://6014261993",
     Glow = "rbxassetid://8992230677",
-    Logo = "rbxassetid://89294804014911",
+    Logo = "rbxassetid://101833678008843",
 }
 
 local LUCIDE_URL = "https://raw.githubusercontent.com/Footagesus/Icons/refs/heads/main/lucide/dist/Icons.lua"
@@ -300,7 +301,7 @@ local function loadLucide()
         lucideSet = result
     else
         lucideSet = false
-        warn("[Aqua Hub] lucide icons unavailable: " .. tostring(result))
+        warn("[VoidHub] lucide icons unavailable: " .. tostring(result))
     end
     return lucideSet
 end
@@ -323,13 +324,13 @@ local FONT_WEIGHTS = {
 function Library:LoadFont(opts)
     opts = normalize(opts, {})
     if type(writefile) ~= "function" or type(isfile) ~= "function" or typeof(getcustomasset) ~= "function" then
-        warn("[Aqua Hub] custom fonts need writefile, isfile and getcustomasset")
+        warn("[VoidHub] custom fonts need writefile, isfile and getcustomasset")
         return false
     end
     local name = opts.Name or "CustomFont"
     local weights = opts.Weights or FONT_PRESETS[name]
     if type(weights) ~= "table" then
-        warn("[Aqua Hub] no font weights for " .. name)
+        warn("[VoidHub] no font weights for " .. name)
         return false
     end
     local folder = opts.Folder or "AquaHubFonts"
@@ -352,7 +353,7 @@ function Library:LoadFont(opts)
             if ok then
                 table.insert(faces, { name = weightName, weight = info[1], style = "normal", assetId = getcustomasset(path) })
             else
-                warn("[Aqua Hub] could not download " .. weightName .. " weight of " .. name)
+                warn("[VoidHub] could not download " .. weightName .. " weight of " .. name)
             end
         end
     end
@@ -430,7 +431,7 @@ local function resolveIcon(icon)
     elseif type(entry) == "string" then
         return entry
     end
-    warn("[Aqua Hub] unknown lucide icon: " .. name)
+    warn("[VoidHub] unknown lucide icon: " .. name)
     return nil
 end
 
@@ -451,7 +452,7 @@ local Fonts = Library.Fonts
 local TOUCH = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 Library.Touch = TOUCH
 
-local SIDEBAR_WIDTH = 176
+local SIDEBAR_WIDTH = 164
 local HEADER_HEIGHT = 62
 local TAB_TILE_HEIGHT = TOUCH and 44 or 38
 local CARD_HEIGHT = TOUCH and 54 or 48
@@ -1051,7 +1052,7 @@ local function safeCall(callback, ...)
     end
     local ok, err = pcall(callback, ...)
     if not ok then
-        warn("[Aqua Hub] callback error: " .. tostring(err))
+        warn("[VoidHub] callback error: " .. tostring(err))
     end
 end
 
@@ -1345,7 +1346,7 @@ function Tab:Label(opts)
                 if ok and value ~= nil then
                     text_.Text = Library._rich(value)
                 elseif not ok then
-                    warn("[Aqua Hub] label update error: " .. tostring(value))
+                    warn("[VoidHub] label update error: " .. tostring(value))
                 end
                 task.wait(rate)
             end
@@ -4508,7 +4509,7 @@ function Library._registry()
 end
 
 function Library.Window(_, opts)
-    opts = normalize(opts, { Name = "Title", LoadingSubtitle = "Subtitle", ToggleUIKeybind = "Keybind" })
+    opts = normalize(opts, { Name = "Title", LoadingSubtitle = "Subtitle", ToggleUIKeybind = "Keybind", Image = "Icon" })
     if opts.Subtitle == nil then opts.Subtitle = "by von63rd" end
 
     if type(opts.Keybind) == "string" then
@@ -4533,7 +4534,7 @@ function Library.Window(_, opts)
         Minimized = false,
         _hideName = false,
         _hideAvatar = false,
-        Title = opts.Title or "Aqua Hub",
+        Title = opts.Title or "VoidHub",
         _logoIcon = opts.Icon or Assets.Logo,
         _sessionStart = os.clock(),
         _islandLocked = opts.IslandDraggable == false,
@@ -4542,10 +4543,16 @@ function Library.Window(_, opts)
     self.ConfigFolder = saving.FolderName or "AquaHub"
     -- Re-executing the script unloads the copy it left behind first, so the
     -- old toggles stop before the new autoload starts them again.
-    self._registryKey = "AquaHub:" .. tostring(self.ConfigFolder) .. ":" .. tostring(opts.Title or "AquaHub")
+    -- Keep the old default identity so re-running after the rebrand still
+    -- replaces an Aqua window using the same configuration folder.
+    local registryTitle = self.Title == "VoidHub" and "Aqua Hub" or self.Title
+    self._registryKey = "AquaHub:" .. tostring(self.ConfigFolder) .. ":" .. tostring(registryTitle)
     local registry = Library._registry()
     if registry then
         local previous = registry[self._registryKey]
+        if self.Title == "VoidHub" and not previous then
+            previous = registry["AquaHub:" .. tostring(self.ConfigFolder) .. ":AquaHub"]
+        end
         if type(previous) == "table" and type(previous.Destroy) == "function" then
             pcall(previous.Destroy, previous)
         end
@@ -4591,7 +4598,7 @@ function Library.Window(_, opts)
     table.insert(self._connections, UserInputService.InputEnded:Connect(dispatch("Ended")))
 
     local gui = create("ScreenGui", {
-        Name = opts.Name or "Aqua Hub",
+        Name = opts.Name or "VoidHub",
         IgnoreGuiInset = true,
         ResetOnSpawn = false,
         DisplayOrder = 999,
@@ -4719,7 +4726,7 @@ function Library.Window(_, opts)
     local logo = create("ImageLabel", {
         AnchorPoint = Vector2.new(0.5, 0.5),
         Position = UDim2.fromScale(0.5, 0.5),
-        Size = UDim2.fromOffset(30, 30),
+        Size = UDim2.fromOffset(34, 34),
         BackgroundTransparency = 1,
         Image = "",
         ImageColor3 = Theme.Accent,
@@ -4779,31 +4786,6 @@ function Library.Window(_, opts)
         Parent = sidebar,
     })
     self.TabList = tabList
-    -- The highlight sits beside the stack of buttons, so it scrolls and clips
-    -- with them and glides between tiles.
-    local indicator = create("Frame", {
-        Position = UDim2.fromOffset(8, 2),
-        Size = UDim2.new(1, -16, 0, TAB_TILE_HEIGHT),
-        BackgroundColor3 = Theme.Surface3,
-        BackgroundTransparency = 0.22,
-        BorderSizePixel = 0,
-        Visible = false,
-        Parent = tabList,
-    })
-    corner(indicator, UDim.new(0, 8))
-    -- The accent is structural, so it follows the indicator even when the
-    -- optional open-window effects are disabled.
-    local pill = create("Frame", {
-        AnchorPoint = Vector2.new(0, 0.5),
-        Position = UDim2.new(0, 4, 0.5, 0),
-        Size = UDim2.fromOffset(3, 16),
-        BackgroundColor3 = Theme.Accent,
-        BorderSizePixel = 0,
-        Parent = indicator,
-    })
-    corner(pill, UDim.new(1, 0))
-    self._indicatorPill = pill
-    self.Indicator = indicator
     local stack = create("Frame", {
         Name = "Stack",
         Position = UDim2.fromOffset(8, 2),
@@ -4837,14 +4819,6 @@ function Library.Window(_, opts)
     })
     self.Content = content
     self:_sidebarResize(sidebar, tonumber(opts.SidebarWidth) or SIDEBAR_WIDTH)
-    self._outLayer = create("CanvasGroup", {
-        Name = "TransitionOut",
-        Size = UDim2.fromScale(1, 1),
-        BackgroundTransparency = 1,
-        Visible = false,
-        ZIndex = 2,
-        Parent = content,
-    })
     self._inLayer = create("CanvasGroup", {
         Name = "TransitionIn",
         Size = UDim2.fromScale(1, 1),
@@ -4887,7 +4861,7 @@ function Library.Window(_, opts)
     end
     minimizeButton.MouseEnter:Connect(function() paintMinimize(true) end)
     minimizeButton.MouseLeave:Connect(function() paintMinimize(false) end)
-    minimizeButton.MouseButton1Click:Connect(function()
+    minimizeButton.Activated:Connect(function()
         self:Minimize()
     end)
     self.MinimizeButton = minimizeButton
@@ -5748,66 +5722,6 @@ function Window:SetTransparent(enabled)
     end
 end
 
-local function orderedChildren(parent)
-    local children = {}
-    for _, child in ipairs(parent:GetChildren()) do
-        if child:IsA("GuiObject") then
-            table.insert(children, child)
-        end
-    end
-    table.sort(children, function(a, b)
-        return a.LayoutOrder < b.LayoutOrder
-    end)
-    return children
-end
-
-local function popIn(object, delay, force)
-    if not object.Visible and not force then
-        return
-    end
-    object.Visible = false
-    task.delay(delay, function()
-        if not object.Parent then
-            return
-        end
-        local scaleObject = create("UIScale", { Scale = 0.94, Parent = object })
-        object.Visible = true
-        tween(scaleObject, { Scale = 1 }, 0.4, Enum.EasingStyle.Back)
-        task.delay(0.4, function()
-            scaleObject:Destroy()
-        end)
-    end)
-end
-
-function Window:_revealCards(tab, baseDelay)
-    local container = tab.CurrentSubTab or tab
-    if container._revealed then
-        return
-    end
-    container._revealed = true
-    local index = 0
-    local function reveal(object)
-        popIn(object, (baseDelay or 0) + index * 0.035)
-        index += 1
-    end
-    local columns = container._columnSet
-    for _, child in ipairs(orderedChildren(container.List)) do
-        if columns and child == columns.Holder then
-            local left, right = orderedChildren(columns.Left), orderedChildren(columns.Right)
-            for row = 1, math.max(#left, #right) do
-                if left[row] then
-                    reveal(left[row])
-                end
-                if right[row] then
-                    reveal(right[row])
-                end
-            end
-        else
-            reveal(child)
-        end
-    end
-end
-
 function Window:_playIntro(morph)
     if self._introDone or self._destroyed then
         return
@@ -5834,34 +5748,25 @@ function Window:_playIntro(morph)
         end)
     end
     local root, shadow, scale = self.Root, self.Shadow, self.Scale
-    if self.CurrentTab then
-        self:_revealCards(self.CurrentTab, morph and 0.15 or 0.25)
-    end
+    local fit = self._fitScale or 1
     root.Visible = true
     if morph then
-        scale.Scale = self._fitScale or 1
+        scale.Scale = fit
         root.Position = UDim2.fromScale(0.5, 0.5)
-        self:_fade(0, 0.3)
-        tween(self.BodyStroke, { Transparency = 0 }, 0.3)
-        tween(shadow, { ImageTransparency = 0.6 }, 0.3)
     else
-        root.Position = UDim2.new(0.5, 0, 0.5, 24)
-        tween(scale, { Scale = self._fitScale or 1 }, 0.5, Enum.EasingStyle.Back)
-        tween(root, { Position = UDim2.fromScale(0.5, 0.5) }, 0.5, Enum.EasingStyle.Quint)
-        self:_fade(0, 0.35)
-        tween(self.BodyStroke, { Transparency = 0 }, 0.35)
+        scale.Scale = fit * 0.985
+        root.Position = UDim2.new(0.5, 0, 0.5, 8)
+        tween(scale, { Scale = fit }, 0.24, Enum.EasingStyle.Quint)
+        tween(root, { Position = UDim2.fromScale(0.5, 0.5) }, 0.24, Enum.EasingStyle.Quint)
     end
-    if not morph then
-        tween(shadow, { ImageTransparency = 0.6 }, 0.5)
-    end
-
-    for index, tab in ipairs(self.Tabs) do
-        popIn(tab._button, 0.1 + index * 0.05, true)
-    end
-    self.Indicator.Visible = false
-    task.delay(0.15 + #self.Tabs * 0.05, function()
-        if self.CurrentTab then
-            self:_placeIndicator(self.CurrentTab)
+    -- Tabs and cards stay in flow; no staggered hide/show or size overshoot.
+    self:_fade(0, 0.24)
+    tween(self.BodyStroke, { Transparency = 0 }, 0.24)
+    tween(shadow, { ImageTransparency = self._shadowRest }, 0.28)
+    self:_playOpenEffect()
+    task.defer(function()
+        if self.CurrentTab and not self._destroyed then
+            self:_scrollTabIntoView(self.CurrentTab)
         end
     end)
 end
@@ -5921,7 +5826,7 @@ function Window:_showLoader(opts)
     local titleLabel = label({
         Position = UDim2.fromOffset(TEXT_X, PAD - 2),
         Size = UDim2.new(1, -(TEXT_X + 70), 0, 18),
-        Text = opts.LoadingTitle or opts.Title or "Aqua Hub",
+        Text = opts.LoadingTitle or opts.Title or "VoidHub",
         TextSize = 15,
         FontFace = Fonts.Bold,
         Parent = content,
@@ -6626,7 +6531,7 @@ function Window:_createOpenButton(opts)
         Position = UDim2.fromOffset(28, 0),
         Size = UDim2.new(0, 0, 1, 0),
         AutomaticSize = Enum.AutomaticSize.X,
-        Text = opts.Title or "Aqua Hub",
+        Text = opts.Title or "VoidHub",
         TextSize = 13,
         TextTruncate = Enum.TextTruncate.None,
         ZIndex = 31,
@@ -11515,7 +11420,7 @@ function Tab:Status(opts)
                     end
                     render(true)
                 else
-                    warn("[Aqua Hub] status update error: " .. tostring(value))
+                    warn("[VoidHub] status update error: " .. tostring(value))
                 end
                 task.wait(rate)
             end
@@ -11871,7 +11776,7 @@ function Tab:StatusList(opts)
                             handle:Set(result)
                         end
                     else
-                        warn("[Aqua Hub] status list update error: " .. tostring(result))
+                        warn("[VoidHub] status list update error: " .. tostring(result))
                     end
                 end
                 task.wait(rate)
@@ -12044,7 +11949,7 @@ function Tab:Image(opts)
             return false, "replaced by a newer image"
         end
         if not asset then
-            warn("[Aqua Hub] image: " .. tostring(err))
+            warn("[VoidHub] image: " .. tostring(err))
             return false, err
         end
         image.ImageTransparency = 1
@@ -13824,6 +13729,7 @@ function Tab:SubTab(opts, icon)
         BackgroundTransparency = 1,
         Text = "",
         AutoButtonColor = false,
+        Selectable = true,
         LayoutOrder = index,
         Parent = ui.Row,
     })
@@ -13871,8 +13777,11 @@ function Tab:SubTab(opts, icon)
             tween(sub._label, { TextColor3 = Theme.Muted }, 0.2)
         end
     end)
-    button.MouseButton1Click:Connect(function()
-        self:SelectSubTab(sub)
+    local isTap = tapGuard(button, function() return ui.Strip end)
+    button.Activated:Connect(function(input)
+        if not input or not isPress(input) or isTap() then
+            self:SelectSubTab(sub)
+        end
     end)
 
     table.insert(self._subTabs, sub)
@@ -13894,8 +13803,8 @@ function Tab:SelectSubTab(sub, instant)
             end
         end
     end
-    if type(sub) ~= "table" or not self._sub then
-        return
+    if type(sub) ~= "table" or not self._sub or not table.find(self._subTabs, sub) then
+        return false
     end
     local previous = self.CurrentSubTab
     if previous == sub then
@@ -16444,6 +16353,24 @@ function Window:_buildHome(opts)
     return tab
 end
 
+function Window:_paintTab(tab, instant)
+    local selected = self.CurrentTab == tab
+    local focused, hovered = tab._tabFocused, tab._tabHovered
+    local duration = instant and 0 or 0.14
+    tab._marker.Visible = selected
+    tab._label.FontFace = selected and Fonts.Bold or Fonts.Medium
+    tween(tab._button, { BackgroundTransparency = selected and 0 or ((focused or hovered) and 0.55 or 1) }, duration)
+    tween(tab._stroke, {
+        Color = focused and Theme.Accent or (selected and Theme.StrokeHover or Theme.Stroke),
+        Transparency = focused and 0.12 or (selected and 0.48 or 1),
+    }, duration)
+    local textColor = (selected or focused or hovered) and Theme.Text or Theme.Muted
+    tween(tab._label, { TextColor3 = textColor }, duration)
+    if tab._icon then
+        tintIcon(tab._icon, selected and Theme.Accent or textColor, selected or focused or hovered, duration)
+    end
+end
+
 function Window:Tab(opts, icon)
     opts = normalize(opts, { Title = "Name", Description = "Desc" })
     if icon ~= nil and opts.Icon == nil then
@@ -16456,18 +16383,31 @@ function Window:Tab(opts, icon)
     }, Tab)
 
     local button = create("TextButton", {
+        Name = tab.Name,
         Size = UDim2.new(1, 0, 0, TAB_TILE_HEIGHT),
         BackgroundColor3 = Theme.Surface3,
         BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        Selectable = true,
         Text = "",
         AutoButtonColor = false,
         LayoutOrder = #self.Tabs + 1,
         Parent = self._tabStack,
     })
     corner(button, UDim.new(0, 8))
-    local buttonStroke = stroke(button, Theme.Stroke, 1)
-    buttonStroke.Enabled = false
     tab._button = button
+    tab._stroke = stroke(button, Theme.Stroke, 1)
+    tab._marker = create("Frame", {
+        Name = "SelectedMark",
+        AnchorPoint = Vector2.new(0, 0.5),
+        Position = UDim2.new(0, 4, 0.5, 0),
+        Size = UDim2.fromOffset(3, 16),
+        BackgroundColor3 = Theme.Accent,
+        BorderSizePixel = 0,
+        Visible = false,
+        Parent = button,
+    })
+    corner(tab._marker, UDim.new(1, 0))
 
     local hasIcon = opts.Icon ~= nil
     if hasIcon then
@@ -16554,48 +16494,35 @@ function Window:Tab(opts, icon)
     tab._iconName = opts.Icon
     buildContainer(tab, page, listTop, opts.Icon or "layout-grid", opts.EmptyText or "Nothing here yet")
 
-    local pressScale = create("UIScale", { Parent = button })
-    local function release()
-        tween(pressScale, { Scale = 1 }, 0.3, Enum.EasingStyle.Quint)
-    end
     button.MouseEnter:Connect(function()
-        if self.CurrentTab ~= tab and not usingTouch() then
-            tween(button, { BackgroundTransparency = 0.75 }, 0.2, Enum.EasingStyle.Quint)
-            tween(tab._label, { TextColor3 = Theme.Text }, 0.2)
-            if tab._icon then
-                tintIcon(tab._icon, Theme.Text, true, 0.2)
-            end
+        if not usingTouch() then
+            tab._tabHovered = true
+            self:_paintTab(tab)
         end
     end)
     button.MouseLeave:Connect(function()
-        release()
-        if self.CurrentTab ~= tab then
-            tween(button, { BackgroundTransparency = 1 }, 0.3, Enum.EasingStyle.Quint)
-            tween(tab._label, { TextColor3 = Theme.Muted }, 0.3)
-            if tab._icon then
-                tintIcon(tab._icon, Theme.Muted, false, 0.3)
-            end
-        end
+        tab._tabHovered = false
+        self:_paintTab(tab)
     end)
-    button.MouseButton1Down:Connect(function()
-        tween(pressScale, { Scale = 0.97 }, 0.15, Enum.EasingStyle.Quint)
+    button.SelectionGained:Connect(function()
+        tab._tabFocused = true
+        self:_paintTab(tab)
+        self:_scrollTabIntoView(tab)
     end)
-    button.MouseButton1Up:Connect(release)
+    button.SelectionLost:Connect(function()
+        tab._tabFocused = false
+        self:_paintTab(tab)
+    end)
     local isTap = tapGuard(button, function()
         return self.TabList
     end)
-    button.MouseButton1Click:Connect(function()
-        release()
-        if isTap() then
+    button.Activated:Connect(function(input)
+        if not input or not isPress(input) or isTap() then
             self:SelectTab(tab)
         end
     end)
-    tab._stroke = buttonStroke
     self:_fitTitle(tab)
 
-    if not self._introDone then
-        button.Visible = false
-    end
     table.insert(self.Tabs, tab)
     if #self.Tabs == 1 then
         task.defer(function()
@@ -16614,7 +16541,7 @@ Window.CreateTab = Window.Tab
 function Tab:SetBadge()
     if not Library._badgeWarned then
         Library._badgeWarned = true
-        warn("[Aqua Hub] Tab:SetBadge was removed and does nothing")
+        warn("[VoidHub] Tab:SetBadge was removed and does nothing")
     end
 end
 
@@ -16857,23 +16784,6 @@ function Window:_listen(kind, handler, owner)
     return disconnect
 end
 
-function Window:_indicatorY(tab)
-    local stack = self._tabStack
-    return (tab._button.AbsolutePosition.Y - stack.AbsolutePosition.Y) / self.Scale.Scale + stack.Position.Y.Offset
-end
-
-function Window:_placeIndicator(tab)
-    local indicator = self.Indicator
-    local targetY = self:_indicatorY(tab)
-    if not indicator.Visible then
-        indicator.Visible = true
-        indicator.Position = UDim2.fromOffset(8, targetY)
-        indicator.BackgroundTransparency = 1
-        tween(indicator, { BackgroundTransparency = 0.22 }, 0.3)
-    end
-    tween(indicator, { Position = UDim2.fromOffset(8, targetY) }, 0.45, Enum.EasingStyle.Quint)
-end
-
 -- While a tab list or sub tab strip runs past an end, that end gets a fade
 -- and a small chip with a chevron and how many tabs are out of sight there.
 -- Pressing the chip scrolls most of a view toward them.
@@ -17082,10 +16992,14 @@ end
 
 function Window:_scrollTabIntoView(tab)
     local list = self.TabList
-    local scale = self.Scale.Scale
-    local top = (tab._button.AbsolutePosition.Y - list.AbsolutePosition.Y) / scale + list.CanvasPosition.Y
-    local bottom = top + tab._button.AbsoluteSize.Y / scale
+    local scale = math.max(self.Scale.Scale, 0.01)
     local view = list.AbsoluteWindowSize.Y / scale
+    local height = tab._button.AbsoluteSize.Y / scale
+    if view <= 0 or height <= 0 then
+        return
+    end
+    local top = (tab._button.AbsolutePosition.Y - list.AbsolutePosition.Y) / scale + list.CanvasPosition.Y
+    local bottom = top + height
     local y = list.CanvasPosition.Y
     if top - 8 < y then
         y = top - 8
@@ -17094,7 +17008,8 @@ function Window:_scrollTabIntoView(tab)
     else
         return
     end
-    tween(list, { CanvasPosition = Vector2.new(0, math.max(0, y)) }, 0.35, Enum.EasingStyle.Quint)
+    local limit = math.max(0, list.AbsoluteCanvasSize.Y / scale - view)
+    tween(list, { CanvasPosition = Vector2.new(0, math.clamp(y, 0, limit)) }, 0.22, Enum.EasingStyle.Quint)
 end
 
 function Window:_closePopups()
@@ -17178,71 +17093,61 @@ function Window:_fade(target, duration)
 end
 
 function Window:SelectTab(tab)
+    if type(tab) == "number" then
+        tab = self.Tabs[tab]
+    elseif type(tab) == "string" then
+        local name = tab
+        tab = nil
+        for _, candidate in ipairs(self.Tabs) do
+            if candidate.Name == name then
+                tab = candidate
+                break
+            end
+        end
+    end
+    if self._destroyed or type(tab) ~= "table" or not table.find(self.Tabs, tab) then
+        return false
+    end
     if self.CurrentTab == tab then
-        return
+        return true
     end
     local previous = self.CurrentTab
-    self._openEffectKick = 1
     self:_resetSearch()
     self:_closePopups()
+    self:_settleIn()
     self.CurrentTab = tab
 
-    self:_settleTransition()
     local generation = (self._transitionGeneration or 0) + 1
     self._transitionGeneration = generation
-
     if previous then
-        previous._label.FontFace = Fonts.Medium
-        tween(previous._label, { TextColor3 = Theme.Muted }, 0.3)
-        if previous._icon then
-            tintIcon(previous._icon, Theme.Muted, false, 0.3)
+        previous._page.Visible = false
+        self:_paintTab(previous)
+    end
+    self:_paintTab(tab, not previous)
+
+    task.defer(function()
+        if not self._destroyed and self.CurrentTab == tab then
+            self:_scrollTabIntoView(tab)
         end
-        local outLayer = self._outLayer
-        previous._page.Parent = outLayer
-        self._outPage = previous._page
-        outLayer.GroupTransparency = 0
-        outLayer.Position = UDim2.fromOffset(0, 0)
-        outLayer.Visible = true
-        tween(outLayer, { GroupTransparency = 1, Position = UDim2.fromOffset(0, -6) }, 0.2, Enum.EasingStyle.Quint)
-        task.delay(0.18, function()
-            if self._transitionGeneration == generation then
-                self:_settleOut()
-            end
-        end)
-    end
-
-    tween(tab._button, { BackgroundTransparency = 1 }, 0.2)
-    tween(tab._stroke, { Transparency = 1 }, 0.2)
-    tab._label.FontFace = Fonts.Bold
-    tween(tab._label, { TextColor3 = Theme.Text }, 0.3)
-    if tab._icon then
-        tintIcon(tab._icon, Theme.Accent, true, 0.3)
-    end
-
-    self:_placeIndicator(tab)
-    self:_scrollTabIntoView(tab)
-
+    end)
     local page = tab._page
     page.Position = UDim2.fromOffset(0, 0)
     page.Visible = true
-    page.Parent = self._inLayer
-    self._inPage = page
-    fadeSlideIn(self._inLayer)
-    task.delay(0.32, function()
-        if self._transitionGeneration == generation then
-            self:_settleIn()
-        end
-    end)
-end
-
-function Window:_settleOut()
-    local page = self._outPage
-    if page then
-        page.Parent = self.Content
-        page.Visible = false
-        self._outPage = nil
+    if previous and self._introDone and self.Open and not self.Minimized then
+        local layer = self._inLayer
+        page.Parent = layer
+        self._inPage = page
+        layer.GroupTransparency = 0.22
+        layer.Position = UDim2.fromOffset(0, 4)
+        layer.Visible = true
+        tween(layer, { GroupTransparency = 0, Position = UDim2.fromOffset(0, 0) }, 0.18, Enum.EasingStyle.Quint)
+        task.delay(0.19, function()
+            if not self._destroyed and self._transitionGeneration == generation then
+                self:_settleIn()
+            end
+        end)
     end
-    self._outLayer.Visible = false
+    return true
 end
 
 function Window:_settleIn()
@@ -17253,11 +17158,6 @@ function Window:_settleIn()
         self._inPage = nil
     end
     self._inLayer.Visible = false
-end
-
-function Window:_settleTransition()
-    self:_settleOut()
-    self:_settleIn()
 end
 
 -- Backdrop: a black tint over the game while the window is up, with an
@@ -17446,151 +17346,73 @@ local function seedParticle(kind, particle, width, height, anywhere)
     end
 end
 
--- Open-window motion: no full-screen filters, no per-frame descendant scans.
--- Everything is decorative and input-transparent; work pauses while folded.
+-- One edge sheen at open/restore. There is no idle loop or click overlay.
 function Window:_buildOpenEffects(enabled)
     self._openEffectsEnabled = enabled ~= false
-    local root, body = self.Root, self.Body
-    local effects = {}
-    self._openEffects = effects
-    local function decoration(name, parent, z)
-        return create("Frame", {
-            Name = name, Size = UDim2.fromScale(1, 1),
-            BackgroundTransparency = 1, BorderSizePixel = 0,
-            Active = false, Selectable = false, ZIndex = z,
-            Visible = false, Parent = parent,
-        })
-    end
-    -- A soft accent halo behind the window, not behind the text.
-    effects.Glow = create("ImageLabel", {
-        Name = "OpenAccentGlow", Position = UDim2.fromOffset(-18, -18),
-        Size = UDim2.new(1, 36, 1, 36), BackgroundTransparency = 1,
-        Image = Assets.Shadow, ImageColor3 = Theme.Accent,
-        ImageTransparency = 0.92, ScaleType = Enum.ScaleType.Slice,
-        SliceCenter = Rect.new(49, 49, 450, 450),
-        Active = false, Selectable = false, ZIndex = 0,
-        Visible = false, Parent = root,
+    local rim = create("Frame", {
+        Name = "OpeningSheen",
+        Size = UDim2.fromScale(1, 1),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        Active = false,
+        Selectable = false,
+        Visible = false,
+        ZIndex = 4,
+        Parent = self.Root,
     })
-    -- A single-pixel travelling reflection; never changes BodyStroke.
-    effects.Rim = decoration("OpenEdgeReflection", root, 4)
-    corner(effects.Rim, UDim.new(0, 10))
-    effects.RimStroke = stroke(effects.Rim, Theme.Accent, 1)
-    effects.RimStroke.Transparency = 0.58
-    effects.RimGradient = create("UIGradient", {
-        Transparency = NumberSequence.new({
-            NumberSequenceKeypoint.new(0, 0.98),
-            NumberSequenceKeypoint.new(0.4, 0.82),
-            NumberSequenceKeypoint.new(0.5, 0.12),
-            NumberSequenceKeypoint.new(0.6, 0.82),
-            NumberSequenceKeypoint.new(1, 0.98),
-        }), Parent = effects.RimStroke,
-    })
-    -- A faint colour wash under all controls and their existing solid surfaces.
-    effects.Wash = decoration("OpenAmbientWash", body, 0)
-    effects.Wash.Size = UDim2.new(1, 0, 0.3, 0)
-    effects.Wash.BackgroundColor3 = Theme.Accent
-    effects.Wash.BackgroundTransparency = 0.96
-    create("UIGradient", {
-        Rotation = 90, Transparency = NumberSequence.new(0, 1),
-        Parent = effects.Wash,
-    })
-    effects.Rail = decoration("OpenHeaderShimmer", body, 4)
-    effects.Rail.Position = UDim2.fromOffset(12, 0)
-    effects.Rail.Size = UDim2.new(1, -24, 0, 1)
-    effects.Rail.BackgroundColor3 = Theme.Accent
-    effects.Rail.BackgroundTransparency = 0.35
-    effects.RailGradient = create("UIGradient", {
+    corner(rim, UDim.new(0, 10))
+    local rimStroke = stroke(rim, Theme.Accent, 1)
+    local gradient = create("UIGradient", {
+        Rotation = 22,
         Transparency = NumberSequence.new({
             NumberSequenceKeypoint.new(0, 1),
-            NumberSequenceKeypoint.new(0.42, 1),
-            NumberSequenceKeypoint.new(0.5, 0.1),
-            NumberSequenceKeypoint.new(0.58, 1),
+            NumberSequenceKeypoint.new(0.32, 1),
+            NumberSequenceKeypoint.new(0.5, 0),
+            NumberSequenceKeypoint.new(0.68, 1),
             NumberSequenceKeypoint.new(1, 1),
-        }), Parent = effects.Rail,
+        }),
+        Parent = rimStroke,
     })
-    -- One reusable press pulse, clipped to the window and with no input
-    -- handlers. Just a small soft accent flash at the press point.
-    effects.Feedback = decoration("OpenTouchFeedback", root, 6)
-    effects.Feedback.ClipsDescendants = true
-    corner(effects.Feedback, UDim.new(0, 10))
-    effects.Ripple = create("ImageLabel", {
-        Name = "TouchFill",
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        Size = UDim2.fromOffset(0, 0),
-        BackgroundTransparency = 1,
-        Image = Assets.Glow,
-        ImageColor3 = Theme.Accent,
-        ImageTransparency = 1,
-        ScaleType = Enum.ScaleType.Fit,
-        Visible = false,
-        ZIndex = 5,
-        Parent = effects.Feedback,
-    })
-    effects.TabStroke = stroke(self.Indicator, Theme.Accent, 1)
-    effects.TabStroke.Transparency = 1
-    self._openEffectClock, self._openEffectKick = 0, 0
-    self._openEffectPulse = 1
-    local accumulator, wasShown, lastPress = 0, false, -1
-    self:_listen("Began", function(input)
-        if not self._openEffectsEnabled or not self._introDone or not self.Open
-            or self.Minimized or not root.Visible or not isPress(input) then
-            return
-        end
-        local now = os.clock()
-        local point = Vector2.new(input.Position.X, input.Position.Y)
-        if now - lastPress < 0.12 or not pointInside(point, root) then return end
-        lastPress = now
-        local fit = math.max(self.Scale.Scale, 0.01)
-        local offset = (point - root.AbsolutePosition) / fit
-        effects.Ripple.Position = UDim2.fromOffset(offset.X, offset.Y)
-        self._openEffectPulse = 0
-        self._openEffectKick = math.max(self._openEffectKick, 0.35)
-    end)
-    table.insert(self._frameSteps, function(deltaTime)
-        local windowShown = self._introDone and self.Open
-            and not self.Minimized and root.Visible and self.Gui.Enabled and not self._destroyed
-        local shown = windowShown and self._openEffectsEnabled
-        if shown ~= wasShown then
-            wasShown = shown
-            for _, name in ipairs({ "Glow", "Rim", "Wash", "Rail", "Feedback" }) do
-                effects[name].Visible = shown
-            end
-            effects.TabStroke.Transparency = shown and 0.78 or 1
-            if not shown then
-                effects.Ripple.Visible = false
-                self._openEffectPulse = 1
-            end
-        end
-        if not shown then return end
-        accumulator += math.min(deltaTime, 0.1)
-        if accumulator < 1 / 30 then return end
-        local step = accumulator
-        accumulator = 0
-        self._openEffectClock += step
-        self._openEffectKick = math.max(0, self._openEffectKick - step * 1.6)
-        local clock, kick = self._openEffectClock, self._openEffectKick
-        effects.Glow.ImageTransparency = 0.925 - math.sin(clock * 0.9) * 0.014 - kick * 0.045
-        effects.RimGradient.Rotation = (clock * 15) % 360
-        effects.RailGradient.Offset = Vector2.new(math.sin(clock * 0.42) * 0.7, 0)
-        effects.Wash.BackgroundTransparency = 0.963 - math.sin(clock * 0.55) * 0.006
-        effects.TabStroke.Transparency = 0.8 - kick * 0.3
-        local pulse = math.min(1, self._openEffectPulse + step / 0.25)
-        self._openEffectPulse = pulse
-        local active = pulse < 1
-        effects.Ripple.Visible = active
-        if active then
-            -- Out fast, gone fast: a quick ease-out pulse, then clear.
-            local eased = 1 - (1 - pulse) ^ 3
-            local size = 10 + 38 * eased
-            effects.Ripple.Size = UDim2.fromOffset(size, size)
-            effects.Ripple.ImageTransparency = 0.55 + pulse * 0.45
+    self._openEffects = { Rim = rim, Stroke = rimStroke, Gradient = gradient }
+end
+
+function Window:_cancelOpenEffect()
+    local effect = self._openEffects
+    if not effect then return end
+    local sweep, fade = effect.Sweep, effect.Fade
+    effect.Sweep, effect.Fade = nil, nil
+    if sweep then sweep:Cancel() end
+    if fade then fade:Cancel() end
+    effect.Rim.Visible = false
+end
+
+function Window:_playOpenEffect()
+    local effect = self._openEffects
+    if not effect or not self._openEffectsEnabled or not self._introDone or not self.Open
+        or self.Minimized or self._destroyed or not self.Root.Visible or not self.Gui.Enabled then
+        return
+    end
+    self:_cancelOpenEffect()
+    effect.Gradient.Offset = Vector2.new(-0.8, 0)
+    effect.Stroke.Transparency = 0.55
+    effect.Rim.Visible = true
+    effect.Sweep = tween(effect.Gradient, { Offset = Vector2.new(0.8, 0) }, 0.46, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+    local fade = tween(effect.Stroke, { Transparency = 1 }, 0.48, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+    effect.Fade = fade
+    fade.Completed:Once(function()
+        if effect.Fade == fade then
+            effect.Sweep, effect.Fade = nil, nil
+            effect.Rim.Visible = false
         end
     end)
 end
 
--- A lightweight escape hatch for scripts that prefer completely still chrome.
+-- SetOpenEffects(false) also stops a sweep that is already in progress.
 function Window:SetOpenEffects(enabled)
     self._openEffectsEnabled = enabled ~= false
+    if not self._openEffectsEnabled then
+        self:_cancelOpenEffect()
+    end
     return self._openEffectsEnabled
 end
 
@@ -19163,6 +18985,7 @@ function Window:Minimize()
         return
     end
     self.Minimized = true
+    self:_cancelOpenEffect()
     self._minimizeGeneration = (self._minimizeGeneration or 0) + 1
     local generation = self._minimizeGeneration
     self:_closePopups()
@@ -19293,6 +19116,7 @@ function Window:Restore()
     task.delay(0.4, function()
         if self._ghost == ghost and self._minimizeGeneration == generation then
             dissolve(self, ghost, ghostStroke, 0.22)
+            self:_playOpenEffect()
         end
     end)
 end
@@ -19374,9 +19198,11 @@ function Window:Toggle(open)
         task.delay(0.3, function()
             if self._ghost == ghost and self._minimizeGeneration == generation then
                 dissolve(self, ghost, ghostStroke, 0.18)
+                self:_playOpenEffect()
             end
         end)
     else
+        self:_cancelOpenEffect()
         self:_closePopups()
         local position = fromPosition or self.Root.AbsolutePosition - gui.AbsolutePosition
         local current = fromSize or self.Root.AbsoluteSize
@@ -19639,6 +19465,7 @@ function Window:Destroy()
     -- if any of it fails the gui is removed straight away instead of being
     -- left frozen on screen.
     local ok, err = pcall(function()
+        self:_cancelOpenEffect()
         if self._dialog then
             self._dialog.Close()
         end
@@ -19664,7 +19491,7 @@ function Window:Destroy()
         end
     end)
     if not ok then
-        warn("[Aqua Hub] unload animation failed, removing the window directly: " .. tostring(err))
+        warn("[VoidHub] unload animation failed, removing the window directly: " .. tostring(err))
         remove()
         return
     end
@@ -19736,7 +19563,7 @@ local function runTrusted(fn, ...)
     while result == nil do
         if os.clock() > deadline then
             timedOut = true
-            error("[Aqua Hub] trusted call timed out", 0)
+            error("[VoidHub] trusted call timed out", 0)
         end
         task.wait()
     end
@@ -19797,7 +19624,7 @@ return Library
 end)()
 
 local installAquaHub = (function()
--- Aqua Hub appearance additions. Installed on the layout-preserving native API.
+-- VoidHub appearance additions. Installed on the layout-preserving native API.
 -- No gameplay automation, telemetry, or automatic profile/file writes.
 return function(Library)
     local HttpService = game:GetService("HttpService")
@@ -19847,13 +19674,14 @@ return function(Library)
         result.Muted = Color3.fromRGB(151, 181, 203)
         return result
     end
-    Library.AquaHub = {
-        Name = "Aqua Hub", Author = "von63rd", Version = "1.1.0", Base = "Aqua Hub",
+    Library.VoidHub = {
+        Name = "VoidHub", Author = "von63rd", Version = "1.2.0", Base = "VoidHub",
         AppearanceVersion = 1,
     }
     -- Compatibility aliases for scripts using earlier factory/metadata names.
-    Library.KawiXD = Library.AquaHub
-    Library.NullFire = Library.AquaHub
+    Library.AquaHub = Library.VoidHub
+    Library.KawiXD = Library.VoidHub
+    Library.NullFire = Library.VoidHub
     Library.ThemePresets["Aqua Ice"] = theme("7DD3FC", "081725", "0C2133", "123049", "1E4866")
     Library.ThemePresets["Aqua Mono"] = theme("B9D9F2", "0B1522", "111F30", "192D42", "29425A")
     Library.ThemeAliases = { ["Null Fire"] = "Aqua", ["Null Ice"] = "Aqua Ice", ["Null Mono"] = "Aqua Mono" }
@@ -20006,20 +19834,22 @@ return function(Library)
         return window
     end
 
-    function Library:CreateAquaHubWindow(options)
+    function Library:CreateVoidHubWindow(options)
         options = clone(options or {})
-        if options.Name == nil and options.Title == nil then options.Name = "Aqua Hub" end
+        if options.Name == nil and options.Title == nil then options.Name = "VoidHub" end
         if options.Subtitle == nil and options.LoadingSubtitle == nil then options.Subtitle = "by von63rd" end
-        if options.DefaultTheme == nil and options.Theme == nil then options.DefaultTheme = "Aqua" end
+        if options.DefaultTheme == nil and options.Theme == nil then options.DefaultTheme = "VoidHub" end
+        -- Preserve the on-disk location for profiles, configs, and autoload.
         if options.ConfigurationSaving == nil then options.ConfigurationSaving = { Enabled = false, FolderName = "AquaHub" } end
         return attach(self:CreateWindow(options))
     end
 
-    Library.CreateKawiXDWindow = Library.CreateAquaHubWindow
-    Library.CreateNullFireWindow = Library.CreateAquaHubWindow
+    Library.CreateAquaHubWindow = Library.CreateVoidHubWindow
+    Library.CreateKawiXDWindow = Library.CreateVoidHubWindow
+    Library.CreateNullFireWindow = Library.CreateVoidHubWindow
 
     function Library:CreateAppearanceTab(window, options)
-        assert(type(window) == "table" and window.GetAppearance, "Use CreateAquaHubWindow first")
+        assert(type(window) == "table" and window.GetAppearance, "Use CreateVoidHubWindow first")
         options = options or {}
         local tab = window:CreateTab({ Name = options.Name or "Appearance", Icon = options.Icon or "palette" })
         tab:CreateThemeManager({ Name = "Palette & layout", Side = "Left", Background = false })
@@ -20055,7 +19885,8 @@ return function(Library)
         end })
         profiles:CreateButton({ Name = "Import appearance", Callback = function() tell(window:ApplyAppearance(controls.JSON:Get())) end })
         profiles:CreateParagraph({ Name = "Your image, your palette", Content = "Roblox image ids work without a download cache. Direct image URLs and local files need your environment's file and custom-asset APIs. Profiles are explicit; nothing is uploaded." })
-        tab.AquaHubControls = controls
+        tab.VoidHubControls = controls
+        tab.AquaHubControls = controls -- legacy handle alias
         tab.NullFireControls = controls -- legacy handle alias
         local lastSource
         local function refresh()
@@ -20084,11 +19915,12 @@ end)()
 installAquaHub(Library)
 
 
-local Window = Library:CreateAquaHubWindow({
-    Name = "Aqua Hub",
+local Window = Library:CreateVoidHubWindow({
+    Name = "VoidHub",
     LoadingSubtitle = "by von63rd",
     ToggleUIKeybind = "RightControl",
     Size = UDim2.fromOffset(760, 520),
+    Theme = "VoidHub",
     Loading = false,
     UnsupportedExecutor = false,
     ConfigurationSaving = { Enabled = false, FolderName = "AquaHubDemo" },
@@ -20099,7 +19931,7 @@ local Window = Library:CreateAquaHubWindow({
 })
 
 local Main = Window:CreateTab({ Name = "Main", Desc = "Controls and appearance", Icon = "waves" })
-local Core = Main:CreateGroupbox({ Name = "Aqua Hub", Side = "Left", Icon = "waves" })
+local Core = Main:CreateGroupbox({ Name = "VoidHub", Side = "Left", Icon = "waves" })
 Core:CreateToggle({
     Name = "Notifications", Desc = "Useful feedback, when you need it.",
     CurrentValue = true, Flag = "AquaHubDemo_Notifications",
@@ -20115,15 +19947,15 @@ Core:CreateDropdown({
 Core:CreateButton({
     Name = "Send notification", Icon = "bell",
     Callback = function()
-        Window:Notify({ Title = "Aqua Hub", Content = "Your interface. Your colors. Your background.", Type = "Success", Duration = 3 })
+        Window:Notify({ Title = "VoidHub", Content = "Your interface. Your colors. Your background.", Type = "Success", Duration = 3 })
     end,
 })
 
 local Identity = Main:CreateGroupbox({ Name = "Your interface", Side = "Right", Icon = "sparkles" })
-Identity:CreateParagraph({ Name = "Aqua Hub by von63rd", Content = "Split groupboxes, smooth motion, and portable appearance profiles." })
+Identity:CreateParagraph({ Name = "VoidHub by von63rd", Content = "Split groupboxes, smooth motion, and portable appearance profiles." })
 Identity:CreateDropdown({
-    Name = "Quick palette", Options = { "Aqua", "Aqua Ice", "Aqua Mono", "Midnight" },
-    CurrentOption = "Aqua", AllowNone = false,
+    Name = "Quick palette", Options = { "VoidHub", "Aqua Mono", "Midnight", "Aqua Ice" },
+    CurrentOption = "VoidHub", AllowNone = false,
     Callback = function(name) Library:SetTheme(name) end,
 })
 Identity:CreateButton({
@@ -20140,12 +19972,12 @@ local Elements = Window:CreateTab({ Name = "Elements", Desc = "Inputs and readou
 local Inputs = Elements:CreateGroupbox({ Name = "Inputs", Side = "Left" })
 Inputs:CreateInput({ Name = "Display name", CurrentValue = "von63rd", Placeholder = "Your name" })
 Inputs:CreateKeybind({ Name = "Demo shortcut", CurrentKeybind = "F", Callback = function() Window:Notify({ Title = "Shortcut", Content = "Demo key pressed." }) end })
-Inputs:CreateColorPicker({ Name = "Accent color", Color = Color3.fromRGB(56, 189, 248), Callback = function(value) Library:SetTheme({ Accent = value }) end })
+Inputs:CreateColorPicker({ Name = "Accent color", Color = Color3.fromRGB(230, 230, 230), Callback = function(value) Library:SetTheme({ Accent = value }) end })
 Inputs:CreateStepper({ Name = "Level", Min = 1, Max = 10, Default = 3, Step = 1 })
 local Info = Elements:CreateGroupbox({ Name = "Readouts", Side = "Right" })
 Info:CreateProgress({ Name = "Progress", Value = 0.8, Text = "Workspace ready" })
 Info:CreateLabel({ Text = "Every demo control changes UI only." })
-Info:CreateParagraph({ Name = "Need more?", Content = "The full Aqua Hub API remains available: sub tabs, status lists, tables, logs, order lists, dialogs, configs and more." })
+Info:CreateParagraph({ Name = "Need more?", Content = "The full VoidHub API remains available: sub tabs, status lists, tables, logs, order lists, dialogs, configs and more." })
 
 local Appearance = Window:CreateAppearanceTab({ Name = "Appearance", Icon = "palette" })
 Window:SelectTab(Main)

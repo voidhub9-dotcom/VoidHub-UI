@@ -1,0 +1,201 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="880" viewBox="0 0 1440 880" role="img" aria-labelledby="title description">
+  <title id="title">VoidHub UI</title>
+  <desc id="description">VoidHub design reference showing the Main tab at 760 pixels and open search results at the 480-pixel minimum window width. This mockup is not a Roblox screenshot.</desc>
+  <rect width="1440" height="880" fill="#101010"/>
+  <g font-family="Inter, Arial, sans-serif">
+    <text x="64" y="56" font-size="11" font-weight="700" letter-spacing="2" fill="#E6E6E6">VOIDHUB / INTERFACE SYSTEM</text>
+    <text x="62" y="108" font-size="44" font-weight="700" letter-spacing="-1.7" fill="#F5F5F5">VoidHub UI</text>
+    <text x="64" y="140" font-size="14" fill="#A7A7A7">Black surfaces, silver details, and motion that settles quickly.</text>
+    <path d="M64 164H1376" stroke="#303030"/>
+    <text x="64" y="199" font-size="11" font-weight="700" letter-spacing="1.4" fill="#A7A7A7">01 / DEFAULT WINDOW · 760 × 520</text>
+    <text x="896" y="199" font-size="11" font-weight="700" letter-spacing="1.4" fill="#A7A7A7">02 / COMPACT SEARCH · 480 × 520</text>
+
+    <g id="Desktop" transform="translate(64 220)">
+      <rect x="0" y="0" width="760" height="520" rx="10" fill="#0B0B0B" stroke="#303030"/>
+      <path d="M164 0H10A10 10 0 0 0 0 10V510A10 10 0 0 0 10 520H164Z" fill="#121212"/>
+      <path d="M164 1V519M12 61H152" stroke="#303030"/>
+      <rect x="12" y="13" width="36" height="36" rx="9" fill="#080808" stroke="#303030"/>
+      <image x="13" y="14" width="34" height="34" href="data:image/png;base64,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UDgcVqlUsE4bi8XOnDlTUlKCEHrhhRdisRhJklqtdkP8EX7ktddeQwhdv/7d1avXgsEQjhPbtm2D9vfOO+/kywgojwSkUilRFNVqNTSCEydOhMPhUCi0f/9+tVo9Nze3IaNi6Et6enoOHjzo8Xjee++92dnZWIzv6XkECgaGh4cvXbqEEMqL+6M8EoAQCgaDGo0GIUSS5NLS0sLCQkVFhV6vf/755x0OR2lp6cNn5cDfyy+/TNP0V1999f7776tUKo1Gs2PHDrgB3D83leh3RD4JEAQBFmPB+wYHB3U6HUVRr776KkJodXX1IRsBzKnpdLojR47E4/F3332X53mdTtfe3k7TtCiKCwsLAwMDKJsrjj+IfBKAEAqHwzqdDgj49NNP5+bmaJresWPH448/Pjk5WVVV9VC64ThC6NChQyaT6eLFi5988glJkgqForGxcWFhIR6Pv/POOz6fL4/uj/JOQCgUUqlUJElCVzwwMAAff/nLXyaTyWQyqdfrHzgKgV9D9/vHP/5REASKohoaGgRBcDqd4+Pjf/vb31D+oj8gzwTIsszzvF6vz0xQB4PBaDT65JNPdnd337x584GjELj/zp07H3vssfPnz588eRIhpNFoamqqp6YmvF7Pp59+Mj09jXI++3arnHl8NsDn85WVlSGECIKw2+3nz5+XJEmlUh09etTr9XIcR9P0A9volVdeQQi9/fbb0WgUIdTU1BQMBu12u90+f+bMGVQA78zmnwAodygtLYVGcOrUKSjDOnLkSFNTk8fjqTfV36+loDJOr9cfOXJkdHT09OnTUGve0tIyPz8fjUatVuvs7BzKt/ujQiAAIeR2uysrK+H/33777cTERCgUIgjilVde8fv8tbU16D4tBfHnmWeeMRgMb731VjweT6VSzc3NKpXK71+Nx8WFBUcwGMy33ggVCAGrq6sMw7Asi2FYIBA4e/YsSZKXhoe7OrssFosgxGGl7N4B1VS/+MUvJicnBwYGqqqqZFnu7u6GKWhRFF2upbz7PqAgCEAI+f3+6upqMMqZM2c8HreuVDszM93f11em01UYKtA9RyFw//7+/h07dvz2t79FCCWTyZKSEqPRuLq6StO0IAhu90q+NV6TNt8C/BPLy8sajQaK96enpz/77PS2bb0IQ26v54mDB156+SV0n1HoV7/61czMzAcffGA2m5eXl7u7u6PRKLwY4/F4BEHIt8b/REEQAHUrsVjMYDDAGwaDgx+Lorh37565ubn5+fnXX3+9vb0d3UMjgO4Xys1/85vfwJYEsiw3Nzd7vV6oB3A4HPnW+F8oCALAtZeWlioqKuDK5cuXv/nmm66ubpPJNDg4aLPZfv7zn6N73tNjy5YtFy5c+Pjjj1tbW10ul8ViIQhCTIgUSQUCgUAgkG+N/4WCIAAhhGFYJBKRZRmm5wKB4AcffEhR5L59++bn5996662nn346s35wF0DVf01NzeTkpCAI5eXlXq+3p6cnEAhQJIkjzOlwoAJI/zMoFAKgEaysrFRXV8OVs2fPjI9P7Nmzp7q6+vjx4x6P57nnnkN3nbkEs5pMJpqmh4eHGxsb3W53WVmZTqeLRqM0RfECv7y8ggog/c+gUAgAeDwelUoFNROLi86PP/5HTU1NX19fPB7/wx/+8PLLL6O7Tt1AxK+rqxsfHw+Hw2azeXZ2trurKxaJYgiRNOVwOqWkVDjujwqNAISQ3+/PDMpOnjwZDAafeeYZhNDx48cTicTu3bvvuNVPBrCefO3aNYvFAuUXJpMpHA7TFC1K0qLTgQrJ/VEBEuByufR6PY5jULf82WefHThwwGw2C4Jw7NixF1988e5fr66uttvtgiB0dnZOT0+3trbiOCFJEs3Qbrc7Eg7nW79bUVgEYBiWSCTi8bjBUAHVEn//+985jjtw4ABC6P3339doNDCsvWMYgfA1PT3d1dWFEPL5fFu3bg2HQhRFkQS5sLCQb/3ugMIiIJOP1tTUwJWhoaEbN25A9xuPx0+cOPHEE0+g2/JR4ANKrFUqVU9Pz9TUVGVlpVqthkpIeBcs3/rdAYVFAGB1dRV2MEEIBYPBd999d9euXRaLBSF0+vRpnU7Hsuwt+ShszsIwjNfrffTRRzEMs9vtra0tgiDgBMEwjH3Bjgop+8ygEAlACC0vL2cawYkTJ3ieP3z4MEKI5/nvvvuuu7sb3WbN0tJSn89nMpkaGxvn5+cpijQYDKIYpxlaTErzdjsqsO4XUKAEuFwurVbLMIxSqVxcdAwODv70pz+FP12+fBkGzOutmdn3o6OjQ5bl+fn5uro6iiJlWVapVE6nE8ri863WHVCIBEA1QygUamlp0el0TU2NAwMDTU2NO3c+ihCCtyoy4zWAUqmMx+M6na6srGx11e/z+erqTBiGkyRFkmQhLD1+HwqRALDU/Py82WxuaWnu7e1JJsXJyYkXX3wBIaTRaKCnXf8VeLmsVKtlWXZubl6lUpWVlaXTiOPUXq/X7XbnW6fvRSESgBDCMIznea/X29nZaTAYmpqavvjiwsGDB2maJkkykUjcvHlz/f3BYFCSpNa2tkQiAfEHdoDgOG5iYgIVZPcLKFACoBFMTIyzLKvRaIxGo9OxSOD444895vX66uvr1w8FYDa7rrauwmBwOpxxQWior8cQxjBMOBy22WyoUOMPKlgCEEIYhgWDoZkZa0lJCbzSdeXKleeefy6ZlOrr6zmOW7+nEEmSdbW1YkK8abPpy/SVhkopKXEcNzU1BYsw+dbme1G4kgEuX74iiolUKlVeXn79+tgjPY8wDCOKYm9vL1q3H1O9yYRhmM/nW1peamlpoRmaIik5LUP8yW/p1d1RuASAg7tcrpkZG00zFEXFYtFgMPjUoUNj18c6OjrW37Zl69ZILGpfXMAJ3NzUkJKTGm2JzWqDnenyrcrdULgEoLWe8+uvL8O2MVqtdvTbb589/KzD4UhKycwivtlsbmtr4wV+cXHRbDZrtRrYg+S7777LtwY/jIImAOw7PT3tdDoJguA4bt5urzOZOjraHU5HfX09LM709fWp1WoCJyKRSEdHRyolKxQKh8MBa78F2/0CCpoAtJbhfPvtKEHSchpjWGbGOvX6f/9XS0tLSUkJ7Pu2a/euxcXFhYWFyspKo9EI27KMjo6iAs4+Myh0AsB/r127BivpWq12cnLSbG586aWX+vr6KIp6bN++2ura6elpn8/X1dWF4zjLMisrKzMzM6jg3R/l5S3J+wWO44lEQqPRNDY2yrIciURUKm7Pnv9IJpMLCwv7n3jiq6+/Ghke0evLdu/elU6nlUrlxYuXnE5X4bs/KvwWgNa8+MqVK4IgpNPp0tLSq1evJpPJP/3pz6FQaMZmrTOZunu6GxrqlUoFRZHBYHhiYhJtBvdHm4UADMNWVlamp2dommYYJhaLjo2N/exn/6nVan0eb2g14PV4LBaLJEksq7hx40YsFtsU7o82RQhCa31pIhHv7d2WTEoEQd68efPVV1/b1rvt9//z+2gkShDEli1tGIalUvI//vEpz28aAjZBC0BrwcRqtS4uLtI0y3HqlRX3jRs3DBUGSZIWnY5miwXHcZVKZbPZvF5PbjY83BBsDgLQ2oYbX375JRTwqtXqixcvwkt3SqWyuroKXgm+cuWbfEt6f9g0BADGxsZWVlYoiior09ls1tnZm0qlwmSqo2laoVDOz9vn5mbRJul+AZuJAChaGR0dZRiGokiFgn3vveMYhszmBhzHMQwfHb2aTuf6UL6HxGaSFSYeRkdHQ6EQTTNGo3Fmxgov1zMMvbS0NDk5iXJ+KuLDKpVvAe4D6XSaoqhYLFZWVmaxNMuyXF5eXl5ugK2HPvvsjN1uz9excA+MzUQA+tf2l8nOzo6SEk6r1arVJQzDWq3Wixcvwst4+Zbx/pDdQ3weEti/A44hIUnS5/Pa7fa+vr3V1dWSlJqdnbXZbLIscxwHB3DApv+Z7T8LOSst0HB5i9Hh1CmKoliWValUHMfNz9vjcbGhobG+vt7n8/n9fo7jWJZlGAYW7mH7g/XH7uRbpzujQFvA+hNp0Do+EokEbP06Pj6+uLhotdoEgb9+/frS0hIURmTOeMnL/mMPgE3TB4BBYRN0OHNPoVDodKUzMzPDw8Nw+Jcoiht+yE62sWkIyCCzixPP8waDYXp62mq1RiIRURQhT91E1kebi4DMeZOpVEqhUMRiMXjndGVlhSAIeB8GItUm4qBAu6Y7CLruaAwMw1QqVeaowWQyybKsIAiZHHQTcVCgnfDtuKUWOpVKQcYJV0RRXJ/nbBbrb1ZAVrr+CpSn51uu/zfInAe5Hjk4DLqIf6Jo6CKKKKKIIooooogiiiiiiCKKKKKIIooooogiirgv/C+QnD4GNbe8WgAAAABJRU5ErkJggg=="/>
+      <text x="56" y="30" font-size="15" font-weight="700" fill="#F5F5F5">VoidHub</text>
+      <text x="56" y="45" font-size="12" fill="#A7A7A7">by von63rd</text>
+      <text x="16" y="83" font-size="10" font-weight="700" letter-spacing=".4" fill="#A7A7A7">WORKSPACE</text>
+      <rect x="8" y="94" width="148" height="38" rx="8" fill="#262626" stroke="#626262"/>
+      <rect x="12" y="105" width="3" height="16" rx="1.5" fill="#E6E6E6"/>
+      <g fill="#A7A7A7" font-size="13" font-weight="500">
+        <text x="50" y="118" fill="#F5F5F5" font-weight="700">Main</text>
+        <text x="50" y="160">Elements</text>
+        <text x="50" y="202">Appearance</text>
+      </g>
+      <g fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M24 111q3-3 7 0t7 0M24 116q3-3 7 0t7 0" stroke="#E6E6E6"/>
+        <path d="M24 151h3m4 0h7m-14 7h7m4 0h3m-11-9v4m8 3v4" stroke="#A7A7A7"/>
+        <path d="M33 201q-1 5-6 2-7-5-1-11 6-5 12 0 3 4-1 6h-2q-3 0-2 3ZM26 197h.1m3-4h.1m5 1h.1" stroke="#A7A7A7"/>
+      </g>
+      <rect x="201" y="16" width="30" height="30" rx="8" fill="#191919" stroke="#303030"/>
+      <path d="M209 29q3-3 7 0t7 0m-14 5q3-3 7 0t7 0" fill="none" stroke="#E6E6E6" stroke-width="1.5" stroke-linecap="round"/>
+      <text x="241" y="30" font-size="22" font-weight="700" fill="#F5F5F5">Main</text>
+      <text x="241" y="48" font-size="12" fill="#A7A7A7">Controls and appearance</text>
+      <path d="M201 61H744" stroke="#303030"/>
+      <rect x="524" y="14" width="176" height="34" rx="8" fill="#121212" stroke="#303030"/>
+      <circle cx="540" cy="30" r="4.5" fill="none" stroke="#A7A7A7" stroke-width="1.5"/>
+      <path d="m543.5 33.5 3.5 3.5" stroke="#A7A7A7" stroke-width="1.5" stroke-linecap="round"/>
+      <text x="556" y="36" font-size="13" fill="#A7A7A7">Search controls</text>
+      <rect x="710" y="14" width="34" height="34" rx="8" fill="#191919" stroke="#303030"/>
+      <path d="m721 25 5 5m-5 0h5v-5m7 12-5-5m5 0h-5v5" fill="none" stroke="#A7A7A7" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <g id="Controls">
+        <rect x="201" y="74" width="262" height="219" rx="10" fill="#191919" stroke="#303030"/>
+        <path d="M201 116H463" stroke="#303030"/>
+        <rect x="215" y="83" width="24" height="24" rx="6" fill="#262626"/>
+        <path d="M221 93q2-3 6 0t6 0m-12 4q2-3 6 0t6 0" fill="none" stroke="#E6E6E6" stroke-width="1.4" stroke-linecap="round"/>
+        <text x="247" y="100" font-size="14" font-weight="700" fill="#F5F5F5">VoidHub</text>
+        <path d="m437 93 5 5 5-5m-26-2h8v7h-8zM425 95h4v3h-4z" fill="none" stroke="#A7A7A7" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+        <g fill="#F5F5F5" font-size="13">
+          <text x="215" y="143">Notifications</text>
+          <text x="215" y="187">Intensity</text>
+          <text x="215" y="235">Mode</text>
+          <text x="235" y="272">Send notification</text>
+        </g>
+        <text x="215" y="160" font-size="12" fill="#A7A7A7">Useful feedback, when you need it.</text>
+        <rect x="418" y="137" width="31" height="17" rx="8.5" fill="#E6E6E6"/>
+        <circle cx="440" cy="145.5" r="5.5" fill="#0B0B0B"/>
+        <text x="450" y="187" text-anchor="end" font-size="12" fill="#A7A7A7">65%</text>
+        <rect x="215" y="197" width="234" height="4" rx="2" fill="#262626"/>
+        <rect x="215" y="197" width="152" height="4" rx="2" fill="#E6E6E6"/>
+        <circle cx="367" cy="199" r="4" fill="#E6E6E6"/>
+        <rect x="358" y="219" width="91" height="24" rx="6" fill="#121212" stroke="#303030"/>
+        <text x="366" y="234" font-size="11" fill="#F5F5F5">Balanced</text>
+        <path d="m434 229 3 3 3-3" fill="none" stroke="#A7A7A7" stroke-width="1.4" stroke-linecap="round"/>
+        <path d="M221 272h-8q2-2 2-5a2 2 0 0 1 4 0q0 3 2 5Zm-5 2h2m223-9 4 4-4 4" fill="none" stroke="#A7A7A7" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <g id="Appearance">
+        <rect x="473" y="74" width="263" height="245" rx="10" fill="#191919" stroke="#303030"/>
+        <path d="M473 116H736" stroke="#303030"/>
+        <rect x="487" y="83" width="24" height="24" rx="6" fill="#262626"/>
+        <path d="m499 89 1.5 4.5L505 95l-4.5 1.5L499 101l-1.5-4.5L493 95l4.5-1.5Z" fill="none" stroke="#E6E6E6" stroke-width="1.3" stroke-linejoin="round"/>
+        <text x="519" y="100" font-size="14" font-weight="700" fill="#F5F5F5">Your interface</text>
+        <path d="m710 93 5 5 5-5m-26-2h8v7h-8zM698 95h4v3h-4z" fill="none" stroke="#A7A7A7" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+        <g fill="#F5F5F5" font-size="13">
+          <text x="487" y="142" font-weight="700">VoidHub by von63rd</text>
+          <text x="487" y="213">Quick palette</text>
+          <text x="508" y="244">Preview custom background</text>
+          <text x="487" y="273">Clear background</text>
+          <text x="487" y="301">Status</text>
+        </g>
+        <g fill="#A7A7A7" font-size="12">
+          <text x="487" y="161">Split groupboxes, smooth motion,</text>
+          <text x="487" y="177">and portable appearance profiles.</text>
+        </g>
+        <rect x="633" y="197" width="89" height="24" rx="6" fill="#121212" stroke="#303030"/>
+        <text x="641" y="212" font-size="11" fill="#F5F5F5">VoidHub</text>
+        <path d="m706 207 3 3 3-3m1 27 4 4-4 4m0 21 4 4-4 4m-220-34h7v8h-8v-8h1l3 4 2-2 2 3" fill="none" stroke="#A7A7A7" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="721" y="301" text-anchor="end" font-size="12" font-weight="700" fill="#96DCAA">Ready</text>
+      </g>
+    </g>
+    <g id="Compact" transform="translate(896 220)">
+      <defs>
+        <linearGradient id="OpeningEdge">
+          <stop offset="0" stop-color="#303030"/>
+          <stop offset=".50" stop-color="#303030"/>
+          <stop offset=".72" stop-color="#E6E6E6"/>
+          <stop offset=".92" stop-color="#303030"/>
+        </linearGradient>
+      </defs>
+      <rect width="480" height="520" rx="10" fill="#0B0B0B" stroke="url(#OpeningEdge)"/>
+      <path d="M164 0H10A10 10 0 0 0 0 10V510A10 10 0 0 0 10 520H164Z" fill="#121212"/>
+      <path d="M164 1V519M12 61H152" stroke="#303030"/>
+      <rect x="12" y="13" width="36" height="36" rx="9" fill="#080808" stroke="#303030"/>
+      <image x="13" y="14" width="34" height="34" href="data:image/png;base64,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UDgcVqlUsE4bi8XOnDlTUlKCEHrhhRdisRhJklqtdkP8EX7ktddeQwhdv/7d1avXgsEQjhPbtm2D9vfOO+/kywgojwSkUilRFNVqNTSCEydOhMPhUCi0f/9+tVo9Nze3IaNi6Et6enoOHjzo8Xjee++92dnZWIzv6XkECgaGh4cvXbqEEMqL+6M8EoAQCgaDGo0GIUSS5NLS0sLCQkVFhV6vf/755x0OR2lp6cNn5cDfyy+/TNP0V1999f7776tUKo1Gs2PHDrgB3D83leh3RD4JEAQBFmPB+wYHB3U6HUVRr776KkJodXX1IRsBzKnpdLojR47E4/F3332X53mdTtfe3k7TtCiKCwsLAwMDKJsrjj+IfBKAEAqHwzqdDgj49NNP5+bmaJresWPH448/Pjk5WVVV9VC64ThC6NChQyaT6eLFi5988glJkgqForGxcWFhIR6Pv/POOz6fL4/uj/JOQCgUUqlUJElCVzwwMAAff/nLXyaTyWQyqdfrHzgKgV9D9/vHP/5REASKohoaGgRBcDqd4+Pjf/vb31D+oj8gzwTIsszzvF6vz0xQB4PBaDT65JNPdnd337x584GjELj/zp07H3vssfPnz588eRIhpNFoamqqp6YmvF7Pp59+Mj09jXI++3arnHl8NsDn85WVlSGECIKw2+3nz5+XJEmlUh09etTr9XIcR9P0A9volVdeQQi9/fbb0WgUIdTU1BQMBu12u90+f+bMGVQA78zmnwAodygtLYVGcOrUKSjDOnLkSFNTk8fjqTfV36+loDJOr9cfOXJkdHT09OnTUGve0tIyPz8fjUatVuvs7BzKt/ujQiAAIeR2uysrK+H/33777cTERCgUIgjilVde8fv8tbU16D4tBfHnmWeeMRgMb731VjweT6VSzc3NKpXK71+Nx8WFBUcwGMy33ggVCAGrq6sMw7Asi2FYIBA4e/YsSZKXhoe7OrssFosgxGGl7N4B1VS/+MUvJicnBwYGqqqqZFnu7u6GKWhRFF2upbz7PqAgCEAI+f3+6upqMMqZM2c8HreuVDszM93f11em01UYKtA9RyFw//7+/h07dvz2t79FCCWTyZKSEqPRuLq6StO0IAhu90q+NV6TNt8C/BPLy8sajQaK96enpz/77PS2bb0IQ26v54mDB156+SV0n1HoV7/61czMzAcffGA2m5eXl7u7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"/>
+      <text x="56" y="30" font-size="15" font-weight="700" fill="#F5F5F5">VoidHub</text>
+      <text x="56" y="45" font-size="12" fill="#A7A7A7">by von63rd</text>
+      <text x="16" y="83" font-size="10" font-weight="700" letter-spacing=".4" fill="#A7A7A7">WORKSPACE</text>
+      <rect x="8" y="94" width="148" height="38" rx="8" fill="#262626" stroke="#626262"/>
+      <rect x="12" y="105" width="3" height="16" rx="1.5" fill="#E6E6E6"/>
+      <g fill="#A7A7A7" font-size="13" font-weight="500">
+        <text x="50" y="118" fill="#F5F5F5" font-weight="700">Main</text>
+        <text x="50" y="160">Elements</text>
+        <text x="50" y="202">Appearance</text>
+      </g>
+      <g fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M24 111q3-3 7 0t7 0M24 116q3-3 7 0t7 0" stroke="#E6E6E6"/>
+        <path d="M24 151h3m4 0h7m-14 7h7m4 0h3m-11-9v4m8 3v4" stroke="#A7A7A7"/>
+        <path d="M33 201q-1 5-6 2-7-5-1-11 6-5 12 0 3 4-1 6h-2q-3 0-2 3ZM26 197h.1m3-4h.1m5 1h.1" stroke="#A7A7A7"/>
+      </g>
+      <rect x="201" y="16" width="30" height="30" rx="8" fill="#191919" stroke="#303030"/>
+      <path d="M209 29q3-3 7 0t7 0m-14 5q3-3 7 0t7 0" fill="none" stroke="#E6E6E6" stroke-width="1.5" stroke-linecap="round"/>
+      <text x="241" y="30" font-size="22" font-weight="700" fill="#F5F5F5">Main</text>
+      <text x="241" y="48" font-size="12" fill="#A7A7A7">Controls…</text>
+      <path d="M201 61H464" stroke="#303030"/>
+      <rect x="320" y="14" width="100" height="34" rx="8" fill="#121212" stroke="#E6E6E6"/>
+      <circle cx="336" cy="30" r="4.5" fill="none" stroke="#F5F5F5" stroke-width="1.5"/>
+      <path d="m339.5 33.5 3.5 3.5" stroke="#F5F5F5" stroke-width="1.5" stroke-linecap="round"/>
+      <text x="352" y="36" font-size="13" fill="#F5F5F5">back</text>
+      <path d="m402 27 8 8m0-8-8 8" stroke="#A7A7A7" stroke-width="1.5" stroke-linecap="round"/>
+      <rect x="430" y="14" width="34" height="34" rx="8" fill="#191919" stroke="#303030"/>
+      <path d="m441 25 5 5m-5 0h5v-5m7 12-5-5m5 0h-5v5" fill="none" stroke="#A7A7A7" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="201" y="74" width="255" height="219" rx="10" fill="#191919" stroke="#303030"/>
+      <path d="M201 116H456" stroke="#303030"/>
+      <rect x="215" y="83" width="24" height="24" rx="6" fill="#262626"/>
+      <text x="247" y="100" font-size="14" font-weight="700" fill="#F5F5F5">VoidHub</text>
+      <g fill="#F5F5F5" font-size="13">
+        <text x="215" y="143">Notifications</text>
+        <text x="215" y="187">Intensity</text>
+        <text x="215" y="235">Mode</text>
+        <text x="235" y="272">Send notification</text>
+      </g>
+      <text x="215" y="160" font-size="12" fill="#A7A7A7">Useful feedback, when you need it.</text>
+      <rect x="411" y="137" width="31" height="17" rx="8.5" fill="#E6E6E6"/>
+      <circle cx="433" cy="145.5" r="5.5" fill="#0B0B0B"/>
+      <text x="442" y="187" text-anchor="end" font-size="12" fill="#A7A7A7">65%</text>
+      <rect x="215" y="197" width="227" height="4" rx="2" fill="#262626"/>
+      <rect x="215" y="197" width="148" height="4" rx="2" fill="#E6E6E6"/>
+      <circle cx="363" cy="199" r="4" fill="#E6E6E6"/>
+      <rect x="351" y="219" width="91" height="24" rx="6" fill="#121212" stroke="#303030"/>
+      <text x="359" y="234" font-size="11" fill="#F5F5F5">Balanced</text>
+      <path d="m427 229 3 3 3-3" fill="none" stroke="#A7A7A7" stroke-width="1.4" stroke-linecap="round"/>
+      <rect x="201" y="303" width="255" height="194" rx="10" fill="#191919" stroke="#303030"/>
+      <path d="M201 345H456" stroke="#303030"/>
+      <rect x="215" y="312" width="24" height="24" rx="6" fill="#262626"/>
+      <path d="m227 318 1.5 4.5L233 324l-4.5 1.5L227 330l-1.5-4.5L221 324l4.5-1.5Z" fill="none" stroke="#E6E6E6" stroke-width="1.3" stroke-linejoin="round"/>
+      <text x="247" y="329" font-size="14" font-weight="700" fill="#F5F5F5">Your interface</text>
+      <g fill="#F5F5F5" font-size="13">
+        <text x="215" y="371" font-weight="700">VoidHub by von63rd</text>
+          <text x="215" y="422">Quick palette</text>
+        <text x="215" y="447">Preview custom background</text>
+        <text x="215" y="477">Clear background</text>
+      </g>
+      <g fill="#A7A7A7" font-size="12">
+        <text x="215" y="388">Split groupboxes, smooth motion,</text>
+        <text x="215" y="403">and portable appearance profiles.</text>
+      </g>
+      <g id="Search-results">
+        <rect x="116" y="55" width="308" height="113" rx="12" fill="#040404" opacity=".65"/>
+        <rect x="120" y="54" width="300" height="106" rx="10" fill="#121212" stroke="#303030"/>
+        <rect x="126" y="60" width="288" height="46" rx="7" fill="#262626"/>
+        <g font-size="13" fill="#F5F5F5">
+          <text x="162" y="78">Preview custom <tspan font-weight="700">back</tspan>ground</text>
+          <text x="162" y="126">Clear <tspan font-weight="700">back</tspan>ground</text>
+        </g>
+        <g font-size="11" fill="#A7A7A7">
+          <text x="162" y="95">Main › Your interface</text>
+          <text x="162" y="143">Main › Your interface</text>
+        </g>
+        <path d="M138 80h12v8h-12zM141 84l2 2 3-3 4 4" fill="none" stroke="#E6E6E6" stroke-width="1.4" stroke-linejoin="round"/>
+        <path d="M138 128h12v8h-12zM141 132l2 2 3-3 4 4" fill="none" stroke="#A7A7A7" stroke-width="1.4" stroke-linejoin="round"/>
+      </g>
+    </g>
+    <g id="Motion-and-selection">
+      <path d="M64 774H1376" stroke="#303030"/>
+      <g font-size="11" font-weight="700" letter-spacing="1.4" fill="#E6E6E6">
+        <text x="64" y="805">01 / TAB SELECTION</text>
+        <text x="520" y="805">02 / OPEN AND RESTORE</text>
+        <text x="976" y="805">03 / COMPACT LAYOUT</text>
+      </g>
+      <g font-size="13" fill="#A7A7A7">
+        <text x="64" y="830">A persistent marker; the next page eases in once.</text>
+        <text x="520" y="830">One 480 ms edge sheen, then still chrome.</text>
+        <text x="976" y="830">Panels stack; search matches stay in reach.</text>
+      </g>
+      <text x="64" y="859" font-size="10" fill="#A7A7A7">DESIGN REFERENCE · VOIDHUB 1.2 · NOT ROBLOX CLIENT CAPTURE</text>
+    </g>
+  </g>
+</svg>
