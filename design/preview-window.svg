@@ -1,0 +1,158 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="580" viewBox="0 0 960 580" font-family="Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+  <defs>
+    <radialGradient id="bg" cx="30%" cy="18%" r="95%">
+      <stop offset="0%" stop-color="#17171D"/>
+      <stop offset="70%" stop-color="#0A0A0C"/>
+    </radialGradient>
+    <radialGradient id="glowSilver" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#E6E6E6" stop-opacity="0.20"/>
+      <stop offset="100%" stop-color="#E6E6E6" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#141419"/>
+      <stop offset="100%" stop-color="#0E0E12"/>
+    </linearGradient>
+    <filter id="drop" x="-40%" y="-40%" width="180%" height="200%">
+      <feDropShadow dx="0" dy="16" stdDeviation="22" flood-color="#000000" flood-opacity="0.55"/>
+    </filter>
+    <filter id="soft" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="9"/>
+    </filter>
+  </defs>
+
+  <!-- backdrop -->
+  <rect width="960" height="580" fill="url(#bg)"/>
+  <path d="M0,470 C120,432 210,458 340,440 C510,416 640,452 820,430 L960,446 L960,580 L0,580 Z" fill="#0C0C12" opacity="0.65"/>
+  <path d="M0,516 C160,494 300,514 470,498 C660,480 800,506 960,490 L960,580 L0,580 Z" fill="#08080D" opacity="0.75"/>
+
+  <!-- window -->
+  <g transform="translate(80,44)">
+    <rect width="800" height="470" rx="14" fill="url(#panel)" stroke="#2A2A31" filter="url(#drop)"/>
+    <line x1="0" y1="48" x2="800" y2="48" stroke="#24242A"/>
+
+    <!-- topbar -->
+    <rect x="20" y="10" width="28" height="28" rx="8" fill="#E6E6E6" fill-opacity="0.08" stroke="#E6E6E6" stroke-opacity="0.32"/>
+    <path d="M28,17 L34,26 L40,17" fill="none" stroke="#E6E6E6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="58" y="24" font-size="13.5" font-weight="600" fill="#F2F2F2">VoidHub</text>
+    <text x="58" y="38" font-size="9.5" fill="#8B8B92">by von63rd</text>
+
+    <rect x="524" y="11" width="170" height="26" rx="7" fill="#0C0C0F" stroke="#2A2A31"/>
+    <circle cx="540" cy="24" r="4.2" fill="none" stroke="#A7A7A7" stroke-width="1.4"/>
+    <line x1="543.5" y1="27.5" x2="547" y2="31" stroke="#A7A7A7" stroke-width="1.4" stroke-linecap="round"/>
+    <text x="556" y="28" font-size="11" fill="#62626B">Search</text>
+    <rect x="666" y="16" width="16" height="16" rx="4" fill="none" stroke="#3A3A42"/>
+    <text x="670" y="27.5" font-size="10" fill="#8B8B92">/</text>
+    <rect x="706" y="11" width="26" height="26" rx="7" fill="none" stroke="#3A3A42"/>
+    <line x1="713" y1="24" x2="725" y2="24" stroke="#C9C9CE" stroke-width="2" stroke-linecap="round"/>
+    <rect x="740" y="11" width="26" height="26" rx="7" fill="#F07878" fill-opacity="0.10" stroke="#F07878" stroke-opacity="0.35"/>
+    <path d="M748,19 L758,29 M758,19 L748,29" stroke="#F07878" stroke-width="2" stroke-linecap="round"/>
+
+    <!-- sidebar -->
+    <rect x="8" y="60" width="134" height="38" rx="8" fill="#1B1B21"/>
+    <rect x="8" y="68" width="3" height="22" rx="1.5" fill="#E6E6E6"/>
+    <g fill="#E6E6E6" fill-opacity="0.92">
+      <rect x="22" y="70" width="6" height="6" rx="1.5"/>
+      <rect x="32" y="70" width="6" height="6" rx="1.5"/>
+      <rect x="22" y="80" width="6" height="6" rx="1.5"/>
+      <rect x="32" y="80" width="6" height="6" rx="1.5"/>
+    </g>
+    <text x="48" y="84" font-size="12" font-weight="600" fill="#F0F0F0">Main</text>
+
+    <g stroke="#808088" stroke-width="1.6" stroke-linecap="round" fill="#808088">
+      <line x1="21" y1="118" x2="41" y2="118"/><circle cx="26" cy="118" r="2.6" stroke="none"/>
+      <line x1="21" y1="126" x2="41" y2="126"/><circle cx="35" cy="126" r="2.6" stroke="none"/>
+      <line x1="21" y1="134" x2="41" y2="134"/><circle cx="29" cy="134" r="2.6" stroke="none"/>
+    </g>
+    <text x="48" y="130" font-size="12" fill="#C9C9CE">Elements</text>
+
+    <circle cx="30" cy="176" r="5.5" fill="none" stroke="#808088" stroke-width="1.5" stroke-dasharray="2 2.4"/>
+    <circle cx="30" cy="176" r="1.6" fill="#808088"/>
+    <text x="48" y="180" font-size="12" fill="#C9C9CE">Settings</text>
+
+    <rect x="22" y="218" width="16" height="13" rx="4" fill="none" stroke="#808088" stroke-width="1.4"/>
+    <circle cx="26.5" cy="222" r="1.3" fill="#808088"/><circle cx="33.5" cy="222" r="1.3" fill="#808088"/><circle cx="26.5" cy="226.5" r="1.3" fill="#808088"/>
+    <text x="48" y="226" font-size="12" fill="#C9C9CE">Appearance</text>
+
+    <rect x="18" y="404" width="26" height="26" rx="13" fill="#23232A" stroke="#3A3A42"/>
+    <circle cx="31" cy="412" r="3.4" fill="#9A9AA0"/>
+    <path d="M23,425 c2,-4.5 5,-6.5 8,-6.5 s6,2 8,6.5" fill="#9A9AA0"/>
+    <text x="52" y="421" font-size="11" fill="#C9C9CE">von63rd</text>
+
+    <!-- left groupbox -->
+    <rect x="166" y="64" width="304" height="352" rx="10" fill="#121217" stroke="#26262C"/>
+    <text x="182" y="90" font-size="11" font-weight="700" letter-spacing="1.2" fill="#E6E6E6">PREFERENCES</text>
+    <line x1="182" y1="100" x2="454" y2="100" stroke="#24242A"/>
+
+    <text x="182" y="126" font-size="12.5" font-weight="600" fill="#F0F0F0">Enabled</text>
+    <text x="182" y="141" font-size="10" fill="#A7A7AA">Master switch</text>
+    <ellipse cx="450" cy="132" rx="30" ry="16" fill="url(#glowSilver)"/>
+    <rect x="430" y="122" width="40" height="20" rx="10" fill="#E6E6E6"/>
+    <circle cx="456" cy="132" r="7" fill="#101013"/>
+
+    <text x="182" y="176" font-size="12.5" font-weight="600" fill="#F0F0F0">Intensity</text>
+    <rect x="422" y="163" width="28" height="18" rx="5" fill="#17171B"/>
+    <text x="436" y="176" font-size="11" fill="#F0F0F0" text-anchor="middle">65%</text>
+    <rect x="182" y="188" width="238" height="4" rx="2" fill="#24242A"/>
+    <rect x="182" y="188" width="155" height="4" rx="2" fill="#E6E6E6"/>
+    <circle cx="337" cy="190" r="6" fill="#F5F5F5" stroke="#0F0F12" stroke-width="2"/>
+
+    <text x="182" y="226" font-size="12.5" font-weight="600" fill="#F0F0F0">Mode</text>
+    <rect x="390" y="213" width="60" height="20" rx="6" fill="#17171B"/>
+    <text x="402" y="227" font-size="11" fill="#F0F0F0">Balanced</text>
+    <path d="M438,219 l3.5,4 3.5,-4" fill="none" stroke="#A7A7AA" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <text x="182" y="272" font-size="12.5" font-weight="600" fill="#F0F0F0">Toggle UI</text>
+    <rect x="384" y="259" width="66" height="21" rx="5" fill="#101013" stroke="#2A2A31"/>
+    <text x="417" y="273.5" font-size="10.5" fill="#F0F0F0" text-anchor="middle" font-weight="600">RightCtrl</text>
+
+    <rect x="182" y="298" width="268" height="30" rx="7" fill="#0C0C0F" stroke="#2A2A31"/>
+    <text x="194" y="317" font-size="11" fill="#62626B">Type a label…</text>
+    <line x1="216" y1="306" x2="216" y2="320" stroke="#E6E6E6" stroke-width="1.4"/>
+
+    <line x1="182" y1="348" x2="450" y2="348" stroke="#24242A"/>
+    <text x="182" y="372" font-size="10" fill="#62626B">Flags: Enabled · Intensity · Mode · ToggleKey</text>
+    <text x="182" y="388" font-size="10" fill="#62626B">Saved by configs, counted on the island.</text>
+
+    <!-- right groupbox -->
+    <rect x="486" y="64" width="304" height="352" rx="10" fill="#121217" stroke="#26262C"/>
+    <text x="502" y="90" font-size="11" font-weight="700" letter-spacing="1.2" fill="#E6E6E6">INFO</text>
+    <line x1="502" y1="100" x2="774" y2="100" stroke="#24242A"/>
+
+    <text x="502" y="128" font-size="12.5" font-weight="600" fill="#F0F0F0">State</text>
+    <rect x="680" y="112" width="82" height="22" rx="11" fill="#96DCAA" fill-opacity="0.10" stroke="#96DCAA" stroke-opacity="0.40"/>
+    <circle cx="694" cy="123" r="3" fill="#96DCAA"/>
+    <text x="702" y="127" font-size="10.5" fill="#96DCAA" font-weight="600">Previewing</text>
+
+    <text x="502" y="164" font-size="12.5" font-weight="600" fill="#F0F0F0">Workspace ready</text>
+    <text x="762" y="164" font-size="11" fill="#F0F0F0" text-anchor="end">80%</text>
+    <rect x="502" y="174" width="260" height="6" rx="3" fill="#24242A"/>
+    <rect x="502" y="174" width="208" height="6" rx="3" fill="#E6E6E6"/>
+
+    <rect x="502" y="196" width="260" height="30" rx="8" fill="#17171B" stroke="#3A3A42"/>
+    <path d="M522,206 L522,216 M512,211 L532,211 M527,204 a5.5,5.5 0 1,0 0.01,0 M531,214 l3,3" stroke="#F0F0F0" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+    <text x="546" y="215" font-size="12" fill="#F0F0F0">Send notification</text>
+
+    <rect x="502" y="240" width="260" height="118" rx="8" fill="#0B0B0E" stroke="#222228"/>
+    <text x="514" y="262" font-size="10.5" fill="#62626B">21:02</text><text x="552" y="262" font-size="10.5" fill="#C9C9CE">connected to workspace</text>
+    <text x="514" y="284" font-size="10.5" fill="#62626B">21:04</text><text x="552" y="284" font-size="10.5"><tspan fill="#96DCAA">Enabled</tspan><tspan fill="#C9C9CE"> set to </tspan><tspan fill="#96DCAA">true</tspan></text>
+    <text x="514" y="306" font-size="10.5" fill="#62626B">21:05</text><text x="552" y="306" font-size="10.5" fill="#C9C9CE">Intensity set to 65%</text>
+    <text x="514" y="328" font-size="10.5" fill="#62626B">21:07</text><text x="552" y="328" font-size="10.5" fill="#C9C9CE">Mode: Balanced</text>
+    <circle cx="517" cy="344" r="1.5" fill="#38383F"/><circle cx="524" cy="344" r="1.5" fill="#38383F"/><circle cx="531" cy="344" r="1.5" fill="#38383F"/>
+    <text x="762" y="348" font-size="9.5" fill="#62626B" text-anchor="end">log feed</text>
+
+    <rect x="502" y="368" width="96" height="24" rx="7" fill="none" stroke="#3A3A42"/>
+    <text x="550" y="384" font-size="11" fill="#C9C9CE" text-anchor="middle">Print status</text>
+  </g>
+
+  <!-- notification toast -->
+  <g transform="translate(618,486)">
+    <rect width="252" height="62" rx="12" fill="#141418" stroke="#2E2E34" filter="url(#drop)"/>
+    <circle cx="22" cy="22" r="6" fill="#96DCAA"/>
+    <circle cx="22" cy="22" r="10" fill="none" stroke="#96DCAA" stroke-opacity="0.35"/>
+    <text x="40" y="20" font-size="12" font-weight="700" fill="#96DCAA">Auto Farm</text>
+    <text x="40" y="35" font-size="10" fill="#A7A7AA">Loop complete · 124 items this run</text>
+    <rect x="16" y="50" width="150" height="3" rx="1.5" fill="#96DCAA" fill-opacity="0.8"/>
+  </g>
+
+  <text x="946" y="570" font-size="9" fill="#4A4A52" text-anchor="end">design mockup · default VoidHub theme</text>
+</svg>

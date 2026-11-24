@@ -1,0 +1,147 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="440" viewBox="0 0 960 440" font-family="Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+  <defs>
+    <linearGradient id="scene" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#14141C"/>
+      <stop offset="60%" stop-color="#0A0A10"/>
+      <stop offset="100%" stop-color="#070709"/>
+    </linearGradient>
+    <radialGradient id="glowSilver" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#E6E6E6" stop-opacity="0.20"/>
+      <stop offset="100%" stop-color="#E6E6E6" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowGreen" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#96DCAA" stop-opacity="0.20"/>
+      <stop offset="100%" stop-color="#96DCAA" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="vign" cx="50%" cy="38%" r="75%">
+      <stop offset="0%" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.5"/>
+    </radialGradient>
+    <filter id="drop" x="-40%" y="-40%" width="180%" height="200%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#000000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <rect width="960" height="440" fill="#08080A"/>
+
+  <!-- ============ card 1: compact ============ -->
+  <g>
+    <rect x="16" y="16" width="292" height="400" rx="16" fill="url(#scene)" stroke="#232329"/>
+    <path d="M16,336 C70,318 130,334 180,322 C230,310 266,326 308,314 L308,416 L16,416 Z" fill="#0C0C12" opacity="0.7"/>
+    <rect x="16" y="16" width="292" height="400" rx="16" fill="url(#vign)"/>
+
+    <ellipse cx="162" cy="88" rx="170" ry="58" fill="url(#glowSilver)"/>
+    <ellipse cx="162" cy="98" rx="128" ry="26" fill="#000000" opacity="0.5" filter="url(#drop)"/>
+    <rect x="44" y="66" width="236" height="44" rx="22" fill="#101013" stroke="#FFFFFF" stroke-opacity="0.09" filter="url(#drop)"/>
+
+    <rect x="56" y="73" width="30" height="30" rx="9" fill="#E6E6E6" fill-opacity="0.10" stroke="#E6E6E6" stroke-opacity="0.35"/>
+    <path d="M65.5,82 L71,94 L76.5,82" fill="none" stroke="#E6E6E6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="85" cy="75" r="3.5" fill="#E6E6E6" stroke="#101013" stroke-width="2"/>
+
+    <text x="96" y="85" font-size="12.5" font-weight="650" fill="#F2F2F2">VoidHub</text>
+    <text x="96" y="99" font-size="9.5" fill="#A7A7AA">3 active</text>
+
+    <g fill="#E6E6E6">
+      <rect x="163" y="82" width="3" height="13" rx="1.5" fill-opacity="0.95"/>
+      <rect x="171" y="87" width="3" height="8" rx="1.5" fill-opacity="0.70"/>
+      <rect x="179" y="80" width="3" height="14" rx="1.5" fill-opacity="0.85"/>
+      <rect x="187" y="89" width="3" height="6" rx="1.5" fill-opacity="0.55"/>
+    </g>
+    <circle cx="210" cy="88" r="3" fill="#96DCAA"/>
+    <text x="218" y="92" font-size="10.5" font-weight="700" fill="#C9C9CE">12:47</text>
+
+    <circle cx="276" cy="72" r="12" fill="#101013"/>
+    <circle cx="276" cy="72" r="9.5" fill="#E6E6E6"/>
+    <text x="276" y="75.5" font-size="10" font-weight="800" fill="#101013" text-anchor="middle">3</text>
+
+    <text x="162" y="374" font-size="9" font-weight="700" letter-spacing="1.4" fill="#62626B" text-anchor="middle">01 · COMPACT, 3 RUNNING</text>
+  </g>
+
+  <!-- ============ card 2: live session ============ -->
+  <g>
+    <rect x="334" y="16" width="292" height="400" rx="16" fill="url(#scene)" stroke="#232329"/>
+    <rect x="334" y="16" width="292" height="400" rx="16" fill="url(#vign)"/>
+
+    <ellipse cx="480" cy="130" rx="185" ry="125" fill="url(#glowSilver)"/>
+    <ellipse cx="480" cy="240" rx="150" ry="28" fill="#000000" opacity="0.5" filter="url(#drop)"/>
+    <rect x="350" y="28" width="260" height="216" rx="26" fill="#101013" stroke="#FFFFFF" stroke-opacity="0.09" filter="url(#drop)"/>
+
+    <text x="366" y="50" font-size="9.5" font-weight="800" letter-spacing="2" fill="#E6E6E6">LIVE SESSION</text>
+    <g fill="#E6E6E6">
+      <rect x="571" y="41" width="2" height="7" rx="1" fill-opacity="0.95"/>
+      <rect x="577" y="44" width="2" height="4" rx="1" fill-opacity="0.65"/>
+      <rect x="583" y="40" width="2" height="8" rx="1" fill-opacity="0.85"/>
+      <rect x="589" y="45" width="2" height="3" rx="1" fill-opacity="0.55"/>
+    </g>
+
+    <rect x="366" y="62" width="42" height="42" rx="12" fill="#1B1B22" stroke="#E6E6E6" stroke-opacity="0.45"/>
+    <circle cx="387" cy="75" r="5.5" fill="#C9C9CE"/>
+    <path d="M376,96 c2,-9 6,-13 11,-13 s9,4 11,13" fill="#C9C9CE" opacity="0.85"/>
+    <text x="419" y="77" font-size="13" font-weight="700" fill="#F2F2F2">von63rd</text>
+    <text x="419" y="92" font-size="10" fill="#A7A7AA">Blox Fruits</text>
+    <text x="594" y="74" font-size="17" font-weight="750" fill="#F2F2F2" text-anchor="end">12:47</text>
+    <text x="594" y="88" font-size="9" fill="#62626B" text-anchor="end" letter-spacing="0.5">session</text>
+
+    <rect x="366" y="110" width="118" height="58" rx="10" fill="#17171B" stroke="#232329"/>
+    <text x="378" y="130" font-size="15" font-weight="750" fill="#F2F2F2">58<tspan font-size="9" fill="#62626B"> fps</tspan></text>
+    <text x="378" y="144" font-size="8" font-weight="800" letter-spacing="1.1" fill="#62626B">FRAME RATE</text>
+    <rect x="378" y="153" width="94" height="3" rx="1.5" fill="#24242A"/>
+    <rect x="378" y="153" width="87" height="3" rx="1.5" fill="#96DCAA"/>
+
+    <rect x="492" y="110" width="118" height="58" rx="10" fill="#17171B" stroke="#232329"/>
+    <text x="504" y="130" font-size="15" font-weight="750" fill="#F2F2F2">42<tspan font-size="9" fill="#62626B"> ms</tspan></text>
+    <text x="504" y="144" font-size="8" font-weight="800" letter-spacing="1.1" fill="#62626B">LATENCY</text>
+    <rect x="504" y="153" width="94" height="3" rx="1.5" fill="#24242A"/>
+    <rect x="504" y="153" width="74" height="3" rx="1.5" fill="#E6E6E6"/>
+
+    <text x="366" y="186" font-size="7.5" font-weight="800" letter-spacing="0.8" fill="#62626B">PLAYERS</text>
+    <text x="366" y="199" font-size="11.5" font-weight="700" fill="#F2F2F2">7/12</text>
+    <text x="448" y="186" font-size="7.5" font-weight="800" letter-spacing="0.8" fill="#62626B">ACTIVE</text>
+    <text x="448" y="199" font-size="11.5" font-weight="700" fill="#E6E6E6">3</text>
+    <text x="530" y="186" font-size="7.5" font-weight="800" letter-spacing="0.8" fill="#62626B">TAB</text>
+    <text x="530" y="199" font-size="11.5" font-weight="700" fill="#F2F2F2">Main</text>
+
+    <rect x="366" y="206" width="240" height="28" rx="9" fill="#E6E6E6"/>
+    <text x="378" y="224" font-size="11" font-weight="800" fill="#131316">Restore</text>
+    <rect x="506" y="211" width="64" height="18" rx="4" fill="#0F0F12" fill-opacity="0.25"/>
+    <text x="538" y="223.5" font-size="8.5" font-weight="800" fill="#101013" text-anchor="middle">RightCtrl</text>
+    <path d="M584,217 L592,225 M592,217 L584,225" stroke="#131316" stroke-width="1.8" stroke-linecap="round"/>
+
+    <text x="480" y="374" font-size="9" font-weight="700" letter-spacing="1.4" fill="#62626B" text-anchor="middle">02 · LIVE SESSION (HOVER)</text>
+  </g>
+
+  <!-- ============ card 3: notification ============ -->
+  <g>
+    <rect x="652" y="16" width="292" height="400" rx="16" fill="url(#scene)" stroke="#232329"/>
+    <path d="M652,336 C706,318 766,334 816,322 C866,310 902,326 944,314 L944,416 L652,416 Z" fill="#0C0C12" opacity="0.7"/>
+    <rect x="652" y="16" width="292" height="400" rx="16" fill="url(#vign)"/>
+
+    <ellipse cx="798" cy="88" rx="170" ry="72" fill="url(#glowGreen)"/>
+    <ellipse cx="798" cy="118" rx="130" ry="24" fill="#000000" opacity="0.5" filter="url(#drop)"/>
+    <rect x="668" y="54" width="260" height="70" rx="22" fill="#101013" stroke="#FFFFFF" stroke-opacity="0.09" filter="url(#drop)"/>
+
+    <circle cx="700" cy="89" r="16" fill="#96DCAA" fill-opacity="0.14" stroke="#96DCAA" stroke-opacity="0.45"/>
+    <path d="M693.5,89.5 l4.5,4.5 8,-8.5" fill="none" stroke="#96DCAA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="724" y="83" font-size="12" font-weight="700" fill="#96DCAA">Auto Farm</text>
+    <text x="724" y="99" font-size="10" fill="#A7A7AA">Loop complete · 124 items</text>
+    <g fill="#96DCAA">
+      <rect x="876" y="80" width="2" height="8" rx="1" fill-opacity="0.9"/>
+      <rect x="882" y="84" width="2" height="5" rx="1" fill-opacity="0.6"/>
+      <rect x="888" y="78" width="2" height="9" rx="1" fill-opacity="0.8"/>
+      <rect x="894" y="86" width="2" height="4" rx="1" fill-opacity="0.5"/>
+    </g>
+
+    <ellipse cx="798" cy="190" rx="150" ry="56" fill="url(#glowSilver)" opacity="0.6"/>
+    <rect x="708" y="168" width="180" height="44" rx="22" fill="#101013" stroke="#FFFFFF" stroke-opacity="0.09" filter="url(#drop)"/>
+    <rect x="720" y="175" width="30" height="30" rx="9" fill="#E6E6E6" fill-opacity="0.10" stroke="#E6E6E6" stroke-opacity="0.35"/>
+    <path d="M729.5,184 L735,196 L740.5,184" fill="none" stroke="#E6E6E6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="760" y="187" font-size="12.5" font-weight="650" fill="#F2F2F2">VoidHub</text>
+    <text x="760" y="201" font-size="9.5" fill="#A7A7AA">UI minimized · 0s</text>
+    <circle cx="878" cy="190" r="3" fill="#96DCAA"/>
+    <text x="886" y="193" font-size="9.5" font-weight="700" fill="#A7A7AA">0s</text>
+
+    <text x="798" y="374" font-size="9" font-weight="700" letter-spacing="1.4" fill="#62626B" text-anchor="middle">03 · NOTIFICATION, GLOW DYED</text>
+  </g>
+
+  <text x="944" y="430" font-size="9" fill="#4A4A52" text-anchor="end">design mockup · default VoidHub theme, success type color</text>
+</svg>

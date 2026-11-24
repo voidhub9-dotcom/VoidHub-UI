@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="design/voidhub-logo.png" width="112" alt="Silver VoidHub V on black" />
+<img src="design/voidhub-logo.png" width="104" alt="Silver VoidHub V on black" />
 
 # VoidHub
 
@@ -10,15 +10,25 @@
 [![Version](https://img.shields.io/badge/version-1.2.0-E6E6E6?style=flat-square&labelColor=191919)](#metadata)
 [![License](https://img.shields.io/badge/license-MIT-E6E6E6?style=flat-square&labelColor=191919)](#license)
 
-[Quick start](#quick-start) · [Controls](#tabs-groupboxes-and-controls) · [Appearance](#appearance) · [Files](#repository-layout)
+Window · Dynamic Island · controls · themes · configs
 
 </div>
 
----
+VoidHub is a Luau UI library for Roblox client executor scripts: a window with tabs, sub-tabs, responsive groupboxes, native controls, window-wide search, flags and configuration helpers, appearance profiles, notifications, and a draggable minimized island that never stops being alive.
 
-VoidHub is a Luau UI library for Roblox client executor scripts. It gives you a window with tabs, sub-tabs, groupboxes, native controls, search, flags, configuration helpers, themes, responsive sizing, notifications, and a draggable minimized island.
+It ships as readable Lua source, not a Studio project. Load `Source.lua`, create a window, add the UI your script needs. The bundled `Example.lua` is a standalone showcase; its controls demonstrate UI behavior only and do not automate gameplay.
 
-It is distributed as readable Lua source rather than a Studio project. Load `Source.lua`, create a window, and add the UI your script needs. The bundled `Example.lua` is a standalone interface showcase; its controls demonstrate UI behavior only and do not automate gameplay.
+<div align="center">
+
+<img src="design/preview-window.svg" width="880" alt="VoidHub window: sidebar tabs, preferences groupbox with toggle, slider, dropdown and keybind, info groupbox with status, progress, button and log feed, notification toast" />
+
+<img src="design/preview-island.svg" width="880" alt="The Dynamic Island: compact pill with count badge, expanded live session card, notification with dyed glow" />
+
+<img src="design/preview-elements.svg" width="880" alt="Element sampler: status styles, log feed, searchable table" />
+
+<sub>Interface previews · design mockups rendered from the default VoidHub theme · not in-game captures</sub>
+
+</div>
 
 ## Quick start
 
@@ -65,11 +75,9 @@ Window:CreateAppearanceTab({ Name = "Appearance", Icon = "palette" })
 Window:SelectTab(Main)
 ```
 
-The enhanced factory defaults to **VoidHub**, the monochrome `VoidHub` palette, and the silver V logo `rbxassetid://101833678008843`. Use `Icon` (or `Image`) to override the logo. A saved player theme can still take precedence, and the default config folder remains `AquaHub` so the rebrand does not move existing data.
+The enhanced factory defaults to **VoidHub**, the monochrome palette, and the silver V logo `rbxassetid://101833678008843`. Use `Icon` (or `Image`) to override the logo. A saved player theme can still take precedence, and the default config folder stays `AquaHub`, so the rebrand does not move existing data.
 
 ### Standalone showcase
-
-`Example.lua` contains the library and can be loaded independently:
 
 ```lua
 loadstring(game:HttpGet(
@@ -77,13 +85,22 @@ loadstring(game:HttpGet(
 ))()
 ```
 
-The showcase does not require a second copy of `Source.lua`. It demonstrates selected controls and appearance features without gameplay automation.
+`Example.lua` embeds the library and needs no second copy of `Source.lua`. It demonstrates selected controls and the appearance editor without gameplay automation.
 
-The [VoidHub UI mockup](design/voidhub-ui.svg) shows normal and compact layouts plus the opening effect treatment. It is a design reference, not a Roblox client screenshot.
+## The Dynamic Island
+
+Minimizing folds the window into a black pill hanging from the top of the screen, lit by a soft accent glow with a shadow that lifts it off the game.
+
+- **Compact** — the glyph tile carries a live dot while anything runs, a waveform dances next to the session clock, a corner badge shows the running count, and a pinned status joins the subtitle line with its value tinted.
+- **Hover** (desktop, or `IslandStyle = "Always Show"`) — the pill springs open into a live session card: avatar, game, session time, frame rate and latency meters, players, running count, current tab, and a restore button with the UI keybind.
+- **Notifications** — a notification that arrives while minimized drops into the island and dyes the chip, the title, and the glow with its type colour.
+- **Drag** — press and pull to move it anywhere; drop it near the top centre and it snaps home. The position persists. `Window:ResetIslandPosition()` undoes it, and `Window:SetIslandStyle` picks between `Show on Hover` and `Always Show`.
+
+The morph engine carries all of this: the window squeezes into the pill, springs it open, and settles every state with the same elastic timing.
 
 ## Tabs, groupboxes, and controls
 
-Create tabs on the window, then place groupboxes on a tab. Groupboxes can use `Side = "Left"` or `Side = "Right"`; controls added directly to a tab are full-width cards.
+Create tabs on the window, then place groupboxes on a tab (`Side = "Left"` or `"Right"`). Elements added directly to a tab become full-width cards. Groupboxes are the normal choice.
 
 ```lua
 local Settings = Window:CreateTab({ Name = "Settings", Icon = "settings" })
@@ -97,53 +114,37 @@ Left:CreateDropdown({
     Flag = "Mode",
 })
 
-Left:CreateInput({
-    Name = "Label",
-    PlaceholderText = "Type a label",
-    Flag = "Label",
-})
-
 Right:CreateButton({
     Name = "Print status",
     Callback = function()
         print("VoidHub is ready")
     end,
 })
-
-Right:CreateKeybind({
-    Name = "Toggle key",
-    CurrentKeybind = "RightControl",
-    Flag = "ToggleKey",
-})
 ```
 
-Common constructors include:
+| Group | Constructors |
+| --- | --- |
+| Input | `CreateButton`, `CreateButtonRow`, `CreateToggle`, `CreateSlider`, `CreateStepper`, `CreateDropdown`, `CreateOrderList`, `CreateInput`, `CreateKeybind`, `CreateColorPicker` |
+| Display | `CreateLabel`, `CreateParagraph`, `CreateSection`, `CreateDivider`, `CreateImage`, `CreateProgress` |
+| Feedback | `CreateStatus`, `CreateStatuses`, `CreateStatusList`, `CreateTable`, `CreateLog` (`CreateFeed`) |
+| Built-in | `CreateConfigManager`, `CreateThemeManager`, `CreateMinimizeOnStart` |
 
-- `CreateButton` and `CreateButtonRow`
-- `CreateToggle`
-- `CreateSlider` and `CreateStepper`
-- `CreateDropdown` and `CreateOrderList`
-- `CreateInput`, `CreateKeybind`, and `CreateColorPicker`
-- `CreateLabel`, `CreateParagraph`, `CreateSection`, and `CreateDivider`
-- `CreateStatus`, `CreateStatuses`, `CreateStatusList`, and `CreateProgress`
-- `CreateTable`, `CreateLog`, and `CreateImage`
-
-Most value controls accept `Name`, `Desc`, `Tooltip`, `Visible`, `Disabled`, `DependsOn`, and a unique `Flag`. Handles generally expose `Set`, `Get`, visibility, disabled, dependency, tooltip, and destroy methods; collection and manager handles have their own documented methods. Use the aliases in `llms.txt` when you need a compact constructor or handle reference.
+Most value controls accept `Name`, `Desc`, `Tooltip`, `Visible`, `Disabled`, `DependsOn`, and a unique `Flag`. Handles expose the applicable `Set` / `Get` methods plus visibility, disabled, dependency, tooltip, and destroy; collection and manager handles have their own documented methods. `llms.txt` carries a compact, source-exact constructor and handle reference.
 
 ### Sub-tabs and managers
 
-Tabs can contain sub-tabs. Add groupboxes and controls to the selected sub-tab after creating one. Built-in managers avoid duplicating configuration or theme UI:
+Tabs can contain sub-tabs (`Tab:CreateSubTab`); once a tab has them, add groupboxes and controls to the sub-tab. `Window:SelectTab(tab)` takes the tab object; `Tab:SelectSubTab(subTab)` also accepts an exact name or a one-based index.
 
 ```lua
 Settings:CreateConfigManager({ Side = "Left" })
 Settings:CreateThemeManager({ Side = "Right" })
 ```
 
-`Window:SelectTab(tab)` and `Tab:SelectSubTab(subTab)` accept an object, an exact name, or a one-based index. The selected tab has its own marker and the incoming page animates once. The window runs a brief edge sheen on opening or restoring; pass `OpenEffects = false` or call `Window:SetOpenEffects(false)` to disable the sheen without changing the window transitions.
+The window runs a brief one-shot edge sheen when it opens or restores; pass `OpenEffects = false` or call `Window:SetOpenEffects(false)` to disable the sheen without touching window transitions.
 
 ## Flags and configuration
 
-Give saveable controls unique flags within each window. Flagged controls are available through the compatibility map and can be stored by native configuration APIs:
+Give saveable controls unique `Flag` strings within each window. Flagged controls are reachable through `Window.Flags` and stored by the native configuration API.
 
 ```lua
 local Enabled = Controls:CreateToggle({
@@ -156,9 +157,7 @@ Enabled:Set(true, true) -- second argument skips the callback
 print(Enabled:Get())
 ```
 
-Window-scoped flag maps are available as `Window.Flags`. `Library.Flags` remains the latest-registered compatibility map, so code that already reads `Library.Flags.SomeFlag` continues to work. Prefer the window-scoped map when working with a specific window.
-
-Native configuration calls include `SaveConfig`, `LoadConfig`, `ListConfigs`, `DeleteConfig`, `ExportConfig`, `ImportConfig`, autoload helpers, and the config manager. Use a clear `FolderName` in `ConfigurationSaving`:
+`Library.Flags` remains the latest-registered compatibility map, so existing `Library.Flags.SomeFlag` code keeps working; prefer `Window.Flags` for a specific window. Native config calls include `SaveConfig`, `LoadConfig`, `ListConfigs`, `DeleteConfig`, `RenameConfig`, `ExportConfig`, `ImportConfig`, autoload helpers, and the config manager. Set a clear folder:
 
 ```lua
 local Window = Library:CreateVoidHubWindow({
@@ -166,11 +165,11 @@ local Window = Library:CreateVoidHubWindow({
 })
 ```
 
-**Configuration caveat:** `ConfigurationSaving.Enabled` is currently not enforced by the implementation. Setting it to `false` must not be treated as a switch that disables file operations. Explicit native config calls depend on executor file APIs such as `readfile` and `writefile`; configure and call those APIs deliberately.
+**Configuration caveat:** `ConfigurationSaving.Enabled` is currently not enforced by the implementation. Setting it to `false` does not disable file operations. Native config calls depend on executor file APIs such as `readfile` and `writefile`; configure and call those deliberately.
 
 ## Appearance
 
-Appearance methods attach to windows created by `CreateVoidHubWindow` or its legacy aliases. The optional appearance tab exposes theme selection, background styling, sizing, density, and profile import/export.
+Appearance methods attach to windows created by `CreateVoidHubWindow` (or its legacy aliases). The optional appearance tab exposes theme selection, background styling, sizing, density, and profile import/export.
 
 ```lua
 Window:CreateAppearanceTab({ Name = "Appearance", Icon = "palette" })
@@ -187,16 +186,6 @@ end
 
 ### Themes
 
-The new Aqua presets are:
-
-| Preset | Character |
-| --- | --- |
-| `Aqua` | Blue `#38BDF8` accent on navy `#07111F`; the default enhanced theme |
-| `Aqua Ice` | A lighter, cooler blue variation |
-| `Aqua Mono` | A restrained neutral variation |
-
-Native theme presets remain available as well. Select a preset or register a partial custom palette:
-
 ```lua
 local ok, err = Library:RegisterTheme("My Aqua", {
     Accent = "#7DD3FC",
@@ -210,7 +199,7 @@ else
 end
 ```
 
-`RegisterTheme` returns `true`, or `false, error`. Palette keys are `Background`, `Surface`, `Surface2`, `Surface3`, `Stroke`, `StrokeHover`, `Accent`, `AccentDark`, `Text`, `Muted`, `Success`, `Warning`, and `Error`. Values may be `Color3` values or six-digit hex strings; omitted keys inherit the current theme.
+`RegisterTheme` returns `true`, or `false, error`. Palette keys are `Background`, `Surface`, `Surface2`, `Surface3`, `Stroke`, `StrokeHover`, `Accent`, `AccentDark`, `Text`, `Muted`, `Success`, `Warning`, and `Error`; values may be `Color3` or hex strings, and omitted keys inherit the current theme. Presets include the default `VoidHub` monochrome, the `Aqua` family, `Aqua Ice`, `Aqua Mono`, `Midnight`, and many more; the theme manager lists them all. The island's glow follows the accent, so a colored theme recolors the whole thing.
 
 ### Backgrounds and profiles
 
@@ -228,17 +217,13 @@ local json, exportErr = Window:ExportAppearance()
 -- Window:ApplyAppearance(json) restores a table or JSON profile.
 ```
 
-`Source` can be a built-in preset, accessible Roblox asset ID, supported URL/file source, or `"None"`. `ScaleType` accepts `Crop`, `Fit`, `Tile`, or `Stretch`; `TileSize` dimensions are limited to 1–4096. Invalid or unresolved sources preserve the previous background. URL, local-file, and custom-asset support depends on the executor and image permissions.
-
-Appearance profiles contain theme colors, background style, UI scale, adaptive sizing, density, and corner radius. They are explicit export/import data: profiles are not automatically written to disk and do not contain control flags, credentials, or gameplay state. Themes, density, and corner radius are shared by windows in one library instance; backgrounds are per-window.
+`Source` can be a built-in preset, an accessible asset ID, a supported URL/file source, or `"None"`. `ScaleType` accepts `Crop`, `Fit`, `Tile`, or `Stretch` (`TileSize` is clamped to 1–4096). Invalid or unresolved sources preserve the previous background. Profiles hold theme colors, background style, UI scale, adaptive sizing, density, and corner radius; they are explicit export/import data, not a save file, and they never contain control flags, credentials, or gameplay state. Themes, density, and corner radius are shared by windows in one library instance; backgrounds are per-window.
 
 ## Capabilities and safety
 
-VoidHub is a client-side UI library, not a gameplay automation package. The demo only changes interface state. Use scripts only in experiences you own or have permission to test, and keep callbacks limited to behavior you intend to run.
+VoidHub is a client-side UI library, not a gameplay automation package. Loading needs executor support for `loadstring` and `game:HttpGet`; native configs need file APIs; clipboard actions need a clipboard API; URL/file images and custom fonts depend on the executor's request, file, and custom-asset APIs. Adaptive sizing fits the viewport including touch layouts; it is not physical DPI detection.
 
-Basic loading requires executor support for `loadstring` and `game:HttpGet`. Native configs need file APIs. Clipboard actions need a clipboard API. URL/file images and custom fonts may need request, file, and custom-asset APIs. Unsupported features should be treated as unavailable rather than assumed portable across executors.
-
-Adaptive sizing fits the available viewport, including touch layouts; it is not physical display-DPI detection. Callbacks run in the client context, so validate external data and keep long-running work off the immediate UI callback path.
+Use scripts only in experiences you own or have permission to test, and keep callbacks limited to behavior you intend to run. Demo controls change interface state only.
 
 ## Metadata
 
@@ -247,20 +232,18 @@ Library.VoidHub.Version        -- "1.2.0"
 Library.VoidHub.Author         -- "von63rd"
 ```
 
-The primary factory is `Library:CreateVoidHubWindow(options)`. `Library:CreateAquaHubWindow`, `Library:CreateKawiXDWindow`, and `Library:CreateNullFireWindow` remain compatible aliases. Their metadata aliases still work, Aqua presets remain available, and appearance profiles keep format version 1.
-
-The native `Library:CreateWindow(options)` API remains available when you want the base window without the enhanced appearance methods. For new scripts that need appearance helpers, use `CreateVoidHubWindow`.
+The primary factory is `Library:CreateVoidHubWindow(options)`. `Library:CreateAquaHubWindow`, `Library:CreateKawiXDWindow`, and `Library:CreateNullFireWindow` remain compatible aliases; their metadata aliases still work and appearance profiles keep format version 1. The native `Library:CreateWindow(options)` API remains available for a base window without the appearance methods.
 
 ## Repository layout
 
-The distribution has exactly four root files:
-
 | File | Purpose |
 | --- | --- |
-| [`Source.lua`](Source.lua) | Complete VoidHub library and appearance extension |
+| [`Source.lua`](Source.lua) | The complete VoidHub library and appearance extension |
 | [`Example.lua`](Example.lua) | Standalone UI showcase with the library embedded |
 | [`Readme.MD`](Readme.MD) | Installation, usage, API overview, and license |
 | [`llms.txt`](llms.txt) | Compact API guidance for coding assistants |
+
+`design/` holds the logo and the interface preview mockups above. The distribution stays at exactly these four root files.
 
 Repository: [voidhub9-dotcom/VoidHub-UI](https://github.com/voidhub9-dotcom/VoidHub-UI)
 

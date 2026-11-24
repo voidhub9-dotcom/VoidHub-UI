@@ -1,20 +1,23 @@
 # VoidHub UI — Roblox client executor library
 
-> VoidHub is a monochrome Luau UI library by von63rd. It provides tabs, sub-tabs, responsive groupboxes, window-wide search, native controls, appearance profiles, and a draggable minimized island. Use the README and readable source to verify options. Keep demonstration callbacks UI-only and integrate only with permitted features of experiences you own.
+> VoidHub is a monochrome Luau UI library by von63rd: tabs, sub-tabs, responsive groupboxes, window-wide search, native controls, appearance profiles, and a draggable minimized island. Verify options against the README and the readable source. Keep demonstration callbacks UI-only and integrate only with permitted features of experiences you own.
 
-Load it once, build the window, add tabs, put groupboxes on tabs (or sub tabs), and put elements in groupboxes. Every element with a `Flag` is saved by configs. Individual element handles expose the applicable `Set` / `Get` methods, plus common visibility, disabled, dependency, tooltip, and destroy methods. Collection constructors return collections; do not assume every constructor has the same value methods.
+Load the library once, build a window, add tabs, put groupboxes on tabs (or sub-tabs), and put elements in the groupboxes. Every element with a `Flag` is saved by configs. Element handles expose the applicable `Set` / `Get` methods plus common visibility, disabled, dependency, tooltip, and destroy methods. Collection constructors return collections; never assume every constructor has the same value methods.
 
 ## Files
 
 Repository: [voidhub9-dotcom/VoidHub-UI](https://github.com/voidhub9-dotcom/VoidHub-UI)
 
-- [Readme.MD](Readme.MD): the branded setup guide, common examples, capability notes and license.
-- [Example.lua](Example.lua): the complete library embedded with a standalone VoidHub showcase of selected native controls and the appearance editor. It does not demonstrate every element; use the API tables below and the readable source for less common options.
 - [Source.lua](Source.lua): the complete readable library and appearance extension; returns `Library`. This is what scripts `loadstring`. It is not the original upstream minified build.
+- [Example.lua](Example.lua): the complete library embedded with a standalone showcase of selected controls and the appearance editor. It does not demonstrate every element; use the tables below and the readable source for less common options.
+- [Readme.MD](Readme.MD): the branded setup guide, island description, capability notes, and license.
+- [llms.txt](llms.txt): this file.
+
+Exactly these four root files are distributed. The `design/` folder holds the logo and interface preview mockups (design references, not Roblox client screenshots); do not reference it or any other asset folder as part of the API, and do not invent a bundled docs site, source tree, or build scripts.
 
 ## Loading
 
-This is NOT a Roblox Studio project. Do not instruct users to create ModuleScripts or LocalScripts, install into ReplicatedStorage, or use `require(ReplicatedStorage.AquaHub)`. Use the original executor loading pattern below. HTTP, file, clipboard, and custom-asset features depend on executor capabilities.
+This is NOT a Roblox Studio project. Do not instruct users to create ModuleScripts or LocalScripts, install into ReplicatedStorage, or use `require(ReplicatedStorage.AquaHub)`. Use the executor loading pattern below. HTTP, file, clipboard, and custom-asset features depend on executor capabilities.
 
 ```lua
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/voidhub9-dotcom/VoidHub-UI/main/Source.lua"))()
@@ -64,21 +67,21 @@ Window:LoadAutoload()                      -- apply the player's autoload config
 
 - Constructors exist with and without the `Create` prefix: `Tab:CreateToggle` and `Tab:Toggle` are the same. Pick one style per script.
 - Options are a single table. Legacy names are accepted (`Title` for `Name`, `Description` for `Desc`, `CurrentValue` / `Default` / `Value` for the start value, `MultipleOptions` / `Multi`), but prefer the names in this file.
-- Once a tab has sub tabs (`Tab:CreateSubTab({ Name = "Page" })`), add groupboxes and elements to the sub tabs, not the tab.
+- Once a tab has sub-tabs (`Tab:CreateSubTab({ Name = "Page" })`), add groupboxes and elements to the sub-tabs, not the tab.
 - Elements added straight to a tab are full-width cards; elements in a groupbox are compact rows. Groupboxes are the normal choice.
-- `Flag` strings must be unique within a window. Each window has `Window.Flags`; configs, dependencies, resets and island counts use that window only. `Library.Flags` is a latest-registered compatibility map, so prefer `Window.Flags` when creating several windows. Toggles, sliders, steppers, dropdowns, order lists, inputs, keybinds and colour pickers take flags. Labels, buttons and statuses are not saveable value controls. Editable tables may also use `Flag` when configured with typed columns and editing options.
-- Flagged toggles that are on count as "running" on the minimized island. Don't flag a toggle that is only a setting if that would mislead; a setting is still fine to flag.
+- `Flag` strings must be unique within a window. Each window has `Window.Flags`; configs, dependencies, resets, and island counts use that window only. `Library.Flags` is a latest-registered compatibility map, so prefer `Window.Flags` when creating several windows. Toggles, sliders, steppers, dropdowns, order lists, inputs, keybinds, and color pickers take flags. Labels, buttons, and statuses are not saveable value controls. Editable tables may also use `Flag` when configured with typed columns and editing options.
+- Flagged toggles that are on count as "running" on the minimized island (corner badge and waveform). Don't flag a toggle that is only a setting if that would mislead; a setting is still fine to flag.
 - `Set(value, true)` skips the callback. Use it when syncing UI from code.
 - `Update` functions may yield (`InvokeServer`, `task.wait`); they run on their own thread. Element callbacks run inline and errors are caught and warned, so keep them quick and wrap long loops in `task.spawn`. Library calls made from a thread that yielded in an engine call are made safe automatically.
 - `Update` functions on labels and statuses run every `UpdateRate` seconds (default 1). Status lists only refresh while visible.
 - `Window:LoadAutoload()` may run before every element exists: values for flags not created yet are held and applied when the element appears.
-- Never build your own config, theme or minimize UI. Use `CreateConfigManager`, `CreateThemeManager` and the built-in island.
-- Icons: a lucide name (`"zap"`, `"lucide:zap"`), an asset id number or `"rbxassetid://…"`, or `{ Image, RectOffset, RectSize, Tint }`.
+- Never build your own config, theme, or minimize UI. Use `CreateConfigManager`, `CreateThemeManager`, and the built-in island.
+- Icons: a Lucide name (`"zap"` or `"lucide:zap"`), an asset id number or `"rbxassetid://…"`, or `{ Image, RectOffset, RectSize, Tint }`.
 - `Library.Touch` is true on touch-only devices. Layout already adapts; only read it for game logic.
 
 ## Elements
 
-Every element takes `Name`, `Desc` (a muted hint under the name), `Tooltip` (a string or `{ Title, Text, Icon }`) `Visible`, `Disabled`, and `DependsOn` (`"Flag"`, `{ Flag, Value, Not }`, a list of rules, or a function) with `DependsMode = "Hide"` (default) or `"Disable"`. Prefer `DependsOn` over toggling visibility in callbacks.
+Every element takes `Name`, `Desc` (a muted hint under the name), `Tooltip` (a string or `{ Title, Text, Icon }`), `Visible`, `Disabled`, and `DependsOn` (`"Flag"`, `{ Flag, Value, Not }`, a list of rules, or a function) with `DependsMode = "Hide"` (default) or `"Disable"`. Prefer `DependsOn` over toggling visibility in callbacks.
 
 | Constructor | Key options | Handle |
 | --- | --- | --- |
@@ -108,23 +111,23 @@ Status list rows are strings (one muted wrapped line) or `{ Text, Value, Tone }`
 
 ## Coloured text
 
-Status keys and values, status list rows, table cells, progress text, labels and paragraphs are rich text.
+Status keys and values, status list rows, table cells, progress text, labels, and paragraphs are rich text.
 
 - Theme tags follow the theme: `"<Success>Online</Success>"`, `"<Warning>3 left</Warning>"`, `"<Error>Down</Error>"`, `"<Accent>…</Accent>"`, `"<Muted>…</Muted>"`. Every theme key works as a tag.
 - `Library.Colorize(text, color)` builds it: a theme key gives a theme tag, a `Color3` or `"#rrggbb"` gives a fixed `<font color>`.
 - Plain Roblox rich text (`<b>`, `<i>`, `<font color="#ff5a5a">`) also works.
-- Whole-value colours accept a theme key string, `Color3`, `"#rrggbb"` or `{ r, g, b }`: status `Color` / `Tone`, status list `Tone` / `Color`, table column `Color` (or a function of `value, row`), progress `Color` / `TextColor`, label `Color`.
-- Escape `<`, `>` and `&` in user-provided text you put into these elements.
+- Whole-value colours accept a theme key string, `Color3`, `"#rrggbb"`, or `{ r, g, b }`: status `Color` / `Tone`, status list `Tone` / `Color`, table column `Color` (or a function of `value, row`), progress `Color` / `TextColor`, label `Color`.
+- Escape `<`, `>`, and `&` in user-provided text you put into these elements.
 
 Theme keys: `Background`, `Surface`, `Surface2`, `Surface3`, `Stroke`, `StrokeHover`, `Accent`, `AccentDark`, `Text`, `Muted`, `Success`, `Warning`, `Error`.
 
-## Window
+## Window and the Dynamic Island
 
-Useful options: `Size` (UDim2), `MinSize` / `MaxSize` (Vector2), `Icon`, `Theme`, `UIScale` (0.6 to 1.5), `AdaptiveSize` (default true: scale with screen resolution), `Density` (`"Compact"`, `"Default"`, `"Comfortable"`), `Backdrop` (`{ Weather = "Snow" }` or false), `Search`, `Profile`, `Loading`, `Disclaimer`, `ToggleButton`, `IslandDraggable` (default true).
+Useful options: `Size` (UDim2), `MinSize` / `MaxSize` (Vector2), `Icon`, `Theme`, `UIScale` (0.6 to 1.5), `AdaptiveSize` (default true: scale with screen resolution), `Density` (`"Compact"`, `"Default"`, `"Comfortable"`), `Backdrop` (`{ Weather = "Snow" }` or false), `Search`, `Profile`, `Loading`, `Disclaimer`, `ToggleButton`, `IslandDraggable` (default true), `IslandStyle` (`"Show on Hover"` or `"Always Show"`).
 
 Useful methods: `Notify({ Title, Content, Type = "Success", Duration })`, `Confirm({ Title, Content, ConfirmText, Callback })`, `Dialog({ Buttons = { … } })`, `Toggle(open?)`, `Minimize()`, `Restore()`, `SelectTab(tab)`, `SetUIScale(n)`, `SetAdaptiveSize(bool)`, `SetTheme` (on `Library`), `SaveConfig` / `LoadConfig` / `ListConfigs`, `ResetIslandPosition()`, `Destroy()`.
 
-Minimizing folds the window into a Dynamic Island at the top of the screen. Players can drag it anywhere; `Pin = true` statuses show on it with their colours.
+Minimizing folds the window into a Dynamic Island pill at the top of the screen. Players can drag it anywhere and drop it; near the top centre it snaps home, and its position persists. While toggles run, their count rides a corner badge, a waveform pulses beside the session clock, and the glyph tile shows a live dot. `Pin = true` statuses join the subtitle line with their value tinted. On hover (or with `IslandStyle = "Always Show"`) the pill opens into a session card: player, game, session time, frame rate and latency meters, players, running count, current tab, and an accent restore button carrying the UI keybind. A notification that arrives while minimized drops into the island and dyes the chip, title, and glow with its type colour. `Window:ResetIslandPosition()` restores the default spot; `IslandDraggable = false` disables dragging.
 
 ## Theme
 
@@ -135,7 +138,7 @@ Minimizing folds the window into a Dynamic Island at the top of the screen. Play
 
 ## Optional
 
-- Optional Home supports a profile card, live stats, game/executor cards, feature lists and changelog pages; see the readable source for its options.
+- Optional Home supports a profile card, live stats, game/executor cards, feature lists, and changelog pages; see the readable source for its options.
 - [README: Flags and configuration](Readme.MD#flags-and-configuration): persistence, flag scope, executor file APIs, and configuration caveats.
 - Icons use Lucide names or supported custom assets. Optional custom fonts need file and custom-asset APIs; see `Library:LoadFont` in the source.
 
@@ -144,9 +147,9 @@ Minimizing folds the window into a Dynamic Island at the top of the screen. Play
 - `Library:CreateVoidHubWindow(options)` calls native `CreateWindow` and attaches appearance methods. Defaults: title `VoidHub`, subtitle `by von63rd`, `DefaultTheme = "VoidHub"` when no theme is supplied, and legacy config folder `AquaHub` to retain existing data.
 - Legacy `CreateAquaHubWindow`, `CreateKawiXDWindow`, and `CreateNullFireWindow` are aliases. `Library.VoidHub` reports `Name = "VoidHub"`, `Author = "von63rd"`, `Version = "1.2.0"`, `AppearanceVersion = 1`.
 - Native `Library:CreateWindow(options)` does not attach the appearance methods. Saved player defaults can still override the factory theme.
-- **The source does not enforce `ConfigurationSaving.Enabled`: `Enabled = false` does not disable native file operations, asset caching or hidden size flags.** Use `FolderName`, flags, `CreateConfigManager` and explicit `LoadAutoload` for native persistence. Appearance export is explicit and distinct from native config persistence.
+- **The source does not enforce `ConfigurationSaving.Enabled`: `Enabled = false` does not disable native file operations, asset caching, or hidden size flags.** Use `FolderName`, flags, `CreateConfigManager`, and explicit `LoadAutoload` for native persistence. Appearance export is explicit and distinct from native config persistence.
 - The default logo is `rbxassetid://101833678008843` (`Library.Assets.Logo`). It is not recolored. Change it with `Icon` or `Image`.
-- `Window:SelectTab(tab)` and `Tab:SelectSubTab(subTab)` accept an object, exact name, or one-based index. `OpenEffects = false` or `Window:SetOpenEffects(false)` disables the one-shot opening sheen.
+- `Tab:SelectSubTab(sub, instant?)` accepts the sub-tab object, an exact name, or a 1-based index; `Window:SelectTab(tab)` takes the tab object. `OpenEffects = false` or `Window:SetOpenEffects(false)` disables the one-shot opening sheen.
 
 ## VoidHub appearance extension
 
@@ -162,17 +165,17 @@ On a window from `CreateVoidHubWindow`:
 - `Window:GetAppearance()` returns a detached JSON-safe snapshot: `{ Version = 1, Theme = { nativeKey = "#RRGGBB", ... }, Background = { ... }, UIScale, AdaptiveSize, Density, CornerRadius }`.
 - `Window:ExportAppearance() -> json | nil, error`.
 - `Window:ApplyAppearance(tableOrJSON) -> true | false, error`: validates supplied fields before applying them, resolves the fallible background before changing theme/layout, accepts partial profiles, supports version 1, rejects JSON over 131072 bytes. `UIScale` 0.6..1.5; `AdaptiveSize` boolean; `Density` Compact/Default/Comfortable; `CornerRadius` 0..20.
-- `Window:CreateAppearanceTab({ Name = "Appearance", Icon = "palette" })` or `Library:CreateAppearanceTab(Window, options)` adds the native theme manager, background editor and JSON import/export. Requires the enhanced factory.
+- `Window:CreateAppearanceTab({ Name = "Appearance", Icon = "palette" })` or `Library:CreateAppearanceTab(Window, options)` adds the native theme manager, background editor, and JSON import/export. Requires the enhanced factory.
 
-Profiles do not automatically save to disk or include control flags/gameplay state. Use native configs separately. Native theme/config storage does not cover every extra background-style field; use appearance export for the complete look. Themes, density and corner radius are library-wide; backgrounds are per-window. Adaptive size is viewport-based, not physical DPI detection. Do not promise an upload picker or universal URL/file image support.
+Profiles do not automatically save to disk or include control flags/gameplay state. Use native configs separately. Native theme/config storage does not cover every background-style field; use appearance export for the complete look. Themes, density, and corner radius are library-wide; backgrounds are per-window. Adaptive size is viewport-based, not physical DPI detection. Do not promise an upload picker or universal URL/file image support.
 
 ## Attribution and distribution
 
-The native API is preserved; VoidHub by von63rd adds blue branding and the appearance extension. Exactly four root files are distributed: `Source.lua`, `Example.lua`, `Readme.MD`, `llms.txt`. Do not reference a bundled docs site, source tree, build scripts, or extra asset folders. See Readme.MD for attribution and the existing license text. Native icons, fonts, images and some Home features can access external resources when used.
+The native API is preserved; VoidHub by von63rd adds the branding and the appearance extension. Exactly four root files are distributed: `Source.lua`, `Example.lua`, `Readme.MD`, `llms.txt`. Do not reference a bundled docs site, source tree, or build scripts. `design/` holds only the logo and interface preview mockups for the README. See Readme.MD for attribution and the license text. Native icons, fonts, images, and some Home features can access external resources when used.
 
 ## Extended UI API: source-exact rules
 
-Use the readable source for full signatures, option aliases and rare corner cases; the notes below summarize the supported handles. Do not invent getters/setters from symmetry.
+Use the readable source for full signatures, option aliases, and rare corner cases; the notes below summarize the supported handles. Do not invent getters/setters from symmetry.
 
 ### Library and window details
 
@@ -183,7 +186,7 @@ Use the readable source for full signatures, option aliases and rare corner case
 - `SetDragStyle` returns Outline/Brackets/Ghost/Frame/Off; invalid → Outline. `SetDragSkeleton(false)` selects Off. `SetIslandStyle` returns Show on Hover/Always Show; invalid → Show on Hover.
 - `SetToggleButton`, `SetToggleButtonPlatform` (Mobile/Both), `SetToggleButtonIcon`, `SetHideName`, `SetHideAvatar`, `SetTransparent`, `ShowFeatures`, `CopyToClipboard(text,label?)`, `Rejoin`, `ServerHop`, and `JoinLowestServer` are native window methods. Clipboard/teleport require executor/network capabilities.
 - `Window:Notify(opts)` returns a handle with `Dismiss()`. `Dialog`/`Confirm` return a dialog handle with `Close()`. Do not assume these are value controls.
-- `SetBackdrop(enabled)` and `SetDim(enabled)` are boolean switches, not option tables or amounts. `SetBackdropTint(n)` clamps 0..1. `SetWeatherMode` accepts UI/Window/Inside (case-insensitive) for UI, otherwise Screen. Weather canonical values are Rain/Snow/Ember/Sakura/Fireflies/Matrix with documented aliases; `None`/other unrecognized names stop particles. `SetWeatherDensity` clamps 0..3 and `SetWeatherSpeed` clamps 0.1..3.
+- `SetBackdrop(enabled)` and `SetDim(enabled)` are boolean switches, not option tables or amounts. `SetBackdropTint(n)` clamps 0..1. `SetWeatherMode` accepts UI/Window/Inside (case-insensitively) for UI, otherwise Screen. Weather canonical values are Rain/Snow/Ember/Sakura/Fireflies/Matrix with documented aliases; `None`/other unrecognized names stop particles. `SetWeatherDensity` clamps 0..3 and `SetWeatherSpeed` clamps 0.1..3.
 - `Window:SetIgnoreFlags(array)` accumulates ignored names. `SetLoadingOrder(arrayOrNil)` overrides/restores type ordering; default Library.LoadingOrder is Dropdown, Slider, Stepper, Input, ColorPicker, Keybind, Toggle. Config setters run on deferred threads. `OnConfigChanged(fn)` returns a disconnect function.
 - Config APIs include ConfigExists, SaveConfig, LoadConfig, DeleteConfig, RenameConfig, ListConfigs, ResetConfig, ClearWorkspace, ExportConfig, DecodeConfig, ImportConfig, Get/SetAutoloadMode, Get/SetAutoload, Get/SetMinimizeOnStart, LoadAutoload. `ClearWorkspace` deletes the config folder. `LoadAutoload` is guarded against running twice. `ExportConfig` emits JSON; `DecodeConfig` also accepts legacy prefixed base64. `ImportConfig(code,saveAs?,force?)` returns true,nil,savedName or false,error; without saveAs it applies only.
 - `Window:SaveTheme`, `LoadTheme`, `DeleteTheme`, `ListThemes`, `SetDefaultTheme`, `GetDefaultTheme`, `SetBackground`, `GetBackground`, `SetBackgroundTransparency`, and `ListBackgrounds` remain native. The window default-theme setter takes a name; the library setter also accepts a palette table/nil.
@@ -202,9 +205,9 @@ Groupboxes expose PopOut, Dock, IsPoppedOut, SetCollapsed, Collapse, Expand, IsC
 - Image exposes SetImage/Set (true or false,error), Get (last source), SetCaption, SetScaleType, SetColor (Color3 or white), SetTitle. URL/file resolution is executor-dependent.
 - Table exposes SetColumns, SetRows/Set, GetRows/Get (**live rows**, not a detached copy), AddRow (new row count), UpdateRow/RemoveRow (boolean), Clear, Sort, SetTitle, SetMaxRows, NewRow (row), SetSearch. Editable tables support OnChanged and Flag. Log/Feed exposes Push/Add/Log (returns entry), Clear, Get (detached entries oldest-first), SetTitle, SetMaxEntries.
 - Status exposes Set, Get, SetTone, SetColor, SetName, SetUpdateRate, SetWrap. Statuses returns handles keyed by name. StatusList exposes Set/Get(copy), Clear, SetName, SetUpdateRate and refreshes only while shown.
-- ConfigManager returns a manager with Refresh/Create/Save/Load/Delete/Rename/Reset/SetAutoload/ClearAutoload/ToggleAutoload/SetAutoloadMode/Export/Import; UI mutators notify instead of returning the window success/error pair. ThemeManager returns Refresh/Create/Save/Load/Delete/ToggleDefault. Native theme manager hidden __Theme Get/Set covers native look fields but not every appearance extension field.
-- Appearance ApplyAppearance accepts omitted Version for a partial profile; an explicit Version must be 1. SetBackgroundStyle returns true or false,error, **not** a style table; call GetBackgroundStyle for normalized state.
+- ConfigManager returns a manager with Refresh/Create/Save/Load/Delete/Rename/Reset/SetAutoload/ClearAutoload/ToggleAutoload/SetAutoloadMode/Export/Import; UI mutators notify instead of returning the window success/error pair. ThemeManager returns Refresh/Create/Save/Load/Delete/ToggleDefault. The native theme manager's hidden `__Theme` Get/Set covers native look fields but not every appearance extension field.
+- Appearance ApplyAppearance accepts an omitted Version for a partial profile; an explicit Version must be 1. SetBackgroundStyle returns true or false,error, **not** a style table; call GetBackgroundStyle for normalized state.
 
 ### Documentation visuals
 
-The README displays the supplied original logo from a GitHub release asset. No fifth repository file or bundled docs site is required. Compilation and targeted mock regressions are not proof of an in-game runtime test.
+The README displays the logo and interface previews from the `design/` folder: hand-built vector mockups of the default theme, not Roblox client screenshots, and no bundled docs site is required. Compilation and targeted mock regressions are not proof of an in-game runtime test.
