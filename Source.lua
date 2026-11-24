@@ -17772,12 +17772,14 @@ function Window:SetWeatherSpeed(speed)
 end
 
 -- Minimize: the window folds into a Dynamic Island style pill hanging from
--- the top of the screen. Compact, it shows the logo and a live meter of
--- running toggles. Hovering springs it open into a session card: the
--- player, the game and session time, frame rate and ping meters, the server
--- and running counts, and the key that reopens the window. A
--- notification while minimized opens it briefly to show it. Click or tap
--- restores.
+-- the top of the screen, lit by a soft accent glow that leaks off its edge
+-- and a shadow that lifts it off the game. Compact, it shows a glyph tile,
+-- a live waveform of running toggles, and the running count as a corner
+-- badge. Hovering springs it open into a session card: the player, the game
+-- and session time, frame rate and ping meters, the server and running
+-- counts, and an accent button with the key that reopens the window. A
+-- notification while minimized opens it briefly, dying the glow, the chip,
+-- and the title with its type colour. Click or tap restores.
 
 -- One table, not separate locals: the main chunk is at Luau's 200 local limit.
 local Mini = {
@@ -17860,12 +17862,77 @@ function Window:_buildMiniBar()
     local islandStroke = stroke(island, Theme.Stroke, 1)
     islandStroke.Transparency = 0.32
 
+    -- The accent glow: soft halos behind the pill. They are siblings of
+    -- the island (a CanvasGroup would clip anything drawn past its edge)
+    -- and follow its position, size and radius every frame, breathing
+    -- slowly. A notification dyes them with its type colour, and an accent
+    -- too dark to glow falls back to neutral grey.
+    local glowColor = Theme.Accent
+    do
+        local _, _, glowValue = glowColor:ToHSV()
+        if glowValue < 0.35 then
+            glowColor = Color3.fromRGB(120, 120, 125)
+        end
+    end
+    local activityGlow = nil
+    local halos = {}
+    for index = 1, 3 do
+        local halo = create("Frame", {
+            Name = "IslandGlow" .. index,
+            AnchorPoint = Vector2.new(0.5, 0),
+            BackgroundColor3 = glowColor,
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            Visible = false,
+            ZIndex = 29,
+            Parent = gui,
+        })
+        halos[index] = {
+            Frame = halo,
+            Corner = Library._fixedCorner(halo, UDim.new(0, Mini.Height / 2)),
+            Pad = ({ 5, 12, 22 })[index],
+            Base = ({ 0.14, 0.05, 0.02 })[index],
+        }
+    end
+    -- A shadow beneath the pill, so the island sits above the game
+    -- instead of being pasted onto it.
+    local glowShadow = create("Frame", {
+        Name = "IslandShadow",
+        AnchorPoint = Vector2.new(0.5, 0),
+        BackgroundColor3 = Color3.new(0, 0, 0),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        Visible = false,
+        ZIndex = 28,
+        Parent = gui,
+    })
+    local shadowCorner = Library._fixedCorner(glowShadow, UDim.new(0, Mini.Height / 2))
+    -- The running count rides a small badge pinned over the pill's corner.
+    local _, _, badgeValue = Theme.Accent:ToHSV()
+    local badge = create("TextLabel", {
+        Name = "IslandBadge",
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        BackgroundColor3 = Theme.Accent,
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        FontFace = Fonts.Bold,
+        Size = UDim2.fromOffset(18, 18),
+        Text = "",
+        TextSize = 10,
+        TextColor3 = badgeValue >= 0.5 and Color3.fromRGB(13, 13, 15) or Theme.Text,
+        TextTransparency = 1,
+        Visible = false,
+        ZIndex = 31,
+        Parent = gui,
+    })
+    corner(badge, UDim.new(1, 0))
+    local badgeBump = create("UIScale", { Parent = badge })
+    local badgeCutout = stroke(badge, Theme.Background, 3)
+    local badgeCount = 0
+    local running = 0
+
     local islandScale = create("UIScale", { Parent = island })
     self._miniScale = islandScale
-    -- How far the split bubble is out of the pill: drawn back in while the
-    -- island is open, budded off again once it settles to the pill.
-    local merge = create("NumberValue", { Value = 1, Parent = island })
-    local mergeTween
     self._miniOrb = island
 
     -- The wide layers keep a fixed width, so nothing reflows while the island
@@ -17900,17 +17967,22 @@ function Window:_buildMiniBar()
         }),
         Parent = compact,
     })
-    -- The logo sits in a soft accent disc, like an app glyph.
-    local logoDisc = create("Frame", {
+    -- The logo sits in a rounded accent tile, like an app glyph, its
+    -- corners soft instead of a flat disc, with a live dot badge over the
+    -- corner while anything runs.
+    local logoUnit = Mini.Height - 12
+    local logoTile = create("Frame", {
         AnchorPoint = Vector2.new(0, 0.5),
         Position = UDim2.new(0, 6, 0.5, 0),
-        Size = UDim2.fromOffset(Mini.Height - 12, Mini.Height - 12),
+        Size = UDim2.fromOffset(logoUnit, logoUnit),
         BackgroundColor3 = Theme.Accent,
-        BackgroundTransparency = 0.86,
+        BackgroundTransparency = 0.85,
         BorderSizePixel = 0,
         Parent = compact,
     })
-    corner(logoDisc, UDim.new(1, 0))
+    corner(logoTile, UDim.new(0, math.max(6, math.floor(logoUnit * 0.3 + 0.5))))
+    local logoTileEdge = stroke(logoTile, Theme.Accent, 1)
+    logoTileEdge.Transparency = 0.5
     local logo = create("ImageLabel", {
         AnchorPoint = Vector2.new(0.5, 0.5),
         Position = UDim2.fromScale(0.5, 0.5),
@@ -17918,9 +17990,21 @@ function Window:_buildMiniBar()
         BackgroundTransparency = 1,
         ImageColor3 = Theme.Accent,
         ScaleType = Enum.ScaleType.Fit,
-        Parent = logoDisc,
+        Parent = logoTile,
     })
     applyIcon(logo, self._logoIcon, true)
+    local liveDot = create("Frame", {
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.new(1, -1, 0, 1),
+        Size = UDim2.fromOffset(7, 7),
+        BackgroundColor3 = Theme.Accent,
+        BorderSizePixel = 0,
+        Visible = false,
+        ZIndex = 2,
+        Parent = logoTile,
+    })
+    corner(liveDot, UDim.new(1, 0))
+    local liveDotRim = stroke(liveDot, Theme.Surface2, 2)
     -- The script's name beside the logo, so the pill reads at a glance.
     local miniTitle = label({
         AnchorPoint = Vector2.new(0, 0.5),
@@ -17939,6 +18023,8 @@ function Window:_buildMiniBar()
         Text = "UI minimized",
         TextSize = 10,
         TextColor3 = Theme.Muted,
+        RichText = true,
+        TextTruncate = Enum.TextTruncate.AtEnd,
         Parent = compact,
     })
     local meter = create("Frame", {
@@ -17977,17 +18063,6 @@ function Window:_buildMiniBar()
         corner(bar, UDim.new(1, 0))
         bars[index] = bar
     end
-    local countLabel = label({
-        Size = UDim2.fromOffset(0, 18),
-        AutomaticSize = Enum.AutomaticSize.X,
-        Text = "",
-        TextSize = 13,
-        FontFace = Fonts.Bold,
-        TextTruncate = Enum.TextTruncate.None,
-        Visible = false,
-        LayoutOrder = 2,
-        Parent = meter,
-    })
     -- Idle (nothing running): a health dot tinted by frame rate and the
     -- session clock, so the pill never sits empty.
     local idleDot = create("Frame", {
@@ -18024,16 +18099,43 @@ function Window:_buildMiniBar()
         Padding = UDim.new(0, 8),
         Parent = expandedList,
     })
+    -- The eyebrow line carries the waveform motif while anything runs.
+    local eyebrowRow = create("Frame", {
+        Size = UDim2.new(1, 0, 0, 16),
+        BackgroundTransparency = 1,
+        LayoutOrder = 0,
+        Parent = expandedList,
+    })
     local eyebrow = label({
         Name = "SessionEyebrow",
-        Size = UDim2.new(1, 0, 0, 16),
+        Size = UDim2.fromScale(1, 1),
         Text = "LIVE SESSION",
         TextSize = 10,
         FontFace = Fonts.Bold,
         TextColor3 = Theme.Accent,
-        LayoutOrder = 0,
-        Parent = expandedList,
+        Parent = eyebrowRow,
     })
+    local cardWaveHolder = create("Frame", {
+        AnchorPoint = Vector2.new(1, 0),
+        Position = UDim2.new(1, 0, 0, 2),
+        Size = UDim2.fromOffset(17, 14),
+        BackgroundTransparency = 1,
+        Visible = false,
+        Parent = eyebrowRow,
+    })
+    local cardWave = {}
+    for index = 1, 4 do
+        local cardWaveBar = create("Frame", {
+            AnchorPoint = Vector2.new(0, 0.5),
+            Position = UDim2.new(0, (index - 1) * 5, 0.5, 0),
+            Size = UDim2.fromOffset(2, 3),
+            BackgroundColor3 = Theme.Accent,
+            BorderSizePixel = 0,
+            Parent = cardWaveHolder,
+        })
+        corner(cardWaveBar, UDim.new(1, 0))
+        cardWave[index] = cardWaveBar
+    end
     -- The open card is the player's session, like a now-playing card: who
     -- and where on top with the session clock, two wide meters for frame
     -- rate and ping, then chips for the server and what's running.
@@ -18051,6 +18153,8 @@ function Window:_buildMiniBar()
         Parent = top,
     })
     corner(face, UDim.new(0, 12))
+    -- A soft accent ring round the avatar: the session is live.
+    stroke(face, Theme.Accent, 1).Transparency = 0.45
     local facePlaceholder = create("ImageLabel", {
         AnchorPoint = Vector2.new(0.5, 0.5),
         Position = UDim2.fromScale(0.5, 0.5),
@@ -18159,6 +18263,14 @@ function Window:_buildMiniBar()
             Parent = track,
         })
         corner(fill, UDim.new(1, 0))
+        -- The fill fades a little toward its tail, like a lit tube.
+        create("UIGradient", {
+            Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 0),
+                NumberSequenceKeypoint.new(1, 0.45),
+            }),
+            Parent = fill,
+        })
         return fill, value
     end
     local fpsFill, fpsValue = meterPill(UDim2.fromScale(0, 0), "FRAME RATE")
@@ -18227,10 +18339,15 @@ function Window:_buildMiniBar()
         LayoutOrder = 4,
         Parent = expandedList,
     })
+    -- The restore affordance is a filled accent button with the keybind on
+    -- a small key chip: one clear CTA on black, and the ink flips for
+    -- custom themes with a darker accent.
+    local _, _, accentValue = Theme.Accent:ToHSV()
+    local easeInk = accentValue >= 0.4 and Color3.fromRGB(14, 14, 16) or Theme.Text
     local restoreRow = create("Frame", {
         Name = "RestoreHint",
-        Size = UDim2.new(1, 0, 0, 36),
-        BackgroundColor3 = Theme.Surface2,
+        Size = UDim2.new(1, 0, 0, 34),
+        BackgroundColor3 = Theme.Accent,
         BorderSizePixel = 0,
         LayoutOrder = 5,
         Parent = expandedList,
@@ -18238,18 +18355,35 @@ function Window:_buildMiniBar()
     corner(restoreRow, UDim.new(0, 10))
     local hint = label({
         Position = UDim2.fromOffset(12, 0),
-        Size = UDim2.new(1, -44, 1, 0),
+        Size = UDim2.new(1, -90, 1, 0),
         TextSize = 12,
         FontFace = Fonts.Bold,
-        TextColor3 = Theme.Text,
+        TextColor3 = easeInk,
+        TextTruncate = Enum.TextTruncate.AtEnd,
         Parent = restoreRow,
     })
+    local keyChip = create("TextLabel", {
+        AnchorPoint = Vector2.new(1, 0.5),
+        Position = UDim2.new(1, -28, 0.5, 0),
+        Size = UDim2.new(0, 44, 0, 19),
+        AutomaticSize = Enum.AutomaticSize.X,
+        BackgroundColor3 = easeInk,
+        BackgroundTransparency = 0.78,
+        BorderSizePixel = 0,
+        FontFace = Fonts.Bold,
+        TextSize = 10,
+        TextColor3 = Theme.Accent,
+        Text = "",
+        TextXAlignment = Enum.TextXAlignment.Center,
+        Parent = restoreRow,
+    })
+    corner(keyChip, UDim.new(0, 5))
     local restoreIcon = create("ImageLabel", {
         AnchorPoint = Vector2.new(1, 0.5),
-        Position = UDim2.new(1, -12, 0.5, 0),
-        Size = UDim2.fromOffset(16, 16),
+        Position = UDim2.new(1, -7, 0.5, 0),
+        Size = UDim2.fromOffset(14, 14),
         BackgroundTransparency = 1,
-        ImageColor3 = Theme.Accent,
+        ImageColor3 = easeInk,
         Parent = restoreRow,
     })
     applyIcon(restoreIcon, "arrow-up-right")
@@ -18316,6 +18450,8 @@ function Window:_buildMiniBar()
         Parent = activityList,
     })
     corner(activityChip, UDim.new(1, 0))
+    local chipStroke = stroke(activityChip, Theme.Accent, 1)
+    chipStroke.Transparency = 0.5
     local activityIcon = create("ImageLabel", {
         AnchorPoint = Vector2.new(0.5, 0.5),
         Position = UDim2.fromScale(0.5, 0.5),
@@ -18357,6 +18493,29 @@ function Window:_buildMiniBar()
         LayoutOrder = 2,
         Parent = activityText,
     })
+
+    -- The waveform motif trails the notification while anything runs.
+    local actWaveHolder = create("Frame", {
+        AnchorPoint = Vector2.new(1, 0.5),
+        Position = UDim2.new(1, -14, 0.5, 0),
+        Size = UDim2.fromOffset(17, 14),
+        BackgroundTransparency = 1,
+        Visible = false,
+        Parent = activity,
+    })
+    local actWave = {}
+    for index = 1, 4 do
+        local actWaveBar = create("Frame", {
+            AnchorPoint = Vector2.new(0, 0.5),
+            Position = UDim2.new(0, (index - 1) * 5, 0.5, 0),
+            Size = UDim2.fromOffset(2, 3),
+            BackgroundColor3 = Theme.Accent,
+            BorderSizePixel = 0,
+            Parent = actWaveHolder,
+        })
+        corner(actWaveBar, UDim.new(1, 0))
+        actWave[index] = actWaveBar
+    end
 
     local hit = create("TextButton", {
         Name = "RestoreIsland",
@@ -18463,24 +18622,6 @@ function Window:_buildMiniBar()
             islandScale.Scale = growing and 0.96 or 1.03
             tween(islandScale, { Scale = 1 }, growing and 0.55 or 0.4, Enum.EasingStyle.Back)
         end
-        if changed or instant then
-            if mergeTween then
-                mergeTween:Cancel()
-                mergeTween = nil
-            end
-            if instant then
-                merge.Value = name == "Compact" and 1 or 0
-            elseif name == "Compact" then
-                -- Wait for the pill to shrink most of the way, then bud off.
-                task.delay(duration * 0.55, function()
-                    if modeToken == token then
-                        mergeTween = tween(merge, { Value = 1 }, 0.6, Enum.EasingStyle.Back)
-                    end
-                end)
-            else
-                mergeTween = tween(merge, { Value = 0 }, 0.2, Enum.EasingStyle.Quint)
-            end
-        end
         if not changed and not instant then
             -- A refit (same shape, new height) bumps the token, which cancels
             -- a fade-in still waiting from the morph; finish it here or the
@@ -18549,6 +18690,7 @@ function Window:_buildMiniBar()
     function self:_miniLand()
         hovered, activityLive = false, false
         activityToken += 1
+        activityGlow = nil
         islandScale.Scale = 1
         setMode("Compact", true)
         local size = Vector2.new(Mini.Width, Mini.Height)
@@ -18685,7 +18827,7 @@ function Window:_buildMiniBar()
         if sizeTween then sizeTween:Cancel() end
         if cornerTween then cornerTween:Cancel() end
         if positionTween then positionTween:Cancel() end
-        if mergeTween then mergeTween:Cancel() end
+        activityGlow = nil
         islandScale.Scale = 1
         -- Clicked open while expanded: once the island has faded out, fold it
         -- back to the pill so the next minimize starts from it.
@@ -18715,7 +18857,12 @@ function Window:_buildMiniBar()
         if not activityIcon:GetAttribute("CustomIcon") then
             activityIcon.ImageColor3 = color
         end
+        -- The chip stays glass tinted, its ring follows, and the glow
+        -- around the pill dyes itself with the notification's type.
         activityChip.BackgroundColor3 = color
+        activityChip.BackgroundTransparency = 0.86
+        chipStroke.Color = color
+        activityGlow = color
         activityLive = true
         activityToken += 1
         local token = activityToken
@@ -18729,6 +18876,7 @@ function Window:_buildMiniBar()
         task.delay(math.clamp(tonumber(opts.Duration) or 3, 1.5, 5), function()
             if activityToken == token and not self._destroyed and island.Parent then
                 activityLive = false
+                activityGlow = nil
                 if self.Minimized and not hovered then
                     settleMode()
                 end
@@ -18736,98 +18884,67 @@ function Window:_buildMiniBar()
         end)
     end
 
-    -- The meter dances while anything runs and lies flat when nothing does.
-    local running = 0
-    self:_listen("Render", function()
-        if island.Visible and running > 0 and mode == "Compact" then
-            local now = os.clock()
-            for index, bar in ipairs(bars) do
-                local wave = 0.5 + 0.5 * math.sin(now * (6 + index * 1.4) + index * 1.9)
-                bar.Size = UDim2.fromOffset(3, math.floor(4 + wave * 11 + 0.5))
-            end
-        end
-    end)
-
-    -- Split, like iOS with two Live Activities: when toggles are running and
-    -- a status is pinned, the pill keeps the status (logo leading, value
-    -- trailing) and the running meter buds off into its own little circle
-    -- beside it. One activity alone stays in the single pill.
-    local pinValue = label({
-        AnchorPoint = Vector2.new(1, 0.5),
-        Position = UDim2.new(1, -14, 0.5, 0),
-        Size = UDim2.new(1, -Mini.Height - 16, 0, 18),
-        TextSize = 13,
-        FontFace = Fonts.Bold,
-        TextXAlignment = Enum.TextXAlignment.Right,
-        RichText = true,
-        TextTransparency = 1,
-        Parent = compact,
-    })
-    local bubble = create("TextButton", {
-        Name = "IslandBubble",
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        Size = UDim2.fromOffset(0, 0),
-        BackgroundColor3 = Theme.Surface2,
-        BorderSizePixel = 0,
-        Text = "",
-        AutoButtonColor = false,
-        Visible = false,
-        ZIndex = 30,
-        Parent = gui,
-    })
-    corner(bubble, UDim.new(1, 0))
-    local split = create("NumberValue", { Value = 0, Parent = island })
-    local splitOn = false
-    local pinnedLead = nil
-    local function setSplit(on)
-        if on == splitOn then
-            return
-        end
-        splitOn = on
-        barsHolder.Parent = on and bubble or meter
-        barsHolder.AnchorPoint = on and Vector2.new(0.5, 0.5) or Vector2.new(0, 0)
-        barsHolder.Position = on and UDim2.fromScale(0.5, 0.5) or UDim2.new()
-        meter.Visible = not on
-        tween(pinValue, { TextTransparency = on and 0 or 1 }, 0.2, Enum.EasingStyle.Quad)
-        -- Buds off with a spring, and is drawn back in quicker.
-        tween(split, { Value = on and 1 or 0 }, on and 0.55 or 0.3, on and Enum.EasingStyle.Back or Enum.EasingStyle.Quint)
-        if on then
-            islandScale.Scale = 0.96
-            tween(islandScale, { Scale = 1 }, 0.45, Enum.EasingStyle.Back)
+    -- The meter dances while anything runs and lies flat when nothing does,
+    -- and the same waveform pulses in the session card and beside a
+    -- notification. This pass also keeps the glow, the shadow and the
+    -- corner badge glued to the pill while it morphs.
+    local function waveStep(list, unit, speed, amp)
+        local now = os.clock()
+        for index, bar in ipairs(list) do
+            local wave = 0.5 + 0.5 * math.sin(now * (speed + index * 1.4) + index * 1.9)
+            bar.Size = UDim2.fromOffset(unit, math.floor(3 + wave * amp + 0.5))
         end
     end
     self:_listen("Render", function()
-        local t = split.Value * merge.Value
-        local shown = island.Visible and t > 0.02 and island.GroupTransparency < 0.5
-        bubble.Visible = shown
-        if not shown then
+        if not island.Parent or not island.Visible then
             return
         end
-        local origin = gui.AbsolutePosition
-        local pos, size = island.AbsolutePosition - origin, island.AbsoluteSize
-        local d = math.min(size.Y, Mini.Height)
-        local gap = 6
-        -- Buds off the side with room to spare: the right, or the left near
-        -- the right edge of the screen.
-        local right = pos.X + size.X + gap + d <= gui.AbsoluteSize.X
-        local edge = right and pos.X + size.X or pos.X
-        local dir = right and 1 or -1
-        local inner = edge - dir * d * 0.6
-        local outer = edge + dir * (gap + d / 2)
-        local x = inner + (outer - inner) * t
-        local scale = math.clamp(0.35 + 0.65 * t, 0, 1.2)
-        -- Liquid: mid-flight the drop stretches along its path and thins,
-        -- then rounds back into a circle as it settles.
-        local stretch = math.sin(math.clamp(t, 0, 1) * math.pi)
-        bubble.Position = UDim2.fromOffset(x, pos.Y + d / 2)
-        bubble.Size = UDim2.fromOffset(d * scale * (1 + 0.4 * stretch), d * scale * (1 - 0.18 * stretch))
-        bubble.BackgroundTransparency = island.GroupTransparency
-    end)
-    bubble.Activated:Connect(function()
-        if self.Minimized then
-            self:Restore()
+        if running > 0 then
+            if mode == "Compact" then
+                waveStep(bars, 3, 6, 11)
+            elseif mode == "Expanded" then
+                waveStep(cardWave, 2, 7, 7)
+            end
+            if activityLive then
+                waveStep(actWave, 2, 7, 7)
+            end
+        end
+        local absPos = island.AbsolutePosition - gui.AbsolutePosition
+        local absSize = island.AbsoluteSize
+        local radius = islandCorner.CornerRadius.Offset
+        local islandAlpha = 1 - island.GroupTransparency
+        local breathe = 0.85 + 0.15 * math.sin(os.clock() * 0.9)
+        for _, halo in ipairs(halos) do
+            local alpha = halo.Base * islandAlpha * breathe
+            halo.Frame.Visible = alpha > 0.004
+            if halo.Frame.Visible then
+                halo.Frame.Position = UDim2.fromOffset(absPos.X - halo.Pad, absPos.Y - halo.Pad)
+                halo.Frame.Size = UDim2.fromOffset(absSize.X + halo.Pad * 2, absSize.Y + halo.Pad * 2)
+                halo.Corner.CornerRadius = UDim.new(0, radius + halo.Pad)
+                halo.Frame.BackgroundColor3 = activityGlow or glowColor
+                halo.Frame.BackgroundTransparency = 1 - alpha
+            end
+        end
+        glowShadow.Visible = islandAlpha > 0.02
+        if glowShadow.Visible then
+            glowShadow.Position = UDim2.fromOffset(absPos.X - 14, absPos.Y - 6)
+            glowShadow.Size = UDim2.fromOffset(absSize.X + 28, absSize.Y + 24)
+            shadowCorner.CornerRadius = UDim.new(0, radius + 12)
+            glowShadow.BackgroundTransparency = 1 - 0.3 * islandAlpha
+        end
+        badge.Visible = badgeCount > 0 and mode == "Compact" and islandAlpha > 0.02
+        if badge.Visible then
+            badge.Position = UDim2.fromOffset(absPos.X + absSize.X - 5, absPos.Y - 5)
+            badge.BackgroundTransparency = 1 - islandAlpha
+            badge.TextTransparency = 1 - islandAlpha
+            badgeCutout.Transparency = 1 - islandAlpha
         end
     end)
+
+    -- The pinned status and the running count both live in the single
+    -- pill: the status joins the subtitle line with its value tinted, and
+    -- the count rides the corner badge. No budded bubbles.
+    local pinnedLead = nil
 
     local cardRows = {}
     function self:_refreshMini()
@@ -18840,17 +18957,27 @@ function Window:_buildMiniBar()
         if count ~= running then
             local rising = count > running
             running = count
-            countLabel.Text = tostring(count)
+            -- The count moves to the corner badge and the logo goes live.
+            badgeCount = count
+            badge.Text = tostring(count)
+            liveDot.Visible = count > 0
+            actWaveHolder.Visible = count > 0
+            cardWaveHolder.Visible = count > 0
             for _, bar in ipairs(bars) do
                 tween(bar, { BackgroundColor3 = count > 0 and Theme.Accent or Theme.Muted }, 0.25)
                 if count == 0 then
                     tween(bar, { Size = UDim2.fromOffset(3, 3) }, 0.25)
                 end
             end
-            -- A small bump, like a live activity updating.
+            -- A small bump, like a live activity updating: the pill leans in
+            -- and the badge pops.
             if rising and mode == "Compact" and island.Visible then
                 islandScale.Scale = 1.06
                 tween(islandScale, { Scale = 1 }, 0.4, Enum.EasingStyle.Back)
+            end
+            if count > 0 and island.Visible then
+                badgeBump.Scale = 1.45
+                tween(badgeBump, { Scale = 1 }, 0.35, Enum.EasingStyle.Back)
             end
         end
         bigCount.Text = tostring(count)
@@ -18876,33 +19003,45 @@ function Window:_buildMiniBar()
                 break
             end
         end
+        local pinName, pinRich, pinColor = nil, nil, nil
         if pinnedLead then
             local text = tostring(pinnedLead:Text() or "")
             -- A status with nothing to show yet doesn't take the pill.
             if text:gsub("<[^>]*>", ""):match("%S") then
-                pinValue.Text = text
+                pinName = pinnedLead.Name
+                pinRich = text
                 local color = pinnedLead._shownColor and pinnedLead._shownColor() or Theme.Text
                 -- Too dark to read on the black pill: fall back to text colour.
                 local _, _, value = color:ToHSV()
-                pinValue.TextColor3 = value < 0.35 and Theme.Text or color
+                if value < 0.35 then
+                    color = Theme.Text
+                end
+                pinColor = string.format("#%02X%02X%02X", math.floor(color.R * 255 + 0.5), math.floor(color.G * 255 + 0.5), math.floor(color.B * 255 + 0.5))
             else
                 pinnedLead = nil
             end
         end
-        setSplit(running > 0 and pinnedLead ~= nil)
-        -- The pill's own meter: the clock when idle or when the bars budded
-        -- off without a status to keep, the bars and count otherwise.
-        local barsHere = running > 0 and not splitOn
+        -- The pill's own meter: the waveform and corner badge while
+        -- anything runs, the session clock otherwise. A pinned status joins
+        -- the subtitle line with its value tinted.
+        local barsHere = running > 0
         idleDot.Visible = not barsHere
         idleLabel.Visible = not barsHere
-        countLabel.Visible = barsHere
         barsHolder.Visible = running > 0
-        meter.Visible = not splitOn
-        miniTitle.Visible = not splitOn
-        miniSubtitle.Visible = not splitOn
-        miniSubtitle.Text = running > 0 and (tostring(running) .. " active") or "UI minimized"
+        if pinName then
+            miniSubtitle.Text = Library._rich(pinName) .. ' <font color="' .. pinColor .. '">' .. pinRich .. "</font>"
+        else
+            miniSubtitle.Text = running > 0 and (tostring(running) .. " active") or "UI minimized"
+        end
         local key = typeof(self.Keybind) == "EnumItem" and keyName(self.Keybind)
-        hint.Text = usingTouch() and "Tap to restore" or (key and ("Restore  ·  " .. key) or "Click to restore")
+        if usingTouch() then
+            hint.Text = "Tap to restore"
+            keyChip.Visible = false
+        else
+            hint.Text = "Restore"
+            keyChip.Visible = key ~= nil
+            keyChip.Text = key or ""
+        end
 
         local list = {}
         for _, handle in ipairs(self._pinned) do
