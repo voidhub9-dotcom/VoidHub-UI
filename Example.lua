@@ -455,6 +455,13 @@ Library.Touch = TOUCH
 local SIDEBAR_WIDTH = 164
 local HEADER_HEIGHT = 62
 local TAB_TILE_HEIGHT = TOUCH and 44 or 38
+-- The default sidebar is a narrow rail of big tiles, icon over label.
+-- SidebarStyle = "Wide" keeps the classic wide sidebar.
+Library.Rail = {
+    Width = 84,
+    Tile = TOUCH and 66 or 62,
+    Profile = 84,
+}
 local CARD_HEIGHT = TOUCH and 54 or 48
 local CARD_HEIGHT_DESC = TOUCH and 70 or 64
 local DROPDOWN_OPTION_HEIGHT = TOUCH and 40 or 34
@@ -826,6 +833,66 @@ local function tintIcon(imageLabel, color, active, duration)
     else
         tween(imageLabel, { ImageColor3 = color }, duration)
     end
+end
+
+-- Icon glow strength, 0 (off) to 1. Read whenever a glow fades in or out.
+Library.IconGlow = 1
+
+-- A soft bloom that hugs an icon's own shape: two slightly larger, faded
+-- copies of the icon and a faint round halo, drawn as siblings just under it
+-- (children would draw over the icon and blur it). They follow the icon's
+-- image, position, size and visibility. Returns a handle whose :Set(amount,
+-- duration) fades it, 0 to 1. Library fields, not locals: the main chunk is
+-- at Luau's 200 local limit.
+function Library._iconBloom(image, on)
+    local parent = image.Parent
+    local layers = {}
+    for index, spec in ipairs({ { 1.3, 0.5, false }, { 1.8, 0.8, false }, { 3, 0.86, true } }) do
+        local layer = create("ImageLabel", {
+            Name = "IconBloom" .. index,
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            BackgroundTransparency = 1,
+            ImageColor3 = Theme.Accent,
+            ImageTransparency = 1,
+            ScaleType = Enum.ScaleType.Fit,
+            ZIndex = math.max(image.ZIndex - 1, 0),
+            Parent = parent,
+        })
+        if spec[3] then
+            layer.Image = Assets.Glow
+        end
+        layers[index] = { Image = layer, Scale = spec[1], Rest = spec[2], Halo = spec[3] }
+    end
+    local function place()
+        local size, anchor, position = image.Size, image.AnchorPoint, image.Position
+        local centre = UDim2.new(
+            position.X.Scale + size.X.Scale * (0.5 - anchor.X), position.X.Offset + size.X.Offset * (0.5 - anchor.X),
+            position.Y.Scale + size.Y.Scale * (0.5 - anchor.Y), position.Y.Offset + size.Y.Offset * (0.5 - anchor.Y))
+        for _, entry in ipairs(layers) do
+            local layer = entry.Image
+            layer.Position = centre
+            layer.Size = UDim2.new(size.X.Scale * entry.Scale, size.X.Offset * entry.Scale, size.Y.Scale * entry.Scale, size.Y.Offset * entry.Scale)
+            if not entry.Halo then
+                layer.Image = image.Image
+                layer.ImageRectOffset = image.ImageRectOffset
+                layer.ImageRectSize = image.ImageRectSize
+            end
+            layer.Visible = image.Visible and image.Image ~= ""
+        end
+    end
+    place()
+    for _, property in ipairs({ "Position", "Size", "AnchorPoint", "Image", "ImageRectOffset", "ImageRectSize", "Visible" }) do
+        image:GetPropertyChangedSignal(property):Connect(place)
+    end
+    local bloom = {}
+    function bloom:Set(amount, duration)
+        local strength = math.clamp(tonumber(Library.IconGlow) or 1, 0, 1)
+        for _, entry in ipairs(layers) do
+            tween(entry.Image, { ImageTransparency = 1 - (1 - entry.Rest) * amount * strength }, duration or 0)
+        end
+    end
+    bloom:Set(on == false and 0 or 1)
+    return bloom
 end
 
 local function defaultParent()
@@ -4673,10 +4740,14 @@ function Library.Window(_, opts)
     self._backgroundGeneration = 0
 
     -- The sidebar is a flush, solid rail down the left edge, split from the
-    -- content by a single hairline.
+    -- content by a single hairline. By default it is a narrow rail of big
+    -- tiles (icon over label); SidebarStyle = "Wide" keeps the classic wide
+    -- sidebar with the title beside the logo.
+    self.SidebarStyle = opts.SidebarStyle == "Wide" and "Wide" or "Rail"
+    local rail = self.SidebarStyle == "Rail"
     local sidebar = create("Frame", {
         Name = "Sidebar",
-        Size = UDim2.new(0, SIDEBAR_WIDTH, 1, 0),
+        Size = UDim2.new(0, rail and Library.Rail.Width or SIDEBAR_WIDTH, 1, 0),
         BackgroundTransparency = 1,
         BorderSizePixel = 0,
         ClipsDescendants = true,
@@ -4713,46 +4784,67 @@ function Library.Window(_, opts)
         BackgroundTransparency = 1,
         Parent = sidebar,
     })
-    local logoTile = create("Frame", {
-        AnchorPoint = Vector2.new(0, 0.5),
-        Position = UDim2.new(0, 12, 0.5, 0),
-        Size = UDim2.fromOffset(36, 36),
-        BackgroundColor3 = Theme.Surface2,
-        BorderSizePixel = 0,
-        Parent = header,
-    })
-    corner(logoTile, UDim.new(0, 9))
-    stroke(logoTile, Theme.Stroke)
-    local logo = create("ImageLabel", {
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        Position = UDim2.fromScale(0.5, 0.5),
-        Size = UDim2.fromOffset(34, 34),
-        BackgroundTransparency = 1,
-        Image = "",
-        ImageColor3 = Theme.Accent,
-        ScaleType = Enum.ScaleType.Fit,
-        Parent = logoTile,
-    })
-    applyIcon(logo, opts.Icon or Assets.Logo, true)
-    local subtitle = opts.Version or opts.Subtitle
-    label({
-        Position = UDim2.new(0, 56, 0.5, subtitle and -15 or -9),
-        Size = UDim2.new(1, -68, 0, 18),
-        Text = self.Title,
-        TextSize = 15,
-        FontFace = Fonts.Bold,
-        Parent = header,
-    })
-    if subtitle then
-        label({
-            Position = UDim2.new(0, 56, 0.5, 3),
-            Size = UDim2.new(1, -68, 0, 14),
-            Text = tostring(subtitle),
-            TextSize = 12,
-            FontFace = Fonts.Regular,
-            TextColor3 = Theme.Muted,
+    if rail then
+        -- The rail shows the bare logo, centred and glowing; the title moves
+        -- under the avatar at the foot of the rail.
+        local logo = create("ImageLabel", {
+            Name = "Logo",
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.fromScale(0.5, 0.5),
+            Size = UDim2.fromOffset(34, 34),
+            BackgroundTransparency = 1,
+            Image = "",
+            ImageColor3 = Theme.Accent,
+            ScaleType = Enum.ScaleType.Fit,
+            ZIndex = 2,
             Parent = header,
         })
+        applyIcon(logo, opts.Icon or Assets.Logo, true)
+        Library._iconBloom(logo)
+    else
+        local logoTile = create("Frame", {
+            AnchorPoint = Vector2.new(0, 0.5),
+            Position = UDim2.new(0, 12, 0.5, 0),
+            Size = UDim2.fromOffset(36, 36),
+            BackgroundColor3 = Theme.Surface2,
+            BorderSizePixel = 0,
+            Parent = header,
+        })
+        corner(logoTile, UDim.new(0, 9))
+        stroke(logoTile, Theme.Stroke)
+        local logo = create("ImageLabel", {
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.fromScale(0.5, 0.5),
+            Size = UDim2.fromOffset(34, 34),
+            BackgroundTransparency = 1,
+            Image = "",
+            ImageColor3 = Theme.Accent,
+            ScaleType = Enum.ScaleType.Fit,
+            ZIndex = 2,
+            Parent = logoTile,
+        })
+        applyIcon(logo, opts.Icon or Assets.Logo, true)
+        Library._iconBloom(logo)
+        local subtitle = opts.Version or opts.Subtitle
+        label({
+            Position = UDim2.new(0, 56, 0.5, subtitle and -15 or -9),
+            Size = UDim2.new(1, -68, 0, 18),
+            Text = self.Title,
+            TextSize = 15,
+            FontFace = Fonts.Bold,
+            Parent = header,
+        })
+        if subtitle then
+            label({
+                Position = UDim2.new(0, 56, 0.5, 3),
+                Size = UDim2.new(1, -68, 0, 14),
+                Text = tostring(subtitle),
+                TextSize = 12,
+                FontFace = Fonts.Regular,
+                TextColor3 = Theme.Muted,
+                Parent = header,
+            })
+        end
     end
 
     create("Frame", {
@@ -4762,21 +4854,24 @@ function Library.Window(_, opts)
         BorderSizePixel = 0,
         Parent = sidebar,
     })
-    label({
-        Position = UDim2.fromOffset(16, HEADER_HEIGHT + 9),
-        Size = UDim2.new(1, -32, 0, 16),
-        Text = "WORKSPACE",
-        TextSize = 10,
-        FontFace = Fonts.Bold,
-        TextColor3 = Theme.Muted,
-        Parent = sidebar,
-    })
+    if not rail then
+        label({
+            Position = UDim2.fromOffset(16, HEADER_HEIGHT + 9),
+            Size = UDim2.new(1, -32, 0, 16),
+            Text = "WORKSPACE",
+            TextSize = 10,
+            FontFace = Fonts.Bold,
+            TextColor3 = Theme.Muted,
+            Parent = sidebar,
+        })
+    end
     local profileEnabled = opts.Profile ~= false
-    local tabTop = HEADER_HEIGHT + 30
+    local tabTop = rail and HEADER_HEIGHT + 8 or HEADER_HEIGHT + 30
+    local profileRoom = rail and Library.Rail.Profile or PROFILE_HEIGHT
     local tabList = create("ScrollingFrame", {
         Name = "Tabs",
         Position = UDim2.fromOffset(0, tabTop),
-        Size = UDim2.new(1, 0, 1, -(tabTop + (profileEnabled and PROFILE_HEIGHT + 4 or 12))),
+        Size = UDim2.new(1, 0, 1, -(tabTop + (profileEnabled and profileRoom + 4 or 12))),
         BackgroundTransparency = 1,
         BorderSizePixel = 0,
         ScrollBarThickness = 0,
@@ -4819,6 +4914,7 @@ function Library.Window(_, opts)
     })
     self.Content = content
     self:_sidebarResize(sidebar, tonumber(opts.SidebarWidth) or SIDEBAR_WIDTH)
+    self:_buildAmbientLight(body, opts.AmbientLight)
     self._inLayer = create("CanvasGroup", {
         Name = "TransitionIn",
         Size = UDim2.fromScale(1, 1),
@@ -5638,6 +5734,19 @@ end
 -- The sidebar's divider is a grab strip: dragging it sets the rail's width,
 -- kept between a usable minimum and enough room for the content.
 function Window:_sidebarResize(sidebar, width)
+    -- The rail is a fixed width: its tiles are laid out for it, so there is
+    -- no drag grip and SetSidebarWidth leaves it alone.
+    if self.SidebarStyle == "Rail" then
+        local value = Library.Rail.Width
+        self.SidebarWidth = value
+        sidebar.Size = UDim2.new(0, value, 1, 0)
+        self.Content.Position = UDim2.fromOffset(value + 1, 0)
+        self.Content.Size = UDim2.new(1, -(value + 1), 1, 0)
+        self.SetSidebarWidth = function()
+            return value
+        end
+        return
+    end
     local divider = sidebar:FindFirstChild("Divider")
     local want = width
     local function apply(value, remember)
@@ -5704,6 +5813,53 @@ function Window:_sidebarResize(sidebar, width)
             apply(want, false)
         end
     end)
+end
+
+-- Ambient light: a soft white glow falling in from the window's top-left
+-- corner, with a faint counter-light at the bottom right, drawn over the
+-- body so it catches the rail, the header and the groupboxes alike. It sits
+-- in a CanvasGroup so it is clipped to the window's rounded corners, and it
+-- never takes input. AmbientLight = false turns it off; a number from 0 to 1
+-- sets its strength (default 1).
+function Window:_buildAmbientLight(body, amount)
+    local group = create("CanvasGroup", {
+        Name = "AmbientLight",
+        Size = UDim2.fromScale(1, 1),
+        BackgroundTransparency = 1,
+        ZIndex = 8,
+        Parent = body,
+    })
+    corner(group, UDim.new(0, 10))
+    self._ambientLayers = {}
+    for _, spec in ipairs({
+        -- position, size, transparency at full strength
+        { UDim2.fromOffset(-30, -50), UDim2.fromOffset(640, 480), 0.84 },
+        { UDim2.fromOffset(40, 10), UDim2.fromOffset(300, 220), 0.9 },
+        { UDim2.new(1, 40, 1, 60), UDim2.fromOffset(460, 320), 0.95 },
+    }) do
+        local image = create("ImageLabel", {
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = spec[1],
+            Size = spec[2],
+            BackgroundTransparency = 1,
+            Image = Assets.Glow,
+            ImageColor3 = Theme.Text,
+            ImageTransparency = 1,
+            Parent = group,
+        })
+        table.insert(self._ambientLayers, { Image = image, Rest = spec[3] })
+    end
+    self:SetAmbientLight(amount == nil and 1 or amount, true)
+end
+
+-- Strength of the ambient light, 0 (off) to 1; false is off. Returns it.
+function Window:SetAmbientLight(amount, instant)
+    amount = amount == false and 0 or math.clamp(tonumber(amount) or 1, 0, 1)
+    self.AmbientLight = amount
+    for _, layer in ipairs(self._ambientLayers or {}) do
+        tween(layer.Image, { ImageTransparency = 1 - (1 - layer.Rest) * amount }, instant and 0 or 0.3)
+    end
+    return amount
 end
 
 -- See-through window: the body and sidebar let the game show through, and the
@@ -8758,6 +8914,7 @@ function Tab:Groupbox(opts, icon)
             Parent = iconTile,
         })
         applyIcon(headerIcon, opts.Icon)
+        Library._iconBloom(headerIcon)
         titleX = 46
     end
     local collapseButton = create("ImageLabel", {
@@ -13594,16 +13751,18 @@ function Tab:_setupSubTabs()
         Parent = page,
     })
     strip:SetAttribute("NoDrag", true)
+    -- The selected page sits on a solid raised chip that slides between
+    -- them; the others are bare labels.
     local highlight = create("Frame", {
-        Size = UDim2.fromOffset(0, 32),
+        Position = UDim2.fromOffset(0, 2),
+        Size = UDim2.fromOffset(0, 28),
         BackgroundColor3 = Theme.Surface3,
-        BackgroundTransparency = 0.35,
         BorderSizePixel = 0,
         Visible = false,
         Parent = strip,
     })
-    corner(highlight, UDim.new(0, 8))
-    stroke(highlight, Theme.Stroke)
+    corner(highlight, UDim.new(0, 7))
+    stroke(highlight, Theme.Text, 0.94)
     local row = create("Frame", {
         Size = UDim2.new(0, 0, 1, 0),
         AutomaticSize = Enum.AutomaticSize.X,
@@ -13670,16 +13829,26 @@ function Tab:_placeSubHighlight(sub, instant)
         return
     end
     local x = (button.AbsolutePosition.X - ui.Row.AbsolutePosition.X) / scale
-    local props = { Position = UDim2.fromOffset(x, 0), Size = UDim2.fromOffset(width, 32) }
+    local props = { Position = UDim2.fromOffset(x, 2), Size = UDim2.fromOffset(width, 28) }
     if instant or not ui.Highlight.Visible then
         ui.Highlight.Visible = true
         ui.Highlight.Position = props.Position
         ui.Highlight.Size = props.Size
     else
         ui.Moving = true
+        ui.MoveToken = (ui.MoveToken or 0) + 1
+        local token = ui.MoveToken
         tween(ui.Highlight, props, 0.35, Enum.EasingStyle.Quint)
         task.delay(0.36, function()
+            if ui.MoveToken ~= token then
+                return
+            end
             ui.Moving = false
+            -- Widths that changed mid-slide (a font finishing loading, a
+            -- rename) were skipped while moving; land on where it is now.
+            if self.CurrentSubTab then
+                self:_placeSubHighlight(self.CurrentSubTab, true)
+            end
         end)
     end
     local view = ui.Strip.AbsoluteSize.X / scale
@@ -13742,19 +13911,28 @@ function Tab:SubTab(opts, icon)
         Parent = button,
     })
     if opts.Icon then
-        local image = create("ImageLabel", {
+        -- The icon sits in a fixed slot so its glow layers (siblings drawn
+        -- under it) stay out of the button's list layout.
+        local slot = create("Frame", {
             Size = UDim2.fromOffset(14, 14),
+            BackgroundTransparency = 1,
+            LayoutOrder = 1,
+            Parent = button,
+        })
+        local image = create("ImageLabel", {
+            Size = UDim2.fromScale(1, 1),
             BackgroundTransparency = 1,
             ImageColor3 = Theme.Muted,
             ScaleType = Enum.ScaleType.Fit,
-            LayoutOrder = 1,
-            Parent = button,
+            ZIndex = 2,
+            Parent = slot,
         })
         applyIcon(image, opts.Icon)
         if image:GetAttribute("CustomIcon") then
             image.ImageTransparency = 0.4
         end
         sub._iconImage = image
+        sub._bloom = Library._iconBloom(image, false)
     end
     sub._label = label({
         Size = UDim2.new(0, 0, 1, 0),
@@ -13767,14 +13945,21 @@ function Tab:SubTab(opts, icon)
         Parent = button,
     })
     sub._button = button
+    -- Hover lifts the label and its icon together.
     button.MouseEnter:Connect(function()
         if self.CurrentSubTab ~= sub then
             tween(sub._label, { TextColor3 = Theme.Text }, 0.12)
+            if sub._iconImage then
+                tintIcon(sub._iconImage, Theme.Text, true, 0.12)
+            end
         end
     end)
     button.MouseLeave:Connect(function()
         if self.CurrentSubTab ~= sub then
             tween(sub._label, { TextColor3 = Theme.Muted }, 0.2)
+            if sub._iconImage then
+                tintIcon(sub._iconImage, Theme.Muted, false, 0.2)
+            end
         end
     end)
     local isTap = tapGuard(button, function() return ui.Strip end)
@@ -13821,14 +14006,22 @@ function Tab:SelectSubTab(sub, instant)
 
     local fade = instant and 0 or 0.2
     if previous then
+        previous._label.FontFace = Fonts.Medium
         tween(previous._label, { TextColor3 = Theme.Muted }, fade)
         if previous._iconImage then
             tintIcon(previous._iconImage, Theme.Muted, false, fade)
         end
+        if previous._bloom then
+            previous._bloom:Set(0, fade)
+        end
     end
+    sub._label.FontFace = Fonts.Bold
     tween(sub._label, { TextColor3 = Theme.Text }, fade)
     if sub._iconImage then
         tintIcon(sub._iconImage, Theme.Accent, true, fade)
+    end
+    if sub._bloom then
+        sub._bloom:Set(1, instant and 0 or 0.25)
     end
     self:_placeSubHighlight(sub, instant)
 
@@ -14625,6 +14818,80 @@ local function avatar(window, parent, props, ringColor, ringTransparency, ringTh
 end
 
 function Window:_buildProfile(sidebar)
+    if self.SidebarStyle == "Rail" then
+        -- The rail's foot: the avatar centred, the player's name and the
+        -- script's title under it. Clicking opens Home.
+        local room = Library.Rail.Profile
+        create("Frame", {
+            AnchorPoint = Vector2.new(0.5, 1),
+            Position = UDim2.new(0.5, 0, 1, -room),
+            Size = UDim2.new(1, -20, 0, 1),
+            BackgroundColor3 = Theme.Stroke,
+            BorderSizePixel = 0,
+            Parent = sidebar,
+        })
+        local card = create("TextButton", {
+            AnchorPoint = Vector2.new(0.5, 1),
+            Position = UDim2.new(0.5, 0, 1, -6),
+            Size = UDim2.new(1, -12, 0, room - 12),
+            BackgroundColor3 = Theme.Surface2,
+            BackgroundTransparency = 1,
+            Text = "",
+            AutoButtonColor = false,
+            Parent = sidebar,
+        })
+        corner(card, UDim.new(0, 10))
+        local head = avatar(self, card, {
+            AnchorPoint = Vector2.new(0.5, 0),
+            Position = UDim2.new(0.5, 0, 0, 6),
+            Size = UDim2.fromOffset(32, 32),
+        })
+        local online = create("Frame", {
+            AnchorPoint = Vector2.new(1, 1),
+            Position = UDim2.new(1, 1, 1, 1),
+            Size = UDim2.fromOffset(9, 9),
+            BackgroundColor3 = Theme.Success,
+            BorderSizePixel = 0,
+            ZIndex = 2,
+            Parent = head,
+        })
+        corner(online, UDim.new(1, 0))
+        stroke(online, Theme.Surface, 0, 2)
+        local name = label({
+            Position = UDim2.fromOffset(2, 42),
+            Size = UDim2.new(1, -4, 0, 13),
+            TextSize = 11,
+            FontFace = Fonts.Bold,
+            TextXAlignment = Enum.TextXAlignment.Center,
+            Parent = card,
+        })
+        self:_trackName(name, "Display")
+        label({
+            Position = UDim2.fromOffset(2, 55),
+            Size = UDim2.new(1, -4, 0, 12),
+            Text = self.Title,
+            TextSize = 10,
+            FontFace = Fonts.Regular,
+            TextColor3 = Theme.Muted,
+            TextXAlignment = Enum.TextXAlignment.Center,
+            Parent = card,
+        })
+        card.MouseEnter:Connect(function()
+            if not usingTouch() then
+                tween(card, { BackgroundTransparency = 0.4 }, 0.12)
+            end
+        end)
+        card.MouseLeave:Connect(function()
+            tween(card, { BackgroundTransparency = 1 }, 0.2)
+        end)
+        card.MouseButton1Click:Connect(function()
+            if self.Home then
+                self:SelectTab(self.Home)
+            end
+        end)
+        self.Profile = card
+        return
+    end
     create("Frame", {
         AnchorPoint = Vector2.new(0.5, 1),
         Position = UDim2.new(0.5, 0, 1, -PROFILE_HEIGHT),
@@ -16357,17 +16624,25 @@ function Window:_paintTab(tab, instant)
     local selected = self.CurrentTab == tab
     local focused, hovered = tab._tabFocused, tab._tabHovered
     local duration = instant and 0 or 0.14
-    tab._marker.Visible = selected
+    local rail = self.SidebarStyle == "Rail"
+    -- The rail marks the selected tile by its fill and glowing icon alone.
+    tab._marker.Visible = selected and not rail
     tab._label.FontFace = selected and Fonts.Bold or Fonts.Medium
-    tween(tab._button, { BackgroundTransparency = selected and 0 or ((focused or hovered) and 0.55 or 1) }, duration)
+    tween(tab._button, {
+        BackgroundColor3 = rail and Theme.Surface2 or Theme.Surface3,
+        BackgroundTransparency = selected and 0 or ((focused or hovered) and 0.55 or 1),
+    }, duration)
     tween(tab._stroke, {
-        Color = focused and Theme.Accent or (selected and Theme.StrokeHover or Theme.Stroke),
-        Transparency = focused and 0.12 or (selected and 0.48 or 1),
+        Color = focused and Theme.Accent or (selected and (rail and Theme.Text or Theme.StrokeHover) or Theme.Stroke),
+        Transparency = focused and 0.12 or (selected and (rail and 0.93 or 0.48) or 1),
     }, duration)
     local textColor = (selected or focused or hovered) and Theme.Text or Theme.Muted
     tween(tab._label, { TextColor3 = textColor }, duration)
     if tab._icon then
         tintIcon(tab._icon, selected and Theme.Accent or textColor, selected or focused or hovered, duration)
+    end
+    if tab._bloom then
+        tab._bloom:Set(selected and 1 or 0, instant and 0 or 0.25)
     end
 end
 
@@ -16382,9 +16657,10 @@ function Window:Tab(opts, icon)
         _order = 0,
     }, Tab)
 
+    local rail = self.SidebarStyle == "Rail"
     local button = create("TextButton", {
         Name = tab.Name,
-        Size = UDim2.new(1, 0, 0, TAB_TILE_HEIGHT),
+        Size = UDim2.new(1, 0, 0, rail and Library.Rail.Tile or TAB_TILE_HEIGHT),
         BackgroundColor3 = Theme.Surface3,
         BackgroundTransparency = 1,
         BorderSizePixel = 0,
@@ -16394,7 +16670,7 @@ function Window:Tab(opts, icon)
         LayoutOrder = #self.Tabs + 1,
         Parent = self._tabStack,
     })
-    corner(button, UDim.new(0, 8))
+    corner(button, UDim.new(0, rail and 10 or 8))
     tab._button = button
     tab._stroke = stroke(button, Theme.Stroke, 1)
     tab._marker = create("Frame", {
@@ -16411,13 +16687,15 @@ function Window:Tab(opts, icon)
 
     local hasIcon = opts.Icon ~= nil
     if hasIcon then
+        -- Rail: the icon sits centred above the label. Wide: it leads the row.
         local iconImage = create("ImageLabel", {
             AnchorPoint = Vector2.new(0.5, 0.5),
-            Position = UDim2.new(0, 23, 0.5, 0),
-            Size = UDim2.fromOffset(16, 16),
+            Position = rail and UDim2.new(0.5, 0, 0, 23) or UDim2.new(0, 23, 0.5, 0),
+            Size = rail and UDim2.fromOffset(20, 20) or UDim2.fromOffset(16, 16),
             BackgroundTransparency = 1,
             ImageColor3 = Theme.Muted,
             ScaleType = Enum.ScaleType.Fit,
+            ZIndex = 2,
             Parent = button,
         })
         applyIcon(iconImage, opts.Icon)
@@ -16425,15 +16703,29 @@ function Window:Tab(opts, icon)
             iconImage.ImageTransparency = 0.4
         end
         tab._icon = iconImage
+        -- The selected tab's icon glows; _paintTab fades it in and out.
+        tab._bloom = Library._iconBloom(iconImage, false)
     end
-    tab._label = label({
-        Position = UDim2.fromOffset(hasIcon and 42 or 16, 0),
-        Size = UDim2.new(1, hasIcon and -54 or -28, 1, 0),
-        Text = tab.Name,
-        TextSize = 13,
-        TextColor3 = Theme.Muted,
-        Parent = button,
-    })
+    if rail then
+        tab._label = label({
+            Position = UDim2.fromOffset(4, hasIcon and 38 or 0),
+            Size = UDim2.new(1, -8, hasIcon and 0 or 1, hasIcon and 14 or 0),
+            Text = tab.Name,
+            TextSize = 11,
+            TextColor3 = Theme.Muted,
+            TextXAlignment = Enum.TextXAlignment.Center,
+            Parent = button,
+        })
+    else
+        tab._label = label({
+            Position = UDim2.fromOffset(hasIcon and 42 or 16, 0),
+            Size = UDim2.new(1, hasIcon and -54 or -28, 1, 0),
+            Text = tab.Name,
+            TextSize = 13,
+            TextColor3 = Theme.Muted,
+            Parent = button,
+        })
+    end
 
     local page = create("Frame", {
         Name = tab.Name,
@@ -16455,9 +16747,12 @@ function Window:Tab(opts, icon)
         })
         corner(badge, UDim.new(0, 8))
         stroke(badge, Theme.Stroke)
-        local holder = glowIcon(badge, opts.Icon, Theme.Accent, UDim2.fromScale(0.5, 0.5))
+        local holder, badgeIcon = glowIcon(badge, opts.Icon, Theme.Accent, UDim2.fromScale(0.5, 0.5))
         holder.AnchorPoint = Vector2.new(0.5, 0.5)
         holder.Size = UDim2.fromOffset(16, 16)
+        -- The page's icon glows, like the selected tab it belongs to.
+        badgeIcon.ZIndex = 2
+        Library._iconBloom(badgeIcon)
         titleX = 64
     end
     tab._titleX = titleX
