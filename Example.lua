@@ -319,7 +319,8 @@ function Library._defaultLogo()
             Library._logoResolved = asset
         end
     end
-    return Library._logoResolved or Assets.Logo
+    -- Library.Assets, not the Assets local: that is declared further down.
+    return Library._logoResolved or Library.Assets.Logo
 end
 
 local LUCIDE_URL = "https://raw.githubusercontent.com/Footagesus/Icons/refs/heads/main/lucide/dist/Icons.lua"
