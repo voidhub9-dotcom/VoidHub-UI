@@ -1731,7 +1731,9 @@ function Tab:Toggle(opts)
             flashStroke(buttonStroke)
         end
         if not silent then
-            safeCall(opts.Callback, value)
+            -- The toggle itself is passed second, so a callback can switch it off
+            -- when its job is done: function(on, toggle) ... toggle:Set(false) end
+            safeCall(opts.Callback, value, self_)
         end
     end
 
@@ -1748,7 +1750,7 @@ function Tab:Toggle(opts)
 
     local handle = finishElement(self, opts, self_, button, "Toggle")
     if self_.Value then
-        safeCall(opts.Callback, true)
+        safeCall(opts.Callback, true, self_)
     end
     return handle
 end
@@ -21087,6 +21089,9 @@ end
 end)()
 installAquaHub(Library)
 
+-- ============================================================================
+-- Demo. Everything below only changes the UI; nothing touches the game.
+-- ============================================================================
 
 local Window = Library:CreateVoidHubWindow({
     Name = "VoidHub",
@@ -21096,50 +21101,62 @@ local Window = Library:CreateVoidHubWindow({
     Theme = "VoidHub",
     Loading = false,
     UnsupportedExecutor = false,
-    ConfigurationSaving = { Enabled = false, FolderName = "AquaHubDemo" },
+    ConfigurationSaving = { Enabled = true, FolderName = "VoidHubDemo" },
+    -- Home: game banner, privacy switches, buttons into every tab.
     Home = { Welcome = "Welcome back" },
     Backdrop = { Weather = "None", Tint = 0.18 },
     ToggleButton = { Platform = "Mobile", Icon = "layout-grid" },
 })
 
+-- Main tab with two pages (sub tabs).
 local Main = Window:CreateTab({ Name = "Main", Desc = "Controls and appearance", Icon = "waves" })
--- Pages inside a tab: each sub tab holds its own groupboxes.
 local General = Main:CreateSubTab({ Name = "General", Icon = "sliders-horizontal" })
 local Interface = Main:CreateSubTab({ Name = "Interface", Icon = "sparkles" })
+
 local Core = General:CreateGroupbox({ Name = "VoidHub", Side = "Left", Icon = "waves" })
 Core:CreateToggle({
     Name = "Notifications", Desc = "Useful feedback, when you need it.",
-    CurrentValue = true, Flag = "AquaHubDemo_Notifications",
+    CurrentValue = true, Flag = "Demo_Notifications",
 })
 Core:CreateSlider({
-    Name = "Intensity", Min = 0, Max = 100, Increment = 5,
-    CurrentValue = 65, Suffix = "%", Flag = "AquaHubDemo_Intensity",
+    Name = "Intensity", Range = { 0, 100 }, Increment = 5,
+    CurrentValue = 65, Suffix = "%", Flag = "Demo_Intensity",
 })
 Core:CreateDropdown({
     Name = "Mode", Options = { "Balanced", "Quiet", "Vivid" }, CurrentOption = "Balanced",
-    AllowNone = false, Flag = "AquaHubDemo_Mode",
-})
--- A toggle that switches itself off when its job is done (like a tween
--- reaching its target): keep the handle, then call :Set(false) from inside.
-local AutoOff
-AutoOff = Core:CreateToggle({
-    Name = "Auto-off demo", Desc = "Runs 3 seconds, then turns itself off.",
-    CurrentValue = false, Flag = "AquaHubDemo_AutoOff",
-    Callback = function(on)
-        if not on then return end
-        task.delay(3, function()
-            if AutoOff.Value then
-                AutoOff:Set(false)
-                Window:Notify({ Title = "Arrived", Content = "The task finished and switched itself off.", Type = "Success", Duration = 3 })
-            end
-        end)
-    end,
+    AllowNone = false, Flag = "Demo_Mode",
 })
 Core:CreateButton({
     Name = "Send notification", Icon = "bell",
     Callback = function()
         Window:Notify({ Title = "VoidHub", Content = "Your interface. Your colors. Your background.", Type = "Success", Duration = 3 })
     end,
+})
+
+-- ----------------------------------------------------------------------------
+-- Toggles that switch themselves off
+-- A toggle's callback gets the toggle as its second argument. When the job
+-- is done (a tween arrives, a loop finishes), call toggle:Set(false) and the
+-- switch flips back off by itself. Window.Flags.<Flag>:Set(false) does the
+-- same from anywhere else in your script.
+-- ----------------------------------------------------------------------------
+local Auto = General:CreateGroupbox({ Name = "Auto-off", Side = "Right", Icon = "timer" })
+Auto:CreateToggle({
+    Name = "Run for 3 seconds", Desc = "Then turns itself off.",
+    CurrentValue = false, Flag = "Demo_AutoOff",
+    Callback = function(on, toggle)
+        if not on then return end
+        task.delay(3, function()
+            if toggle.Value then -- still on: the player didn't stop it early
+                toggle:Set(false)
+                Window:Notify({ Title = "Done", Content = "The task finished and switched itself off.", Type = "Success", Duration = 3 })
+            end
+        end)
+    end,
+})
+Auto:CreateParagraph({
+    Name = "In your script",
+    Content = "Callback = function(on, toggle) ... tween.Completed:Wait() toggle:Set(false) end",
 })
 
 local Identity = Interface:CreateGroupbox({ Name = "Your interface", Side = "Left", Icon = "sparkles" })
@@ -21159,19 +21176,22 @@ Identity:CreateButton({
 Identity:CreateButton({ Name = "Clear background", Callback = function() Window:SetBackgroundStyle({ Source = "None" }) end })
 Identity:CreateStatus({ Name = "Status", Value = "<Success>Ready</Success>", Style = "Row", Pin = true })
 
+-- Elements tab: inputs and readouts on their own pages.
 local Elements = Window:CreateTab({ Name = "Elements", Desc = "Inputs and readouts", Icon = "sliders-horizontal" })
 local InputsPage = Elements:CreateSubTab({ Name = "Inputs", Icon = "keyboard" })
 local ReadoutsPage = Elements:CreateSubTab({ Name = "Readouts", Icon = "gauge" })
+
 local Inputs = InputsPage:CreateGroupbox({ Name = "Inputs", Side = "Left", Icon = "keyboard" })
-Inputs:CreateInput({ Name = "Display name", CurrentValue = "von63rd", Placeholder = "Your name" })
+Inputs:CreateInput({ Name = "Display name", CurrentValue = "von63rd", PlaceholderText = "Your name" })
 Inputs:CreateKeybind({ Name = "Demo shortcut", CurrentKeybind = "F", Callback = function() Window:Notify({ Title = "Shortcut", Content = "Demo key pressed." }) end })
 Inputs:CreateColorPicker({ Name = "Accent color", Color = Color3.fromRGB(230, 230, 230), Callback = function(value) Library:SetTheme({ Accent = value }) end })
-Inputs:CreateStepper({ Name = "Level", Min = 1, Max = 10, Default = 3, Step = 1 })
-local Info = ReadoutsPage:CreateGroupbox({ Name = "Readouts", Side = "Left", Icon = "gauge" })
-Info:CreateProgress({ Name = "Progress", Value = 0.8, Text = "Workspace ready" })
-Info:CreateLabel({ Text = "Every demo control changes UI only." })
-Info:CreateParagraph({ Name = "Need more?", Content = "The full VoidHub API remains available: sub tabs, status lists, tables, logs, order lists, dialogs, configs and more." })
+Inputs:CreateStepper({ Name = "Level", Range = { 1, 10 }, CurrentValue = 3, Increment = 1 })
 
-local Appearance = Window:CreateAppearanceTab({ Name = "Appearance", Icon = "palette" })
+local Info = ReadoutsPage:CreateGroupbox({ Name = "Readouts", Side = "Left", Icon = "gauge" })
+Info:CreateProgress({ Name = "Progress", CurrentValue = 0.8 })
+Info:CreateLabel({ Text = "Every demo control changes UI only." })
+Info:CreateParagraph({ Name = "Need more?", Content = "Tables, logs, status lists, order lists, dialogs and configs are all in llms.txt." })
+
+Window:CreateAppearanceTab({ Name = "Appearance", Icon = "palette" })
 Window:SelectTab(Main)
 return Window

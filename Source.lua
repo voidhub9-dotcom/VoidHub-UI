@@ -1726,7 +1726,9 @@ function Tab:Toggle(opts)
             flashStroke(buttonStroke)
         end
         if not silent then
-            safeCall(opts.Callback, value)
+            -- The toggle itself is passed second, so a callback can switch it off
+            -- when its job is done: function(on, toggle) ... toggle:Set(false) end
+            safeCall(opts.Callback, value, self_)
         end
     end
 
@@ -1743,7 +1745,7 @@ function Tab:Toggle(opts)
 
     local handle = finishElement(self, opts, self_, button, "Toggle")
     if self_.Value then
-        safeCall(opts.Callback, true)
+        safeCall(opts.Callback, true, self_)
     end
     return handle
 end
