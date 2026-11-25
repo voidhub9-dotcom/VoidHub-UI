@@ -8381,7 +8381,32 @@ function Window:SetDefaultTheme(name)
     return pcall(writefile, path, tostring(name))
 end
 
+-- Bumped when saved themes from older versions should be thrown away.
+Library.ThemeStoreVersion = 2
+
+-- Deletes every theme saved by an older version (the themes folder and
+-- the default-theme choice), once per config folder.
+function Window:_discardOldThemes()
+    if not fileApiAvailable() then
+        return
+    end
+    local settings = self:_readConfigSettings()
+    if settings.ThemeStoreVersion == Library.ThemeStoreVersion then
+        return
+    end
+    local folder = themeFolder(self)
+    if type(isfolder) == "function" and isfolder(folder) then
+        if type(listfiles) == "function" and type(delfile) == "function" then
+            for _, path in ipairs(listfiles(folder)) do
+                pcall(delfile, path)
+            end
+        end
+    end
+    self:_writeConfigSettings({ ThemeStoreVersion = Library.ThemeStoreVersion })
+end
+
 function Window:_applyDefaultTheme()
+    pcall(self._discardOldThemes, self)
     local name = self:GetDefaultTheme()
     if name then
         local ok, loaded = pcall(self.LoadTheme, self, name, true)
@@ -11206,6 +11231,7 @@ function Tab:ThemeManager(opts)
                 colors[key] = colorToHex(Theme[key])
             end
             return {
+                ThemeVersion = Library.ThemeStoreVersion,
                 Name = presets:Get() or themes:Get(),
                 Colors = colors,
                 Weather = weather and window.Weather or nil,
@@ -11228,6 +11254,12 @@ function Tab:ThemeManager(opts)
         function look:Set(value)
             if type(value) ~= "table" then
                 return
+            end
+            -- Themes saved before the current theme store are discarded: an
+            -- older config keeps its other look settings but not its palette.
+            if value.ThemeVersion ~= Library.ThemeStoreVersion then
+                value = table.clone(value)
+                value.Colors, value.Name = nil, nil
             end
             if type(value.Colors) == "table" then
                 Library:SetTheme(value.Colors)
