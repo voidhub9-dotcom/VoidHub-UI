@@ -286,7 +286,7 @@ Library.Assets = {
 -- without writefile/getcustomasset, or a failed download, fall back to
 -- Assets.Logo. Set Library.LogoURL = nil before creating a window to always
 -- use the Roblox asset.
-Library.LogoURL = "https://pastevoid.lovable.app/img/0BaOccBJR4.png"
+Library.LogoURL = "https://pastevoid.lovable.app/img/Ru7BnfAV0N.png"
 
 function Library._defaultLogo()
     if Library._logoResolved == nil then
@@ -5895,7 +5895,7 @@ function Window:_buildAmbientLight(body, amount)
         table.insert(self._ambientLayers, { Image = image, Rest = rest })
     end
     -- Sidebar: bright behind the logo, softer behind the profile.
-    glowAt(railClip, UDim2.new(0.5, 0, 0, 6), UDim2.new(3, 0, 0, 230), 0.72)
+    glowAt(railClip, UDim2.new(0.5, 0, 0, 6), UDim2.new(3, 0, 0, 230), 0.78)
     glowAt(railClip, UDim2.new(0.5, 0, 1, 10), UDim2.new(2, 0, 0, 190), 0.85)
     -- Content: a wide pool at the bottom middle, a faint top-right corner.
     local contentGlow = create("Frame", {
@@ -18296,6 +18296,10 @@ function Window:_buildMiniBar()
         Parent = logoTile,
     })
     applyIcon(logo, self._logoIcon, true)
+    if logo:GetAttribute("CustomIcon") then
+        -- Artwork (the V) has its own padding: draw it larger in the tile.
+        logo.Size = UDim2.fromScale(0.86, 0.86)
+    end
     if logo.Image == Assets.Logo then
         -- The Roblox upload's black square fills the round tile instead of
         -- sitting in it as a small dark square.
@@ -19777,9 +19781,11 @@ function Window:Notify(opts)
     -- uses the bell and the accent.
     local typeColor = NOTIFY_COLORS[opts.Type] or Theme.Accent
     local PANEL = 70
+    -- A fixed height fitted to the text below: with automatic height, the
+    -- full-height colour panel fed back into the card's size and it grew to
+    -- twice its height in-game.
     local toast = create("CanvasGroup", {
-        Size = UDim2.new(1, 0, 0, 0),
-        AutomaticSize = Enum.AutomaticSize.Y,
+        Size = UDim2.new(1, 0, 0, 84),
         BackgroundColor3 = Theme.Background,
         BorderSizePixel = 0,
         GroupTransparency = 1,
@@ -19832,7 +19838,6 @@ function Window:Notify(opts)
         Padding = UDim.new(0, 3),
         Parent = inner,
     })
-    create("UISizeConstraint", { MinSize = Vector2.new(0, 84), Parent = inner })
     label({
         Size = UDim2.new(1, 0, 0, 18),
         Text = opts.Title or "Notification",
@@ -19884,6 +19889,19 @@ function Window:Notify(opts)
     closeButton.MouseLeave:Connect(function()
         tween(closeIcon, { ImageColor3 = Theme.Muted }, 0.2)
     end)
+
+    -- Height follows the text, measured in the card's own units so the
+    -- window's UI scale cancels out; never shorter than the icon panel needs.
+    local function fitHeight()
+        local width = self.NotifyHolder.Size.X.Offset
+        local scale = width > 0 and toast.AbsoluteSize.X / width or 1
+        if scale <= 0 then
+            return
+        end
+        toast.Size = UDim2.new(1, 0, 0, math.max(84, math.ceil(inner.AbsoluteSize.Y / scale)))
+    end
+    inner:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitHeight)
+    fitHeight()
 
     local track = create("Frame", {
         AnchorPoint = Vector2.new(0, 1),
