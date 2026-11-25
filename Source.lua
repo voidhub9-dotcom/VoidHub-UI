@@ -453,9 +453,9 @@ local TAB_TILE_HEIGHT = TOUCH and 44 or 38
 -- The default sidebar is a narrow rail of big tiles, icon over label.
 -- SidebarStyle = "Wide" keeps the classic wide sidebar.
 Library.Rail = {
-    Width = 84,
-    Tile = TOUCH and 66 or 62,
-    Profile = 84,
+    Width = 108,
+    Tile = TOUCH and 86 or 82,
+    Profile = 100,
 }
 local CARD_HEIGHT = TOUCH and 54 or 48
 local CARD_HEIGHT_DESC = TOUCH and 70 or 64
@@ -842,7 +842,7 @@ Library.IconGlow = 1
 function Library._iconBloom(image, on)
     local parent = image.Parent
     local layers = {}
-    for index, spec in ipairs({ { 2.6, 0.72, true } }) do
+    for index, spec in ipairs({ { 2.6, 0.62, true } }) do
         local layer = create("ImageLabel", {
             Name = "IconBloom" .. index,
             AnchorPoint = Vector2.new(0.5, 0.5),
@@ -4785,8 +4785,8 @@ function Library.Window(_, opts)
         local logo = create("ImageLabel", {
             Name = "Logo",
             AnchorPoint = Vector2.new(0.5, 0.5),
-            Position = UDim2.fromScale(0.5, 0.5),
-            Size = UDim2.fromOffset(34, 34),
+            Position = UDim2.new(0.5, 0, 0.5, 4),
+            Size = UDim2.fromOffset(40, 40),
             BackgroundTransparency = 1,
             Image = "",
             ImageColor3 = Theme.Accent,
@@ -4798,9 +4798,9 @@ function Library.Window(_, opts)
         if logo:GetAttribute("CustomIcon") then
             -- Uploaded artwork usually carries its own square backdrop;
             -- round its corners so it reads as an app icon, not a box.
-            logo.Size = UDim2.fromOffset(40, 40)
+            logo.Size = UDim2.fromOffset(46, 46)
             logo.ScaleType = Enum.ScaleType.Crop
-            corner(logo, UDim.new(0, 10))
+            corner(logo, UDim.new(0, 12))
         end
         Library._iconBloom(logo)
     else
@@ -4851,14 +4851,14 @@ function Library.Window(_, opts)
         end
     end
 
-    create("Frame", {
-        Position = UDim2.fromOffset(12, HEADER_HEIGHT - 1),
-        Size = UDim2.new(1, -24, 0, 1),
-        BackgroundColor3 = Theme.Stroke,
-        BorderSizePixel = 0,
-        Parent = sidebar,
-    })
     if not rail then
+        create("Frame", {
+            Position = UDim2.fromOffset(12, HEADER_HEIGHT - 1),
+            Size = UDim2.new(1, -24, 0, 1),
+            BackgroundColor3 = Theme.Stroke,
+            BorderSizePixel = 0,
+            Parent = sidebar,
+        })
         label({
             Position = UDim2.fromOffset(16, HEADER_HEIGHT + 9),
             Size = UDim2.new(1, -32, 0, 16),
@@ -4870,7 +4870,7 @@ function Library.Window(_, opts)
         })
     end
     local profileEnabled = opts.Profile ~= false
-    local tabTop = rail and HEADER_HEIGHT + 8 or HEADER_HEIGHT + 30
+    local tabTop = rail and HEADER_HEIGHT + 14 or HEADER_HEIGHT + 30
     local profileRoom = rail and Library.Rail.Profile or PROFILE_HEIGHT
     local tabList = create("ScrollingFrame", {
         Name = "Tabs",
@@ -14848,8 +14848,8 @@ function Window:_buildProfile(sidebar)
         local head = avatar(self, card, {
             AnchorPoint = Vector2.new(0.5, 0),
             Position = UDim2.new(0.5, 0, 0, 6),
-            Size = UDim2.fromOffset(32, 32),
-        })
+            Size = UDim2.fromOffset(40, 40),
+        }, Theme.Text, 0.75, 1)
         local online = create("Frame", {
             AnchorPoint = Vector2.new(1, 1),
             Position = UDim2.new(1, 1, 1, 1),
@@ -14862,19 +14862,19 @@ function Window:_buildProfile(sidebar)
         corner(online, UDim.new(1, 0))
         stroke(online, Theme.Surface, 0, 2)
         local name = label({
-            Position = UDim2.fromOffset(2, 42),
-            Size = UDim2.new(1, -4, 0, 13),
-            TextSize = 11,
+            Position = UDim2.fromOffset(2, 52),
+            Size = UDim2.new(1, -4, 0, 15),
+            TextSize = 12,
             FontFace = Fonts.Bold,
             TextXAlignment = Enum.TextXAlignment.Center,
             Parent = card,
         })
         self:_trackName(name, "Display")
         label({
-            Position = UDim2.fromOffset(2, 55),
-            Size = UDim2.new(1, -4, 0, 12),
+            Position = UDim2.fromOffset(2, 67),
+            Size = UDim2.new(1, -4, 0, 13),
             Text = self.Title,
-            TextSize = 10,
+            TextSize = 11,
             FontFace = Fonts.Regular,
             TextColor3 = Theme.Muted,
             TextXAlignment = Enum.TextXAlignment.Center,
@@ -16674,7 +16674,7 @@ function Window:Tab(opts, icon)
         LayoutOrder = #self.Tabs + 1,
         Parent = self._tabStack,
     })
-    corner(button, UDim.new(0, rail and 10 or 8))
+    corner(button, UDim.new(0, rail and 12 or 8))
     tab._button = button
     tab._stroke = stroke(button, Theme.Stroke, 1)
     tab._marker = create("Frame", {
@@ -16694,8 +16694,8 @@ function Window:Tab(opts, icon)
         -- Rail: the icon sits centred above the label. Wide: it leads the row.
         local iconImage = create("ImageLabel", {
             AnchorPoint = Vector2.new(0.5, 0.5),
-            Position = rail and UDim2.new(0.5, 0, 0, 23) or UDim2.new(0, 23, 0.5, 0),
-            Size = rail and UDim2.fromOffset(20, 20) or UDim2.fromOffset(16, 16),
+            Position = rail and UDim2.new(0.5, 0, 0, 31) or UDim2.new(0, 23, 0.5, 0),
+            Size = rail and UDim2.fromOffset(26, 26) or UDim2.fromOffset(16, 16),
             BackgroundTransparency = 1,
             ImageColor3 = Theme.Muted,
             ScaleType = Enum.ScaleType.Fit,
@@ -16712,10 +16712,10 @@ function Window:Tab(opts, icon)
     end
     if rail then
         tab._label = label({
-            Position = UDim2.fromOffset(4, hasIcon and 38 or 0),
-            Size = UDim2.new(1, -8, hasIcon and 0 or 1, hasIcon and 14 or 0),
+            Position = UDim2.fromOffset(4, hasIcon and 52 or 0),
+            Size = UDim2.new(1, -8, hasIcon and 0 or 1, hasIcon and 17 or 0),
             Text = tab.Name,
-            TextSize = 11,
+            TextSize = 13,
             TextColor3 = Theme.Muted,
             TextXAlignment = Enum.TextXAlignment.Center,
             Parent = button,
