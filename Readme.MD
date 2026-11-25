@@ -1,9 +1,6 @@
 <div align="center">
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="design/voidhub-logo.png" />
-  <img src="design/voidhub-logo-on-black.png" width="104" alt="Silver VoidHub V" />
-</picture>
+<img src="design/voidhub-logo.png" width="104" alt="Silver VoidHub V" />
 
 # VoidHub
 
