@@ -292,35 +292,50 @@ Library.Assets = {
 -- Assets.Logo. Set Library.LogoURL = nil before creating a window to always
 -- use the Roblox asset.
 Library.LogoURL = "https://pastevoid.lovable.app/img/Ru7BnfAV0N.png"
+-- The white Discord mark, drawn on Discord's blurple on Home.
+Library.DiscordLogoURL = "https://pastevoid.lovable.app/img/klNLY5eRIn.png"
 
-function Library._defaultLogo()
-    if Library._logoResolved == nil then
-        Library._logoResolved = false
-        local ok, asset = pcall(function()
-            if type(Library.LogoURL) ~= "string" or type(writefile) ~= "function" or type(isfile) ~= "function"
-                or typeof(getcustomasset) ~= "function" then
+-- Downloads an image once into VoidHub/ and returns a getcustomasset id, or
+-- nil when the executor can't (no writefile / getcustomasset) or the
+-- download isn't a PNG. Cached per URL for the session.
+Library._webImages = {}
+function Library._webImage(url)
+    if type(url) ~= "string" then
+        return nil
+    end
+    local cached = Library._webImages[url]
+    if cached ~= nil then
+        return cached or nil
+    end
+    Library._webImages[url] = false
+    local ok, asset = pcall(function()
+        if type(writefile) ~= "function" or type(isfile) ~= "function" or typeof(getcustomasset) ~= "function" then
+            return nil
+        end
+        local path = "VoidHub/img-" .. (url:match("([%w_-]+)%.png$") or "web") .. ".png"
+        if not isfile(path) then
+            local body = game:HttpGet(url, true)
+            -- Only a real PNG is saved: an error page must not become an image.
+            if type(body) ~= "string" or #body < 128 or body:sub(2, 4) ~= "PNG" then
                 return nil
             end
-            local path = "VoidHub/logo-" .. (Library.LogoURL:match("([%w_-]+)%.png$") or "web") .. ".png"
-            if not isfile(path) then
-                local body = game:HttpGet(Library.LogoURL, true)
-                -- Only a real PNG is saved: an error page must not become the logo.
-                if type(body) ~= "string" or #body < 128 or body:sub(2, 4) ~= "PNG" then
-                    return nil
-                end
-                if type(isfolder) == "function" and type(makefolder) == "function" and not isfolder("VoidHub") then
-                    makefolder("VoidHub")
-                end
-                writefile(path, body)
+            if type(isfolder) == "function" and type(makefolder) == "function" and not isfolder("VoidHub") then
+                makefolder("VoidHub")
             end
-            return getcustomasset(path)
-        end)
-        if ok and type(asset) == "string" and asset ~= "" then
-            Library._logoResolved = asset
+            writefile(path, body)
         end
+        return getcustomasset(path)
+    end)
+    if ok and type(asset) == "string" and asset ~= "" then
+        Library._webImages[url] = asset
+        return asset
     end
+    return nil
+end
+
+function Library._defaultLogo()
     -- Library.Assets, not the Assets local: that is declared further down.
-    return Library._logoResolved or Library.Assets.Logo
+    return Library._webImage(Library.LogoURL) or Library.Assets.Logo
 end
 
 local LUCIDE_URL = "https://raw.githubusercontent.com/Footagesus/Icons/refs/heads/main/lucide/dist/Icons.lua"
@@ -15872,17 +15887,13 @@ function Window:_homeLink(card, order, icon, title, text, buttonIcon, callback)
     return row, titleLabel, textLabel
 end
 
--- Builds the links card into parent, or nothing when there are no links and
--- the feature list is off. Returns the card (or nil) and the feature refresh.
+-- The right-hand column of Home: a Discord card in Discord's own colour
+-- (its logo on blurple, the invite, a Copy invite button), a feature-list
+-- card that opens the searchable list, and a plain Links card for anything
+-- else. Returns the column (or nil when empty) and the feature refresh.
+local DISCORD_BLURPLE = Color3.fromRGB(88, 101, 242)
 function Window:_homeLinks(parent, opts, order)
     local links = {}
-    if opts.Discord then
-        table.insert(links, {
-            Icon = opts.DiscordIcon or "message-circle",
-            Title = opts.DiscordTitle or "Community",
-            Text = opts.Discord,
-        })
-    end
     if opts.Website then
         table.insert(links, {
             Icon = opts.WebsiteIcon or "globe",
@@ -15894,50 +15905,328 @@ function Window:_homeLinks(parent, opts, order)
         table.insert(links, link)
     end
     local features = opts.Features
-    if #links == 0 and features == false then
+    if not opts.Discord and #links == 0 and features == false then
         return nil, function() end
     end
-    local card = self:_homeCard(parent, order)
-    self:_homeCaption(card, "Links", 0)
-    for index, link in ipairs(links) do
-        local action = type(link.Callback) == "function"
-        self:_homeLink(card, index, link.Icon or "link", link.Title or "", link.Text or "", action and "arrow-up-right" or "copy", function()
-            if action then
-                safeCall(link.Callback)
+    local column = create("Frame", {
+        Size = UDim2.new(1, 0, 0, 0),
+        AutomaticSize = Enum.AutomaticSize.Y,
+        BackgroundTransparency = 1,
+        LayoutOrder = order,
+        Parent = parent,
+    })
+    create("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 10), Parent = column })
+
+    -- A rounded pill button: filled white or quiet.
+    local function pillButton(parent_, text, icon, filled, callback)
+        local button = create("TextButton", {
+            Size = UDim2.fromOffset(0, 32),
+            AutomaticSize = Enum.AutomaticSize.X,
+            BackgroundColor3 = filled and Color3.new(1, 1, 1) or Theme.Surface3,
+            BackgroundTransparency = filled and 0 or 0.2,
+            BorderSizePixel = 0,
+            Text = "",
+            AutoButtonColor = false,
+            Parent = parent_,
+        })
+        corner(button, UDim.new(1, 0))
+        padding(button, 14, 14)
+        create("UIListLayout", {
+            FillDirection = Enum.FillDirection.Horizontal,
+            VerticalAlignment = Enum.VerticalAlignment.Center,
+            Padding = UDim.new(0, 7),
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            Parent = button,
+        })
+        local ink = filled and Color3.fromRGB(17, 17, 17) or Theme.Text
+        local image = create("ImageLabel", {
+            Size = UDim2.fromOffset(14, 14),
+            BackgroundTransparency = 1,
+            ImageColor3 = ink,
+            ScaleType = Enum.ScaleType.Fit,
+            LayoutOrder = 1,
+            Parent = button,
+        })
+        applyIcon(image, icon)
+        label({
+            Size = UDim2.fromOffset(0, 32),
+            AutomaticSize = Enum.AutomaticSize.X,
+            Text = text,
+            TextSize = 12,
+            FontFace = Fonts.Bold,
+            TextColor3 = ink,
+            TextTruncate = Enum.TextTruncate.None,
+            LayoutOrder = 2,
+            Parent = button,
+        })
+        button.MouseEnter:Connect(function()
+            tween(button, { BackgroundTransparency = filled and 0.12 or 0 }, 0.15)
+        end)
+        button.MouseLeave:Connect(function()
+            tween(button, { BackgroundTransparency = filled and 0 or 0.2 }, 0.2)
+        end)
+        button.MouseButton1Click:Connect(function()
+            ripple(button)
+            safeCall(callback)
+        end)
+        return button
+    end
+    local function baseCard(order_, height)
+        local card = create("Frame", {
+            Size = UDim2.new(1, 0, 0, height),
+            BackgroundColor3 = Theme.Surface,
+            BorderSizePixel = 0,
+            ClipsDescendants = true,
+            LayoutOrder = order_,
+            Parent = column,
+        })
+        card:SetAttribute("NoDrag", true)
+        corner(card, UDim.new(0, 14))
+        stroke(card, Theme.Text, 0.93)
+        return card
+    end
+
+    if opts.Discord then
+        local invite = tostring(opts.Discord)
+        local card = baseCard(1, 118)
+        -- Discord's blurple fading in from the left, and a soft glow.
+        local wash = create("Frame", {
+            Size = UDim2.fromScale(1, 1),
+            BackgroundColor3 = DISCORD_BLURPLE,
+            BorderSizePixel = 0,
+            Parent = card,
+        })
+        create("UIGradient", {
+            Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 0.55),
+                NumberSequenceKeypoint.new(0.7, 0.92),
+                NumberSequenceKeypoint.new(1, 1),
+            }),
+            Parent = wash,
+        })
+        create("ImageLabel", {
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.fromOffset(36, 36),
+            Size = UDim2.fromOffset(150, 150),
+            BackgroundTransparency = 1,
+            Image = Assets.Glow,
+            ImageColor3 = DISCORD_BLURPLE,
+            ImageTransparency = 0.55,
+            Parent = card,
+        })
+        local tile = create("Frame", {
+            Position = UDim2.fromOffset(16, 16),
+            Size = UDim2.fromOffset(42, 42),
+            BackgroundColor3 = DISCORD_BLURPLE,
+            BorderSizePixel = 0,
+            ZIndex = 2,
+            Parent = card,
+        })
+        corner(tile, UDim.new(0, 12))
+        local mark = create("ImageLabel", {
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.fromScale(0.5, 0.5),
+            Size = UDim2.fromOffset(24, 24),
+            BackgroundTransparency = 1,
+            ScaleType = Enum.ScaleType.Fit,
+            ZIndex = 2,
+            Parent = tile,
+        })
+        task.spawn(function()
+            local asset = opts.DiscordIcon or Library._webImage(Library.DiscordLogoURL)
+            if asset then
+                applyIcon(mark, asset, true)
+                mark.ImageColor3 = Color3.new(1, 1, 1)
             else
-                self:CopyToClipboard(link.Copy or link.Text, link.Title)
+                applyIcon(mark, "message-circle")
+                mark.ImageColor3 = Color3.new(1, 1, 1)
             end
         end)
+        label({
+            Position = UDim2.fromOffset(70, 17),
+            Size = UDim2.new(1, -86, 0, 20),
+            Text = opts.DiscordTitle or "Discord",
+            TextSize = 16,
+            FontFace = Fonts.Bold,
+            ZIndex = 2,
+            Parent = card,
+        })
+        label({
+            Position = UDim2.fromOffset(70, 38),
+            Size = UDim2.new(1, -86, 0, 15),
+            Text = opts.DiscordText or "Updates, support and new scripts",
+            TextSize = 12,
+            FontFace = Fonts.Regular,
+            TextColor3 = Theme.Muted,
+            ZIndex = 2,
+            Parent = card,
+        })
+        local actions = create("Frame", {
+            Position = UDim2.fromOffset(16, 72),
+            Size = UDim2.new(1, -32, 0, 32),
+            BackgroundTransparency = 1,
+            ZIndex = 2,
+            Parent = card,
+        })
+        create("UIListLayout", {
+            FillDirection = Enum.FillDirection.Horizontal,
+            VerticalAlignment = Enum.VerticalAlignment.Center,
+            Padding = UDim.new(0, 10),
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            Parent = actions,
+        })
+        pillButton(actions, "Copy invite", "copy", true, function()
+            self:CopyToClipboard(invite, "Discord invite")
+        end).LayoutOrder = 1
+        label({
+            Size = UDim2.new(0, 0, 0, 32),
+            AutomaticSize = Enum.AutomaticSize.X,
+            Text = (invite:gsub("^https?://", "")),
+            TextSize = 11,
+            FontFace = Fonts.Regular,
+            TextColor3 = Theme.Muted,
+            TextTruncate = Enum.TextTruncate.None,
+            LayoutOrder = 2,
+            Parent = actions,
+        })
     end
+
     local refresh = function() end
     if features ~= false then
         if type(features) == "table" then
             self._featuresTitle = features.Title
             self._features = features.List or (#features > 0 and features or nil)
         end
-        local _, _, text_ = self:_homeLink(card, 100,
-            type(features) == "table" and features.Icon or "list-checks",
-            type(features) == "table" and features.Title or "Feature list",
-            "", "chevron-right", function()
-                self:ShowFeatures()
-            end)
+        local card = baseCard(2, 118)
+        create("ImageLabel", {
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.fromOffset(36, 36),
+            Size = UDim2.fromOffset(150, 150),
+            BackgroundTransparency = 1,
+            Image = Assets.Glow,
+            ImageColor3 = Theme.Text,
+            ImageTransparency = 0.9,
+            Parent = card,
+        })
+        local tile = create("Frame", {
+            Position = UDim2.fromOffset(16, 16),
+            Size = UDim2.fromOffset(42, 42),
+            BackgroundColor3 = Theme.Surface3,
+            BorderSizePixel = 0,
+            Parent = card,
+        })
+        corner(tile, UDim.new(0, 12))
+        local icon = create("ImageLabel", {
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.fromScale(0.5, 0.5),
+            Size = UDim2.fromOffset(20, 20),
+            BackgroundTransparency = 1,
+            ImageColor3 = Theme.Accent,
+            ScaleType = Enum.ScaleType.Fit,
+            ZIndex = 2,
+            Parent = tile,
+        })
+        applyIcon(icon, type(features) == "table" and features.Icon or "list-checks")
+        Library._iconBloom(icon)
+        label({
+            Position = UDim2.fromOffset(70, 17),
+            Size = UDim2.new(1, -86, 0, 20),
+            Text = type(features) == "table" and features.Title or "All features",
+            TextSize = 16,
+            FontFace = Fonts.Bold,
+            Parent = card,
+        })
+        local summary = label({
+            Position = UDim2.fromOffset(70, 38),
+            Size = UDim2.new(1, -86, 0, 15),
+            Text = "",
+            TextSize = 12,
+            FontFace = Fonts.Regular,
+            TextColor3 = Theme.Muted,
+            Parent = card,
+        })
+        -- Looks like a search field; opens the full searchable list.
+        local field = create("TextButton", {
+            Position = UDim2.fromOffset(16, 72),
+            Size = UDim2.new(1, -32, 0, 32),
+            BackgroundColor3 = Theme.Background,
+            BorderSizePixel = 0,
+            Text = "",
+            AutoButtonColor = false,
+            Parent = card,
+        })
+        corner(field, UDim.new(1, 0))
+        local fieldStroke = stroke(field, Theme.Text, 0.9)
+        local glass = create("ImageLabel", {
+            AnchorPoint = Vector2.new(0, 0.5),
+            Position = UDim2.new(0, 12, 0.5, 0),
+            Size = UDim2.fromOffset(14, 14),
+            BackgroundTransparency = 1,
+            ImageColor3 = Theme.Muted,
+            ScaleType = Enum.ScaleType.Fit,
+            Parent = field,
+        })
+        applyIcon(glass, "search")
+        label({
+            Position = UDim2.fromOffset(34, 0),
+            Size = UDim2.new(1, -60, 1, 0),
+            Text = "Search every feature",
+            TextSize = 12,
+            FontFace = Fonts.Regular,
+            TextColor3 = Theme.Muted,
+            Parent = field,
+        })
+        local go = create("ImageLabel", {
+            AnchorPoint = Vector2.new(1, 0.5),
+            Position = UDim2.new(1, -12, 0.5, 0),
+            Size = UDim2.fromOffset(14, 14),
+            BackgroundTransparency = 1,
+            ImageColor3 = Theme.Muted,
+            ScaleType = Enum.ScaleType.Fit,
+            Parent = field,
+        })
+        applyIcon(go, "arrow-right")
+        field.MouseEnter:Connect(function()
+            tween(fieldStroke, { Transparency = 0.75 }, 0.15)
+        end)
+        field.MouseLeave:Connect(function()
+            tween(fieldStroke, { Transparency = 0.9 }, 0.2)
+        end)
+        field.MouseButton1Click:Connect(function()
+            self:ShowFeatures()
+        end)
         refresh = function()
             local desc = type(features) == "table" and features.Desc
-            text_.Text = desc or (self:_featureSummary())
+            summary.Text = desc or (self:_featureSummary())
         end
         task.defer(refresh)
     end
-    -- The first row needs no rule above it.
-    local first = nil
-    for _, child in ipairs(card:GetChildren()) do
-        if child:IsA("Frame") and child:FindFirstChild("Rule") and (not first or child.LayoutOrder < first.LayoutOrder) then
-            first = child
+
+    if #links > 0 then
+        local card = self:_homeCard(column, 3)
+        card.BackgroundColor3 = Theme.Surface
+        self:_homeCaption(card, "Links", 0)
+        for index, link in ipairs(links) do
+            local action = type(link.Callback) == "function"
+            self:_homeLink(card, index, link.Icon or "link", link.Title or "", link.Text or "", action and "arrow-up-right" or "copy", function()
+                if action then
+                    safeCall(link.Callback)
+                else
+                    self:CopyToClipboard(link.Copy or link.Text, link.Title)
+                end
+            end)
+        end
+        local first = nil
+        for _, child in ipairs(card:GetChildren()) do
+            if child:IsA("Frame") and child:FindFirstChild("Rule") and (not first or child.LayoutOrder < first.LayoutOrder) then
+                first = child
+            end
+        end
+        if first then
+            first.Rule.Visible = false
         end
     end
-    if first then
-        first.Rule.Visible = false
-    end
-    return card, refresh
+    return column, refresh
 end
 
 -- A quiet status line under the cards: executor support on the left, the
