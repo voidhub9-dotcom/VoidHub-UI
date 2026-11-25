@@ -11553,7 +11553,7 @@ function Tab:SettingsPage(opts)
 
     ---------------------------------------------------------------- slots
     local box = tab:Groupbox({ Name = "Configs", Icon = "folder", Side = "Left" })
-    local COLS, CELL_H, GAP = 3, 98, 8
+    local COLS, CELL_H, GAP = 3, 74, 8
     local MAX_SLOTS = tonumber(opts.Slots) or 6
     local metaPath = window.ConfigFolder .. "/slots.meta"
     local meta = {}
@@ -11585,7 +11585,7 @@ function Tab:SettingsPage(opts)
 
     local gridCard = card(box, "Frame", 2 * CELL_H + GAP + 4, {})
     gridCard.BackgroundTransparency = 1
-    local grid = create("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Parent = gridCard })
+    local grid = create("Frame", { Position = UDim2.fromOffset(12, 0), Size = UDim2.new(1, -24, 1, 0), BackgroundTransparency = 1, Parent = gridCard })
     create("UIGridLayout", {
         CellSize = UDim2.new(1 / COLS, -math.ceil(GAP * (COLS - 1) / COLS), 0, CELL_H),
         CellPadding = UDim2.fromOffset(GAP, GAP),
@@ -11596,20 +11596,27 @@ function Tab:SettingsPage(opts)
     local nameInput
     local refresh
 
-    local function smallButton(parent, text, order, danger, onClick)
-        local b = create("TextButton", {
-            Size = UDim2.new(0.25, -4, 1, 0),
+    local function smallButton(parent, icon, order, danger, onClick)
+        local b = create("ImageButton", {
+            Size = UDim2.fromOffset(22, 22),
             BackgroundColor3 = Theme.Surface3,
+            BackgroundTransparency = 0.2,
             BorderSizePixel = 0,
             AutoButtonColor = false,
-            Text = text,
-            TextSize = 12,
-            FontFace = Fonts.SemiBold or Fonts.Medium,
-            TextColor3 = danger and Color3.fromRGB(255, 138, 138) or Theme.Text,
+            ImageColor3 = danger and Color3.fromRGB(255, 138, 138) or Theme.Text,
             LayoutOrder = order,
             Parent = parent,
         })
         corner(b, UDim.new(0, 6))
+        local glyph = create("ImageLabel", {
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.fromScale(0.5, 0.5),
+            Size = UDim2.fromOffset(13, 13),
+            BackgroundTransparency = 1,
+            ImageColor3 = danger and Color3.fromRGB(255, 138, 138) or Theme.Text,
+            Parent = b,
+        })
+        applyIcon(glyph, icon)
         b.MouseButton1Click:Connect(function()
             task.spawn(onClick)
         end)
@@ -11648,10 +11655,10 @@ function Tab:SettingsPage(opts)
         local st = stroke(cell, loaded and Theme.Text or Theme.Stroke, loaded and 0.55 or 0, 1)
         if not name then
             st.Transparency = 0.2
-            local first = index == #window:ListConfigs() + 1
+            local first = true
             label({
                 Size = UDim2.fromScale(1, 1),
-                Text = first and "+  New slot" or "empty",
+                Text = "+  New slot",
                 TextColor3 = Theme.Muted,
                 TextTransparency = first and 0 or 0.5,
                 TextSize = 13,
@@ -11681,7 +11688,7 @@ function Tab:SettingsPage(opts)
         label({
             Position = UDim2.fromOffset(10, 8),
             Size = UDim2.new(1, -20, 0, 12),
-            Text = ("SLOT %d%s"):format(index, loaded and " · LOADED" or ""),
+            Text = ("SLOT %d"):format(index),
             TextSize = 10,
             TextColor3 = Theme.Muted,
             FontFace = Fonts.SemiBold or Fonts.Medium,
@@ -11696,9 +11703,9 @@ function Tab:SettingsPage(opts)
             Parent = cell,
         })
         label({
-            Position = UDim2.fromOffset(10, 41),
-            Size = UDim2.new(1, -20, 0, 14),
-            Text = ago(meta[name]),
+            Position = UDim2.fromOffset(10, 39),
+            Size = UDim2.new(1, -124, 0, 14),
+            Text = (loaded and "loaded · " or "") .. ago(meta[name]),
             TextSize = 11,
             TextColor3 = Theme.Muted,
             FontFace = Fonts.Regular,
@@ -11707,8 +11714,8 @@ function Tab:SettingsPage(opts)
         if auto then
             local ribbon = create("Frame", {
                 AnchorPoint = Vector2.new(0.5, 0.5),
-                Position = UDim2.new(1, -18, 0, 16),
-                Size = UDim2.fromOffset(110, 16),
+                Position = UDim2.new(1, -14, 0, 12),
+                Size = UDim2.fromOffset(80, 13),
                 Rotation = 35,
                 BackgroundColor3 = Theme.Text,
                 BorderSizePixel = 0,
@@ -11716,7 +11723,7 @@ function Tab:SettingsPage(opts)
             })
             label({
                 Size = UDim2.fromScale(1, 1),
-                Text = "AUTOLOAD",
+                Text = "AUTO",
                 TextSize = 9,
                 TextColor3 = Theme.Background,
                 FontFace = Fonts.Bold or Fonts.SemiBold or Fonts.Medium,
@@ -11725,19 +11732,20 @@ function Tab:SettingsPage(opts)
             })
         end
         local bar = create("Frame", {
-            AnchorPoint = Vector2.new(0, 1),
-            Position = UDim2.new(0, 8, 1, -8),
-            Size = UDim2.new(1, -16, 0, 24),
+            AnchorPoint = Vector2.new(1, 0.5),
+            Position = UDim2.new(1, -8, 0, 46),
+            Size = UDim2.new(0, 104, 0, 22),
             BackgroundTransparency = 1,
             Parent = cell,
         })
         create("UIListLayout", {
             FillDirection = Enum.FillDirection.Horizontal,
-            Padding = UDim.new(0, 5),
+            HorizontalAlignment = Enum.HorizontalAlignment.Right,
+            Padding = UDim.new(0, 4),
             SortOrder = Enum.SortOrder.LayoutOrder,
             Parent = bar,
         })
-        smallButton(bar, loaded and "Save" or "Load", 1, false, function()
+        smallButton(bar, loaded and "save" or "play", 1, false, function()
             if loaded then
                 local ok, err = window:SaveConfig(name)
                 if ok then meta[name] = os.time() saveMeta() end
@@ -11748,12 +11756,12 @@ function Tab:SettingsPage(opts)
             end
             refresh()
         end)
-        smallButton(bar, auto and "★" or "☆", 2, false, function()
+        smallButton(bar, auto and "star-off" or "star", 2, false, function()
             window:SetAutoload(auto and nil or name)
             notify(true, auto and "Autoload off" or "Autoload", auto and "Nothing loads on launch" or (name .. " loads on launch"))
             refresh()
         end)
-        smallButton(bar, "✎", 3, false, function()
+        smallButton(bar, "pencil", 3, false, function()
             local newName = nameInput and trim(nameInput:Get() or "") or ""
             if newName == "" or newName == name then
                 notify(false, "Rename", "Type the new name in the box below first")
@@ -11768,7 +11776,7 @@ function Tab:SettingsPage(opts)
             notify(ok ~= false, ok ~= false and "Renamed" or "Rename failed", ok ~= false and newName or tostring(err))
             refresh()
         end)
-        smallButton(bar, "✕", 4, true, function()
+        smallButton(bar, "trash-2", 4, true, function()
             local ok, err = window:DeleteConfig(name)
             if ok ~= false then
                 meta[name] = nil
@@ -11786,10 +11794,10 @@ function Tab:SettingsPage(opts)
             end
         end
         local names = window:ListConfigs()
-        local slots = math.max(MAX_SLOTS, #names + 1)
+        local slots = #names + 1
         local rows = math.ceil(slots / COLS)
         gridCard.Size = UDim2.new(1, 0, 0, rows * CELL_H + (rows - 1) * GAP + 4)
-        for i = 1, rows * COLS do
+        for i = 1, slots do
             buildSlot(i, names[i])
         end
         window._controlsDirty = true
@@ -11900,12 +11908,17 @@ function Tab:SettingsPage(opts)
 
     ---------------------------------------------------------------- themes
     local themeBox = tab:Groupbox({ Name = "Theme", Icon = "palette", Side = "Right" })
-    local names = presetNames()
+    local all = presetNames()
+    local featured = { "VoidHub", "Aqua", "Midnight", "Nebula", "Crimson", "Emerald", "Gold", "Sakura" }
+    local names = {}
+    for _, n in ipairs(featured) do
+        if Library.ThemePresets[n] then table.insert(names, n) end
+    end
     local themeCard = card(themeBox, "Frame", 10, {})
     themeCard.BackgroundTransparency = 1
-    local tgrid = create("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Parent = themeCard })
+    local tgrid = create("Frame", { Position = UDim2.fromOffset(12, 0), Size = UDim2.new(1, -24, 1, 0), BackgroundTransparency = 1, Parent = themeCard })
     create("UIGridLayout", {
-        CellSize = UDim2.new(0.25, -6, 0, 58),
+        CellSize = UDim2.new(0.25, -6, 0, 50),
         CellPadding = UDim2.fromOffset(8, 8),
         SortOrder = Enum.SortOrder.LayoutOrder,
         Parent = tgrid,
@@ -11937,7 +11950,7 @@ function Tab:SettingsPage(opts)
         st.Parent = cell
         for k = 0, 1 do
             local bar = Instance.new("Frame")
-            bar.Position = UDim2.new(k * 0.5, 8 - k * 2, 0, 10)
+            bar.Position = UDim2.new(k * 0.5, 8 - k * 2, 0, 9)
             bar.Size = UDim2.new(0.5, -10, 0, 6)
             bar.BackgroundColor3 = accent
             bar.BackgroundTransparency = k * 0.55
@@ -11949,7 +11962,7 @@ function Tab:SettingsPage(opts)
         end
         local caption = Instance.new("TextLabel")
         caption.BackgroundTransparency = 1
-        caption.Position = UDim2.new(0, 8, 1, -24)
+        caption.Position = UDim2.new(0, 8, 1, -22)
         caption.Size = UDim2.new(1, -16, 0, 18)
         caption.Text = name
         caption.TextSize = 11
@@ -11970,8 +11983,21 @@ function Tab:SettingsPage(opts)
         end)
     end
     local rows = math.ceil(#names / 4)
-    themeCard.Size = UDim2.new(1, 0, 0, rows * 58 + (rows - 1) * 8)
+    themeCard.Size = UDim2.new(1, 0, 0, rows * 50 + (rows - 1) * 8)
     paintThemes()
+    themeBox:Dropdown({
+        Name = "All themes",
+        Options = all,
+        Default = Library.ThemeName,
+        AllowNone = false,
+        Callback = function(name)
+            if name and name ~= Library.ThemeName then
+                Library:SetTheme(name)
+                pcall(function() window:SetDefaultTheme(name) end)
+                paintThemes()
+            end
+        end,
+    })
 
     ---------------------------------------------------------------- interface
     local ui = tab:Groupbox({ Name = "Interface", Icon = "monitor", Side = "Right" })
