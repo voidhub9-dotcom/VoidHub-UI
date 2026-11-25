@@ -8934,14 +8934,15 @@ function Tab:Groupbox(opts, icon)
     local box = create("Frame", {
         Size = UDim2.new(1, 0, 0, 0),
         AutomaticSize = Enum.AutomaticSize.Y,
-        BackgroundColor3 = Theme.Surface2,
+        BackgroundColor3 = Theme.Surface,
         BorderSizePixel = 0,
         LayoutOrder = set.Counts[side],
         Parent = side == 1 and set.Left or set.Right,
     })
     box:SetAttribute("NoDrag", true)
     corner(box, UDim.new(0, 10))
-    stroke(box, Theme.Stroke, 0.08)
+    -- Airflow style: a darker panel with a faint edge.
+    stroke(box, Theme.Text, 0.94)
     create("UIListLayout", {
         SortOrder = Enum.SortOrder.LayoutOrder,
         Parent = box,
@@ -8950,7 +8951,7 @@ function Tab:Groupbox(opts, icon)
     -- Let the panel read as one surface. The icon and hairline separate
     -- its heading from the controls instead of a second full-width fill.
     local header = create("TextButton", {
-        Size = UDim2.new(1, 0, 0, TOUCH and 44 or 42),
+        Size = UDim2.new(1, 0, 0, TOUCH and 42 or 38),
         BackgroundTransparency = 1,
         BorderSizePixel = 0,
         Text = "",
@@ -8960,11 +8961,13 @@ function Tab:Groupbox(opts, icon)
     })
     local titleX = 14
     if opts.Icon then
+        -- The icon sits at the right end of the header and glows; the title
+        -- leads on the left.
         local iconTile = create("Frame", {
-            AnchorPoint = Vector2.new(0, 0.5),
-            Position = UDim2.new(0, 14, 0.5, 0),
-            Size = UDim2.fromOffset(24, 24),
-            BackgroundColor3 = Theme.Surface3,
+            AnchorPoint = Vector2.new(1, 0.5),
+            Position = UDim2.new(1, -12, 0.5, 0),
+            Size = UDim2.fromOffset(18, 18),
+            BackgroundTransparency = 1,
             BorderSizePixel = 0,
             ZIndex = 2,
             Parent = header,
@@ -8973,7 +8976,7 @@ function Tab:Groupbox(opts, icon)
         local headerIcon = create("ImageLabel", {
             AnchorPoint = Vector2.new(0.5, 0.5),
             Position = UDim2.fromScale(0.5, 0.5),
-            Size = UDim2.fromOffset(14, 14),
+            Size = UDim2.fromOffset(15, 15),
             BackgroundTransparency = 1,
             ImageColor3 = Theme.Accent,
             ScaleType = Enum.ScaleType.Fit,
@@ -8982,11 +8985,10 @@ function Tab:Groupbox(opts, icon)
         })
         applyIcon(headerIcon, opts.Icon)
         Library._iconBloom(headerIcon)
-        titleX = 46
     end
     local collapseButton = create("ImageLabel", {
         AnchorPoint = Vector2.new(1, 0.5),
-        Position = UDim2.new(1, -14, 0.5, 0),
+        Position = UDim2.new(1, opts.Icon and -40 or -14, 0.5, 0),
         Size = UDim2.fromOffset(14, 14),
         BackgroundTransparency = 1,
         ImageColor3 = Theme.Muted,
@@ -8994,7 +8996,7 @@ function Tab:Groupbox(opts, icon)
         ZIndex = 2,
         Parent = header,
     })
-    applyIcon(collapseButton, "chevron-down")
+    applyIcon(collapseButton, "minus")
     -- Beside the chevron, a button that pops the box out into a floating
     -- panel (and docks it back once it's out). PopOut = false leaves it off.
     local canPop = opts.PopOut ~= false
@@ -9002,7 +9004,7 @@ function Tab:Groupbox(opts, icon)
     if canPop then
         popButton = create("TextButton", {
             AnchorPoint = Vector2.new(1, 0.5),
-            Position = UDim2.new(1, -34, 0.5, 0),
+            Position = UDim2.new(1, opts.Icon and -60 or -34, 0.5, 0),
             Size = UDim2.fromOffset(24, 24),
             BackgroundColor3 = Theme.Surface2,
             BackgroundTransparency = 1,
@@ -9028,7 +9030,7 @@ function Tab:Groupbox(opts, icon)
     end
     local title = label({
         Position = UDim2.fromOffset(titleX, 0),
-        Size = UDim2.new(1, -(titleX + (canPop and 66 or 40)), 1, 0),
+        Size = UDim2.new(1, -(titleX + (canPop and 66 or 40) + (opts.Icon and 26 or 0)), 1, 0),
         Text = opts.Name or "Groupbox",
         TextSize = 14,
         FontFace = Fonts.Bold,
@@ -9039,7 +9041,7 @@ function Tab:Groupbox(opts, icon)
     local rule = create("Frame", {
         Size = UDim2.new(1, 0, 0, 1),
         BackgroundColor3 = Theme.Stroke,
-        BackgroundTransparency = 0.25,
+        BackgroundTransparency = 0.55,
         BorderSizePixel = 0,
         LayoutOrder = 2,
         Parent = box,
