@@ -286,6 +286,42 @@ Library.Assets = {
     Logo = "rbxassetid://101833678008843",
 }
 
+-- The VoidHub V without the black square baked into the Roblox upload. It is
+-- downloaded once into VoidHub/ and loaded with getcustomasset; executors
+-- without writefile/getcustomasset, or a failed download, fall back to
+-- Assets.Logo. Set Library.LogoURL = nil before creating a window to always
+-- use the Roblox asset.
+Library.LogoURL = "https://pastevoid.lovable.app/img/0BaOccBJR4.png"
+
+function Library._defaultLogo()
+    if Library._logoResolved == nil then
+        Library._logoResolved = false
+        local ok, asset = pcall(function()
+            if type(Library.LogoURL) ~= "string" or type(writefile) ~= "function" or type(isfile) ~= "function"
+                or typeof(getcustomasset) ~= "function" then
+                return nil
+            end
+            local path = "VoidHub/logo-" .. (Library.LogoURL:match("([%w_-]+)%.png$") or "web") .. ".png"
+            if not isfile(path) then
+                local body = game:HttpGet(Library.LogoURL, true)
+                -- Only a real PNG is saved: an error page must not become the logo.
+                if type(body) ~= "string" or #body < 128 or body:sub(2, 4) ~= "PNG" then
+                    return nil
+                end
+                if type(isfolder) == "function" and type(makefolder) == "function" and not isfolder("VoidHub") then
+                    makefolder("VoidHub")
+                end
+                writefile(path, body)
+            end
+            return getcustomasset(path)
+        end)
+        if ok and type(asset) == "string" and asset ~= "" then
+            Library._logoResolved = asset
+        end
+    end
+    return Library._logoResolved or Assets.Logo
+end
+
 local LUCIDE_URL = "https://raw.githubusercontent.com/Footagesus/Icons/refs/heads/main/lucide/dist/Icons.lua"
 local lucideSet = nil
 
@@ -4602,7 +4638,7 @@ function Library.Window(_, opts)
         _hideName = false,
         _hideAvatar = false,
         Title = opts.Title or "VoidHub",
-        _logoIcon = opts.Icon or Assets.Logo,
+        _logoIcon = opts.Icon or Library._defaultLogo(),
         _sessionStart = os.clock(),
         _islandLocked = opts.IslandDraggable == false,
     }, Window)
@@ -4799,9 +4835,9 @@ function Library.Window(_, opts)
             ZIndex = 2,
             Parent = header,
         })
-        applyIcon(logo, opts.Icon or Assets.Logo, true)
-        if logo:GetAttribute("CustomIcon") then
-            -- Uploaded artwork usually carries its own square backdrop;
+        applyIcon(logo, opts.Icon or Library._defaultLogo(), true)
+        if logo.Image == Assets.Logo then
+            -- The Roblox upload of the logo carries its own black square;
             -- round its corners so it reads as an app icon, not a box.
             logo.Size = UDim2.fromOffset(46, 46)
             logo.ScaleType = Enum.ScaleType.Crop
@@ -4830,8 +4866,8 @@ function Library.Window(_, opts)
             ZIndex = 2,
             Parent = logoTile,
         })
-        applyIcon(logo, opts.Icon or Assets.Logo, true)
-        if not logo:GetAttribute("CustomIcon") then
+        applyIcon(logo, opts.Icon or Library._defaultLogo(), true)
+        if logo.Image ~= Assets.Logo then
             Library._iconBloom(logo)
         end
         local subtitle = opts.Version or opts.Subtitle
@@ -6010,7 +6046,7 @@ function Window:_showLoader(opts)
         ScaleType = Enum.ScaleType.Fit,
         Parent = content,
     })
-    applyIcon(logo, opts.Icon or Assets.Logo, true)
+    applyIcon(logo, opts.Icon or Library._defaultLogo(), true)
     local TEXT_X = PAD + 42
     local titleLabel = label({
         Position = UDim2.fromOffset(TEXT_X, PAD - 2),
@@ -6715,7 +6751,7 @@ function Window:_createOpenButton(opts)
         ZIndex = 31,
         Parent = pill,
     })
-    applyIcon(icon, opts.Icon or Assets.Logo, true)
+    applyIcon(icon, opts.Icon or Library._defaultLogo(), true)
     label({
         Position = UDim2.fromOffset(28, 0),
         Size = UDim2.new(0, 0, 1, 0),
@@ -6894,7 +6930,7 @@ function Window:SetToggleButtonIcon(icon)
     image.Image = ""
     applyIcon(image, icon)
     if image.Image == "" then
-        applyIcon(image, Assets.Logo)
+        applyIcon(image, Library._defaultLogo(), true)
     end
     if not image:GetAttribute("CustomIcon") then
         tween(image, { ImageColor3 = (self.Minimized or not self.Open) and Theme.Text or Theme.Accent }, 0)
@@ -18264,9 +18300,9 @@ function Window:_buildMiniBar()
         Parent = logoTile,
     })
     applyIcon(logo, self._logoIcon, true)
-    if logo:GetAttribute("CustomIcon") then
-        -- Uploaded artwork with its own square backdrop fills the round tile
-        -- instead of sitting in it as a small dark square.
+    if logo.Image == Assets.Logo then
+        -- The Roblox upload's black square fills the round tile instead of
+        -- sitting in it as a small dark square.
         logo.Size = UDim2.fromScale(1, 1)
         logo.ScaleType = Enum.ScaleType.Crop
         corner(logo, UDim.new(1, 0))
