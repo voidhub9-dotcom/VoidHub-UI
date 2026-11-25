@@ -4,6 +4,10 @@
       <stop offset="0%" stop-color="#121218"/>
       <stop offset="100%" stop-color="#0A0A0E"/>
     </linearGradient>
+    <filter id="lift" x="-10%" y="-40%" width="120%" height="200%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.45"/>
+      <feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
   </defs>
 
   <rect width="960" height="300" fill="#08080A"/>
@@ -22,8 +26,8 @@
     <text x="258" y="87.5" font-size="9.5" fill="#96DCAA" font-weight="600">Ready</text>
 
     <text x="34" y="134" font-size="11" fill="#C9C9CE">Latency</text>
-    <circle cx="268" cy="130" r="3" fill="#96DCAA"/>
-    <text x="276" y="134" font-size="11" fill="#F0F0F0" font-weight="600">48 ms</text>
+    <circle cx="248" cy="130" r="3" fill="#96DCAA"/>
+    <text x="290" y="134" font-size="11" fill="#F0F0F0" font-weight="600" text-anchor="end">48 ms</text>
 
     <text x="34" y="162" font-size="11" fill="#C9C9CE" left-margin="0">Workspace</text>
     <rect x="34" y="172" width="256" height="4" rx="2" fill="#24242A"/>
@@ -35,9 +39,21 @@
     <rect x="34" y="214" width="96" height="6" rx="3" fill="#F0B06C"/>
     <text x="276" y="204" font-size="10" fill="#F0B06C" text-anchor="end">O₂ · 37%</text>
 
-    <rect x="34" y="236" width="126" height="22" rx="11" fill="#E6E6E6" fill-opacity="0.08" stroke="#E6E6E6" stroke-opacity="0.30"/>
-    <text x="42" y="250" font-size="10" fill="#E6E6E6" font-weight="600">PINNED STATUS</text>
-    <text x="170" y="250" font-size="9.5" fill="#62626B">pins right on the pill</text>
+    <!-- Pin = true: the status rides the minimized island's subtitle, tinted -->
+    <rect x="34" y="232" width="256" height="30" rx="15" fill="#0B0B0B" stroke="#FFFFFF" stroke-opacity="0.07" filter="url(#lift)"/>
+    <circle cx="49" cy="247" r="10" fill="#262626"/>
+    <path d="M45.5,243 L49,250.5 L52.5,243" fill="none" stroke="#E6E6E6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="56" cy="240" r="2.6" fill="#96DCAA" stroke="#0B0B0B" stroke-width="1.4"/>
+    <text x="66" y="245" font-size="10" font-weight="650" fill="#F5F5F5">VoidHub</text>
+    <text x="66" y="256" font-size="8" fill="#A7A7A7">Hold your breath <tspan fill="#F0B06C" font-weight="600">O₂ · 37%</tspan></text>
+    <g fill="#E6E6E6">
+      <rect x="240" y="242" width="2" height="9" rx="1"/>
+      <rect x="244" y="244" width="2" height="5" rx="1"/>
+      <rect x="248" y="241" width="2" height="11" rx="1"/>
+      <rect x="252" y="243" width="2" height="7" rx="1"/>
+    </g>
+    <circle cx="274" cy="247" r="8" fill="#262626"/>
+    <text x="274" y="250" font-size="8.5" font-weight="700" fill="#F5F5F5" text-anchor="middle">3</text>
   </g>
 
   <!-- card B: log feed -->
