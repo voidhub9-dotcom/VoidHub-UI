@@ -6025,21 +6025,37 @@ function Window:_showLoader(opts)
     -- bottom edge. Everything but the prompt cards lives in one canvas group
     -- so it can fade as a unit.
     local steps = opts.LoadingSteps or { "Preparing interface", "Loading icons", "Almost there" }
-    local WIDTH, PAD, STEP = 340, 22, 24
-    local listTop = 80
-    local height = listTop + #steps * STEP + 18
+    -- Three looks, one picked at random each time unless the script names
+    -- one (LoadingStyle = "Orbit" | "Card" | "Island"):
+    --   Orbit:  the logo in a ring of dots that light up, no box.
+    --   Card:   a dark card with a big percentage and the steps as tiles.
+    --   Island: a pill at the top of the screen with a dot ring round the
+    --           logo, the current step and the percentage.
+    -- All three grow into the window when loading finishes.
+    local styles = { "Orbit", "Card", "Island" }
+    local style = table.find(styles, opts.LoadingStyle) and opts.LoadingStyle or styles[math.random(1, #styles)]
+    self.LoadingStyle = style
+    local WIDTH, HEIGHT, RADIUS, POSITION
+    if style == "Orbit" then
+        WIDTH, HEIGHT, RADIUS, POSITION = 260, 250, 20, UDim2.new(0.5, 0, 0.5, 10)
+    elseif style == "Island" then
+        WIDTH, HEIGHT, RADIUS, POSITION = 340, 64, 32, UDim2.new(0.5, 0, 0, 52)
+    else
+        WIDTH, HEIGHT, RADIUS, POSITION = 400, 152, 18, UDim2.new(0.5, 0, 0.5, 10)
+    end
     local loader = create("CanvasGroup", {
         AnchorPoint = Vector2.new(0.5, 0.5),
-        Position = UDim2.new(0.5, 0, 0.5, 10),
-        Size = UDim2.fromOffset(WIDTH, height),
+        Position = POSITION,
+        Size = UDim2.fromOffset(WIDTH, HEIGHT),
         BackgroundColor3 = Theme.Background,
+        BackgroundTransparency = style == "Orbit" and 1 or 0,
         BorderSizePixel = 0,
         GroupTransparency = 1,
         ZIndex = 10,
         Parent = gui,
     })
-    local loaderCorner = corner(loader, UDim.new(0, 12))
-    local loaderStroke = stroke(loader, Theme.Stroke, 1)
+    local loaderCorner = corner(loader, UDim.new(0, RADIUS))
+    local loaderStroke = stroke(loader, Theme.Text, style == "Orbit" and 1 or 0.92, 1)
     local loaderScale = create("UIScale", { Scale = 0.97, Parent = loader })
     local loaderShadow = create("ImageLabel", {
         Position = UDim2.fromOffset(-25, -25),
@@ -6058,121 +6074,233 @@ function Window:_showLoader(opts)
         BackgroundTransparency = 1,
         Parent = loader,
     })
+    local title = opts.LoadingTitle or opts.Title or "VoidHub"
+    -- The subtitle is the game being loaded into (it differs every game);
+    -- LoadingText overrides it.
+    local subtitle = opts.LoadingText or "Loading"
 
-    local logo = create("ImageLabel", {
-        Position = UDim2.fromOffset(PAD, PAD),
-        Size = UDim2.fromOffset(30, 30),
-        BackgroundTransparency = 1,
-        ImageColor3 = Theme.Accent,
-        ScaleType = Enum.ScaleType.Fit,
-        Parent = content,
-    })
-    applyIcon(logo, opts.Icon or Library._defaultLogo(), true)
-    local TEXT_X = PAD + 42
-    local titleLabel = label({
-        Position = UDim2.fromOffset(TEXT_X, PAD - 2),
-        Size = UDim2.new(1, -(TEXT_X + 70), 0, 18),
-        Text = opts.LoadingTitle or opts.Title or "VoidHub",
-        TextSize = 15,
-        FontFace = Fonts.Bold,
-        Parent = content,
-    })
-    local statusLabel = label({
-        Position = UDim2.fromOffset(TEXT_X, PAD + 17),
-        Size = UDim2.new(1, -(TEXT_X + 70), 0, 15),
-        Text = opts.LoadingText or opts.Subtitle or "Loading",
-        TextSize = 12,
-        FontFace = Fonts.Regular,
-        TextColor3 = Theme.Muted,
-        Parent = content,
-    })
-    local percentLabel = label({
-        AnchorPoint = Vector2.new(1, 0),
-        Position = UDim2.new(1, -PAD, 0, PAD + 6),
-        Size = UDim2.fromOffset(56, 16),
-        Text = "0%",
-        TextSize = 13,
-        FontFace = Fonts.Medium,
-        TextColor3 = Theme.Muted,
-        TextXAlignment = Enum.TextXAlignment.Right,
-        Parent = content,
-    })
-    create("Frame", {
-        Position = UDim2.fromOffset(PAD, listTop - 14),
-        Size = UDim2.new(1, -PAD * 2, 0, 1),
-        BackgroundColor3 = Theme.Stroke,
-        BorderSizePixel = 0,
-        Parent = content,
-    })
-
-    -- Each step: a marker and its text. Pending is a dim dot, the running
-    -- step a turning arc, and a finished one a check.
-    local rows = {}
-    for index, text in ipairs(steps) do
-        local row = create("Frame", {
-            Position = UDim2.fromOffset(PAD, listTop + (index - 1) * STEP),
-            Size = UDim2.new(1, -PAD * 2, 0, STEP),
+    -- The percentage is driven by this hidden bar's width.
+    local progress = create("Frame", { Size = UDim2.fromScale(0, 0), BackgroundTransparency = 1, Parent = content })
+    local function newLogo(parent, size, position, anchor)
+        local image = create("ImageLabel", {
+            AnchorPoint = anchor or Vector2.new(0.5, 0.5),
+            Position = position,
+            Size = UDim2.fromOffset(size, size),
             BackgroundTransparency = 1,
+            ImageColor3 = Theme.Accent,
+            ScaleType = Enum.ScaleType.Fit,
+            ZIndex = 2,
+            Parent = parent,
+        })
+        applyIcon(image, opts.Icon or Library._defaultLogo(), true)
+        Library._iconBloom(image)
+        return image
+    end
+    -- A ring of dots round a centre; returns the dots in order.
+    local function dotRing(parent, centre, radius, count, size)
+        local dots = {}
+        for index = 1, count do
+            local angle = math.rad(-90 + (index - 1) * 360 / count)
+            local dot = create("Frame", {
+                AnchorPoint = Vector2.new(0.5, 0.5),
+                Position = UDim2.new(0, centre.X + math.cos(angle) * radius, 0, centre.Y + math.sin(angle) * radius),
+                Size = UDim2.fromOffset(size, size),
+                BackgroundColor3 = Theme.Text,
+                BackgroundTransparency = 0.88,
+                BorderSizePixel = 0,
+                Parent = parent,
+            })
+            corner(dot, UDim.new(1, 0))
+            dots[index] = dot
+        end
+        return dots
+    end
+
+    local percentLabel, statusLabel, ringDots, tiles, glowFill
+    if style == "Orbit" then
+        local halo = create("ImageLabel", {
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.fromOffset(WIDTH / 2, 86),
+            Size = UDim2.fromOffset(220, 220),
+            BackgroundTransparency = 1,
+            Image = Assets.Glow,
+            ImageColor3 = Theme.Text,
+            ImageTransparency = 0.86,
             Parent = content,
         })
-        local dot = create("Frame", {
+        ringDots = dotRing(content, Vector2.new(WIDTH / 2, 86), 70, 40, 5)
+        newLogo(content, 64, UDim2.fromOffset(WIDTH / 2, 86))
+        label({
+            Position = UDim2.fromOffset(0, 172),
+            Size = UDim2.new(1, 0, 0, 22),
+            Text = title,
+            TextSize = 18,
+            FontFace = Fonts.Bold,
+            TextXAlignment = Enum.TextXAlignment.Center,
+            Parent = content,
+        })
+        statusLabel = label({
+            Position = UDim2.fromOffset(0, 196),
+            Size = UDim2.new(1, 0, 0, 16),
+            Text = subtitle,
+            TextSize = 12,
+            FontFace = Fonts.Regular,
+            TextColor3 = Theme.Muted,
+            TextXAlignment = Enum.TextXAlignment.Center,
+            Parent = content,
+        })
+        percentLabel = statusLabel
+        halo.Name = "Halo"
+    elseif style == "Island" then
+        local centre = Vector2.new(32, 32)
+        create("Frame", {
             AnchorPoint = Vector2.new(0.5, 0.5),
-            Position = UDim2.new(0, 7, 0.5, 0),
-            Size = UDim2.fromOffset(6, 6),
+            Position = UDim2.fromOffset(centre.X, centre.Y),
+            Size = UDim2.fromOffset(42, 42),
             BackgroundColor3 = Theme.Surface3,
             BorderSizePixel = 0,
-            Parent = row,
+            Parent = content,
+        }).Name = "LogoTile"
+        corner(content:FindFirstChild("LogoTile"), UDim.new(1, 0))
+        ringDots = dotRing(content, centre, 25, 24, 3)
+        newLogo(content, 26, UDim2.fromOffset(centre.X, centre.Y))
+        label({
+            Position = UDim2.fromOffset(66, 13),
+            Size = UDim2.new(1, -130, 0, 18),
+            Text = title,
+            TextSize = 14,
+            FontFace = Fonts.Bold,
+            Parent = content,
         })
-        corner(dot, UDim.new(1, 0))
-        local spinner = create("Frame", {
+        statusLabel = label({
+            Position = UDim2.fromOffset(66, 32),
+            Size = UDim2.new(1, -130, 0, 15),
+            Text = subtitle,
+            TextSize = 12,
+            FontFace = Fonts.Regular,
+            TextColor3 = Theme.Muted,
+            Parent = content,
+        })
+        percentLabel = label({
+            AnchorPoint = Vector2.new(1, 0.5),
+            Position = UDim2.new(1, -20, 0.5, 0),
+            Size = UDim2.fromOffset(50, 18),
+            Text = "0%",
+            TextSize = 13,
+            FontFace = Fonts.Bold,
+            TextXAlignment = Enum.TextXAlignment.Right,
+            Parent = content,
+        })
+    else
+        -- Card: light in the top-left corner, logo, title, big percentage,
+        -- the steps as tiles, a glowing line along the foot.
+        create("ImageLabel", {
             AnchorPoint = Vector2.new(0.5, 0.5),
-            Position = UDim2.new(0, 7, 0.5, 0),
-            Size = UDim2.fromOffset(12, 12),
+            Position = UDim2.fromOffset(30, 0),
+            Size = UDim2.fromOffset(320, 220),
             BackgroundTransparency = 1,
-            Visible = false,
-            Parent = row,
+            Image = Assets.Glow,
+            ImageColor3 = Theme.Text,
+            ImageTransparency = 0.88,
+            Parent = content,
         })
-        corner(spinner, UDim.new(1, 0))
-        local spinnerStroke = create("UIStroke", {
-            Color = Theme.Accent,
-            Thickness = 2,
-            Parent = spinner,
+        newLogo(content, 42, UDim2.fromOffset(22, 20), Vector2.zero)
+        label({
+            Position = UDim2.fromOffset(76, 21),
+            Size = UDim2.new(1, -170, 0, 20),
+            Text = title,
+            TextSize = 17,
+            FontFace = Fonts.Bold,
+            Parent = content,
+        })
+        statusLabel = label({
+            Position = UDim2.fromOffset(76, 42),
+            Size = UDim2.new(1, -170, 0, 16),
+            Text = subtitle,
+            TextSize = 12,
+            FontFace = Fonts.Regular,
+            TextColor3 = Theme.Muted,
+            Parent = content,
+        })
+        percentLabel = label({
+            AnchorPoint = Vector2.new(1, 0),
+            Position = UDim2.new(1, -22, 0, 22),
+            Size = UDim2.fromOffset(80, 28),
+            Text = "0%",
+            TextSize = 24,
+            FontFace = Fonts.Bold,
+            TextXAlignment = Enum.TextXAlignment.Right,
+            Parent = content,
+        })
+        tiles = {}
+        local count = math.min(#steps, 3)
+        for index = 1, count do
+            local tile = create("Frame", {
+                Position = UDim2.new((index - 1) / count, index == 1 and 22 or 22 - (index - 1) * 44 / count + (index - 1) * 6, 0, 80),
+                Size = UDim2.new(1 / count, -(44 / count) - 4, 0, 50),
+                BackgroundColor3 = Theme.Surface2,
+                BorderSizePixel = 0,
+                Parent = content,
+            })
+            corner(tile, UDim.new(0, 12))
+            local tileStroke = stroke(tile, Theme.Text, 0.94)
+            local name = label({
+                Position = UDim2.fromOffset(11, 8),
+                Size = UDim2.new(1, -16, 0, 16),
+                Text = tostring(steps[index]),
+                TextSize = 12,
+                FontFace = Fonts.Bold,
+                TextTransparency = 0.45,
+                Parent = tile,
+            })
+            local state = label({
+                Position = UDim2.fromOffset(11, 26),
+                Size = UDim2.new(1, -16, 0, 14),
+                Text = "waiting",
+                TextSize = 11,
+                FontFace = Fonts.Regular,
+                TextColor3 = Theme.Muted,
+                Parent = tile,
+            })
+            tiles[index] = { Stroke = tileStroke, Name = name, State = state }
+        end
+        local track = create("Frame", {
+            AnchorPoint = Vector2.new(0, 1),
+            Position = UDim2.fromScale(0, 1),
+            Size = UDim2.new(1, 0, 0, 3),
+            BackgroundColor3 = Theme.Surface3,
+            BorderSizePixel = 0,
+            Parent = content,
+        })
+        glowFill = create("Frame", {
+            Size = UDim2.fromScale(0, 1),
+            BackgroundColor3 = Theme.Text,
+            BorderSizePixel = 0,
+            Parent = track,
         })
         create("UIGradient", {
             Transparency = NumberSequence.new({
-                NumberSequenceKeypoint.new(0, 0),
-                NumberSequenceKeypoint.new(0.5, 0),
-                NumberSequenceKeypoint.new(0.501, 1),
-                NumberSequenceKeypoint.new(1, 1),
+                NumberSequenceKeypoint.new(0, 0.8),
+                NumberSequenceKeypoint.new(1, 0),
             }),
-            Parent = spinnerStroke,
+            Parent = glowFill,
         })
-        local check = create("ImageLabel", {
-            AnchorPoint = Vector2.new(0.5, 0.5),
-            Position = UDim2.new(0, 7, 0.5, 0),
-            Size = UDim2.fromOffset(14, 14),
-            BackgroundTransparency = 1,
-            ImageColor3 = Theme.Accent,
-            ImageTransparency = 1,
-            ScaleType = Enum.ScaleType.Fit,
-            Parent = row,
-        })
-        applyIcon(check, "check")
-        local stepLabel = label({
-            Position = UDim2.fromOffset(24, 0),
-            Size = UDim2.new(1, -24, 1, 0),
-            Text = tostring(text),
-            TextSize = 13,
-            FontFace = Fonts.Regular,
-            TextColor3 = Theme.Muted,
-            TextTransparency = 1,
-            Parent = row,
-        })
-        rows[index] = { Dot = dot, Spinner = spinner, Check = check, Label = stepLabel, State = "pending" }
-        -- The rows fade in one after another once the card is up.
-        task.delay(0.15 + index * 0.06, function()
-            if loader.Parent and rows[index].State == "pending" then
-                tween(stepLabel, { TextTransparency = 0.45 }, 0.3)
+    end
+
+    local rows = {}
+    for index in ipairs(steps) do
+        rows[index] = { State = "pending" }
+    end
+    if not opts.LoadingText then
+        task.spawn(function()
+            local name = detectGameName()
+            if loader.Parent and type(name) == "string" and name ~= "" then
+                subtitle = name
+                -- The card keeps the game on its subtitle line; the others
+                -- show it until the first step starts.
+                if style == "Card" or not rows[1] or rows[1].State == "pending" then
+                    statusLabel.Text = name
+                end
             end
         end)
     end
@@ -6182,46 +6310,50 @@ function Window:_showLoader(opts)
             return
         end
         row.State = state
-        row.Dot.Visible = state == "pending"
-        row.Spinner.Visible = state == "active"
-        tween(row.Check, { ImageTransparency = state == "done" and 0 or 1 }, 0.2)
-        tween(row.Label, {
-            TextTransparency = state == "pending" and 0.45 or 0,
-            TextColor3 = state == "active" and Theme.Text or Theme.Muted,
-        }, 0.2)
+        if state == "active" and statusLabel and style ~= "Card" then
+            statusLabel.Text = tostring(steps[index])
+        end
+        local tile = tiles and tiles[index]
+        if tile then
+            tile.State.Text = state == "done" and "ready" or (state == "active" and "loading" or "waiting")
+            tween(tile.Name, { TextTransparency = state == "pending" and 0.45 or 0 }, 0.2)
+            tween(tile.Stroke, { Transparency = state == "pending" and 0.94 or 0.75 }, 0.2)
+        end
     end
 
-    local track = create("Frame", {
-        AnchorPoint = Vector2.new(0, 1),
-        Position = UDim2.fromScale(0, 1),
-        Size = UDim2.new(1, 0, 0, 2),
-        BackgroundColor3 = Theme.Surface3,
-        BorderSizePixel = 0,
-        Parent = content,
-    })
-    local fill = create("Frame", {
-        Size = UDim2.fromScale(0, 1),
-        BackgroundColor3 = Theme.Accent,
-        BorderSizePixel = 0,
-        Parent = track,
-    })
-
-    tween(loader, { GroupTransparency = 0, Position = UDim2.fromScale(0.5, 0.5) }, 0.45, Enum.EasingStyle.Quint)
+    tween(loader, { GroupTransparency = 0, Position = style == "Island" and UDim2.new(0.5, 0, 0, 44) or UDim2.fromScale(0.5, 0.5) }, 0.45, Enum.EasingStyle.Quint)
     tween(loaderScale, { Scale = 1 }, 0.45, Enum.EasingStyle.Quint)
-    tween(loaderShadow, { ImageTransparency = 0.55 }, 0.4)
-    tween(fill, { Size = UDim2.fromScale(0.85, 1) }, duration * 0.8, Enum.EasingStyle.Quart)
-    -- The percentage follows the bar and the running step's arc turns.
+    tween(loaderShadow, { ImageTransparency = style == "Orbit" and 1 or 0.55 }, 0.4)
+    tween(progress, { Size = UDim2.fromScale(0.85, 0) }, duration * 0.8, Enum.EasingStyle.Quart)
+    -- Every frame: the percentage, the lit dots and the glowing line follow
+    -- the progress.
     local percentStep
-    percentStep = RunService.RenderStepped:Connect(function(deltaTime)
+    percentStep = RunService.RenderStepped:Connect(function()
         if not loader.Parent then
             percentStep:Disconnect()
             return
         end
-        percentLabel.Text = math.floor(fill.Size.X.Scale * 100 + 0.5) .. "%"
-        for _, row in ipairs(rows) do
-            if row.State == "active" then
-                row.Spinner.Rotation = (row.Spinner.Rotation + deltaTime * 360) % 360
+        local value = progress.Size.X.Scale
+        local percent = math.floor(value * 100 + 0.5) .. "%"
+        if style == "Orbit" then
+            local current
+            for _, row in ipairs(rows) do
+                if row.State == "active" then
+                    current = row
+                end
             end
+            percentLabel.Text = (current and statusLabel.Text:match("^[^·]+") or subtitle):gsub("%s+$", "") .. "  ·  " .. percent
+        else
+            percentLabel.Text = percent
+        end
+        if ringDots then
+            local lit = math.floor(value * #ringDots + 0.5)
+            for index, dot in ipairs(ringDots) do
+                dot.BackgroundTransparency = index <= lit and 0 or 0.88
+            end
+        end
+        if glowFill then
+            glowFill.Size = UDim2.fromScale(value, 1)
         end
     end)
 
@@ -6247,6 +6379,8 @@ function Window:_showLoader(opts)
     local function finish()
         completeSteps()
         tween(content, { GroupTransparency = 1 }, 0.18)
+        tween(loader, { BackgroundTransparency = 0 }, 0.25)
+        tween(loaderStroke, { Transparency = 0.92 }, 0.25)
 
         local fit = self._fitScale or 1
         local target = self.Root.Size
@@ -6274,6 +6408,9 @@ function Window:_showLoader(opts)
     local function hideBar()
         completeSteps()
         tween(content, { GroupTransparency = 1 }, 0.18)
+        -- Prompt cards need a solid, centred card whatever the style.
+        tween(loader, { BackgroundTransparency = 0, Position = UDim2.fromScale(0.5, 0.5) }, 0.25)
+        tween(loaderStroke, { Transparency = 0.92 }, 0.25)
     end
 
     local function showCard(info, onContinue)
@@ -6571,7 +6708,7 @@ function Window:_showLoader(opts)
     end
 
     task.delay(duration, function()
-        tween(fill, { Size = UDim2.fromScale(1, 1) }, 0.25, Enum.EasingStyle.Quint)
+        tween(progress, { Size = UDim2.fromScale(1, 0) }, 0.25, Enum.EasingStyle.Quint)
         task.delay(0.25, function()
             if not loader.Parent then
                 return
