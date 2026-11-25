@@ -11907,6 +11907,8 @@ function Tab:SettingsPage(opts)
     end
 
     ---------------------------------------------------------------- themes
+    -- Off by default: the page keeps the script's own theme. Themes = true brings the picker back.
+    if opts.Themes then
     local themeBox = tab:Groupbox({ Name = "Theme", Icon = "palette", Side = "Right" })
     local all = presetNames()
     local featured = { "VoidHub", "Aqua", "Midnight", "Nebula", "Crimson", "Emerald", "Gold", "Sakura" }
@@ -11998,6 +12000,8 @@ function Tab:SettingsPage(opts)
             end
         end,
     })
+
+    end
 
     ---------------------------------------------------------------- interface
     local ui = tab:Groupbox({ Name = "Interface", Icon = "monitor", Side = "Right" })
