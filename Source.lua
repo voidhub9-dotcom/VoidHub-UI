@@ -11538,23 +11538,131 @@ Tab.CreateConfigManager = Tab.ConfigManager
 Tab.CreateThemeManager = Tab.ThemeManager
 
 -- Settings page: one page, two columns.
---   Left:  save slots (configs) with autoload, auto save, share code; a Discord card.
---   Right: theme cards, and the interface options people change (weather,
---          UI scale, toggle key, Dynamic Island, dim), with the rarer ones folded.
+--   Left:  Configs (name + Save, a row per config with load / autoload /
+--          delete, auto save, share code, reset) and a Discord card.
+--   Right: Display (UI size, spacing, fit to screen), Controls (show/hide
+--          key, start minimized, Dynamic Island) and Atmosphere (weather
+--          tiles, dim).
 -- tab:SettingsPage({ Discord = "https://discord.gg/...", Credit = "made by ...",
 --                    OnReset = function() end, ResetText = "Reset hunt" })
 function Tab:SettingsPage(opts)
     opts = opts or {}
     local tab = self
     local window = self.Window
+    local DANGER = Color3.fromRGB(255, 138, 138)
     local function notify(ok, title, detail)
         window:Notify({ Title = title, Content = detail, Type = ok and "Success" or "Error", Duration = 3 })
     end
 
-    ---------------------------------------------------------------- slots
-    local box = tab:Groupbox({ Name = "Configs", Icon = "folder", Side = "Left" })
-    local COLS, CELL_H, GAP = 3, 74, 8
-    local MAX_SLOTS = tonumber(opts.Slots) or 6
+    -- a small square icon button
+    local function iconButton(parent, icon, order, color, onClick)
+        local b = create("ImageButton", {
+            Size = UDim2.fromOffset(30, 30),
+            BackgroundColor3 = Theme.Surface3,
+            BorderSizePixel = 0,
+            AutoButtonColor = false,
+            ImageTransparency = 1,
+            LayoutOrder = order,
+            Parent = parent,
+        })
+        corner(b, UDim.new(0, 8))
+        local glyph = create("ImageLabel", {
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.fromScale(0.5, 0.5),
+            Size = UDim2.fromOffset(15, 15),
+            BackgroundTransparency = 1,
+            ImageColor3 = color or Theme.Text,
+            Parent = b,
+        })
+        applyIcon(glyph, icon)
+        b.MouseButton1Click:Connect(function()
+            task.spawn(onClick)
+        end)
+        return b, glyph
+    end
+
+    -- a segmented control: one row of choices, the picked one highlighted
+    local function segmented(box, name, desc, options, current, onPick)
+        local metrics = metricsOf(box)
+        local head = desc and 44 or 26
+        local frame = card(box, "Frame", head + 40, {})
+        frame.BackgroundTransparency = 1
+        label({
+            Position = UDim2.fromOffset(14, 4),
+            Size = UDim2.new(1, -28, 0, 18),
+            Text = name,
+            TextSize = metrics.TextSize,
+            Parent = frame,
+        })
+        if desc then
+            label({
+                Position = UDim2.fromOffset(14, 23),
+                Size = UDim2.new(1, -28, 0, 14),
+                Text = desc,
+                TextSize = metrics.DescSize,
+                TextColor3 = Theme.Muted,
+                FontFace = Fonts.Regular,
+                Parent = frame,
+            })
+        end
+        local track = create("Frame", {
+            Position = UDim2.fromOffset(14, head),
+            Size = UDim2.new(1, -28, 0, 36),
+            BackgroundColor3 = Theme.Surface,
+            BorderSizePixel = 0,
+            Parent = frame,
+        })
+        corner(track, UDim.new(0, 9))
+        stroke(track, Theme.Stroke)
+        create("UIPadding", {
+            PaddingLeft = UDim.new(0, 3), PaddingRight = UDim.new(0, 3),
+            PaddingTop = UDim.new(0, 3), PaddingBottom = UDim.new(0, 3),
+            Parent = track,
+        })
+        create("UIListLayout", {
+            FillDirection = Enum.FillDirection.Horizontal,
+            Padding = UDim.new(0, 3),
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            Parent = track,
+        })
+        local buttons = {}
+        local function paint(picked)
+            for option, b in pairs(buttons) do
+                local on = option == picked
+                b.BackgroundTransparency = on and 0 or 1
+                b.TextColor3 = on and Theme.Text or Theme.Muted
+                b.FontFace = on and Fonts.Bold or Fonts.Medium
+            end
+        end
+        for i, option in ipairs(options) do
+            local b = create("TextButton", {
+                Size = UDim2.new(1 / #options, -3, 1, 0),
+                BackgroundColor3 = Theme.Surface3,
+                BackgroundTransparency = 1,
+                BorderSizePixel = 0,
+                AutoButtonColor = false,
+                Text = option,
+                TextSize = 13,
+                FontFace = Fonts.Medium,
+                TextColor3 = Theme.Muted,
+                LayoutOrder = i,
+                Parent = track,
+            })
+            corner(b, UDim.new(0, 7))
+            buttons[option] = b
+            b.MouseButton1Click:Connect(function()
+                paint(option)
+                task.spawn(onPick, option)
+            end)
+        end
+        paint(current)
+        return frame
+    end
+
+    local LEFT, RIGHT = "Left", "Right"
+
+    ---------------------------------------------------------------- configs
+    local box = tab:Groupbox({ Name = "Configs", Icon = "folder", Side = LEFT })
     local metaPath = window.ConfigFolder .. "/slots.meta"
     local meta = {}
     pcall(function()
@@ -11576,176 +11684,149 @@ function Tab:SettingsPage(opts)
             return "saved"
         end
         local s = os.time() - t
-        if s < 60 then return "just now" end
-        if s < 3600 then return math.floor(s / 60) .. " min ago" end
-        if s < 86400 then return math.floor(s / 3600) .. " h ago" end
+        if s < 60 then return "saved just now" end
+        if s < 3600 then return "saved " .. math.floor(s / 60) .. " min ago" end
+        if s < 86400 then return "saved " .. math.floor(s / 3600) .. " h ago" end
         local d = math.floor(s / 86400)
         return d == 1 and "yesterday" or (d .. " days ago")
     end
 
-    local gridCard = card(box, "Frame", 2 * CELL_H + GAP + 4, {})
-    gridCard.BackgroundTransparency = 1
-    local grid = create("Frame", { Position = UDim2.fromOffset(12, 0), Size = UDim2.new(1, -24, 1, 0), BackgroundTransparency = 1, Parent = gridCard })
-    create("UIGridLayout", {
-        CellSize = UDim2.new(1 / COLS, -math.ceil(GAP * (COLS - 1) / COLS), 0, CELL_H),
-        CellPadding = UDim2.fromOffset(GAP, GAP),
-        SortOrder = Enum.SortOrder.LayoutOrder,
-        Parent = grid,
-    })
-
-    local nameInput
     local refresh
+    local function saveNew(text)
+        local name = trim(text or "")
+        if name == "" then
+            local names = window:ListConfigs()
+            local n = #names + 1
+            while table.find(names, "Config " .. n) do n += 1 end
+            name = "Config " .. n
+        end
+        if not validConfigName(name) then
+            notify(false, "Bad name", "Use letters, numbers, spaces, - or _")
+            return
+        end
+        local ok, err = window:SaveConfig(name)
+        if ok then
+            window.LoadedConfig = name
+            meta[name] = os.time()
+            saveMeta()
+            notify(true, "Saved", name)
+        else
+            notify(false, "Save failed", tostring(err))
+        end
+        refresh()
+    end
+    local nameBox = actionInput(box, "New config name...", "+ Save", function(text)
+        saveNew(text)
+    end)
 
-    local function smallButton(parent, icon, order, danger, onClick)
-        local b = create("ImageButton", {
-            Size = UDim2.fromOffset(22, 22),
-            BackgroundColor3 = Theme.Surface3,
-            BackgroundTransparency = 0.2,
+    local ROW_H, ROW_GAP = 54, 8
+    local listCard = card(box, "Frame", ROW_H, {})
+    listCard.BackgroundTransparency = 1
+    local list = create("Frame", {
+        Position = UDim2.fromOffset(14, 0),
+        Size = UDim2.new(1, -28, 1, 0),
+        BackgroundTransparency = 1,
+        Parent = listCard,
+    })
+    create("UIListLayout", { Padding = UDim.new(0, ROW_GAP), SortOrder = Enum.SortOrder.LayoutOrder, Parent = list })
+
+    local function chip(parent, text, filled, order)
+        local c = create("TextLabel", {
+            Size = UDim2.fromOffset(0, 18),
+            AutomaticSize = Enum.AutomaticSize.X,
+            BackgroundColor3 = filled and Theme.Text or Color3.fromRGB(150, 220, 170),
+            BackgroundTransparency = filled and 0 or 0.85,
             BorderSizePixel = 0,
-            AutoButtonColor = false,
-            ImageColor3 = danger and Color3.fromRGB(255, 138, 138) or Theme.Text,
+            Text = text,
+            TextSize = 11,
+            FontFace = Fonts.Bold,
+            TextColor3 = filled and Theme.Background or Color3.fromRGB(150, 220, 170),
             LayoutOrder = order,
             Parent = parent,
         })
-        corner(b, UDim.new(0, 6))
-        local glyph = create("ImageLabel", {
-            AnchorPoint = Vector2.new(0.5, 0.5),
-            Position = UDim2.fromScale(0.5, 0.5),
-            Size = UDim2.fromOffset(13, 13),
-            BackgroundTransparency = 1,
-            ImageColor3 = danger and Color3.fromRGB(255, 138, 138) or Theme.Text,
-            Parent = b,
-        })
-        applyIcon(glyph, icon)
-        b.MouseButton1Click:Connect(function()
-            task.spawn(onClick)
-        end)
-        return b
+        corner(c, UDim.new(1, 0))
+        create("UIPadding", { PaddingLeft = UDim.new(0, 7), PaddingRight = UDim.new(0, 7), Parent = c })
+        return c
     end
 
-    local function slotName()
-        local text = nameInput and trim(nameInput:Get() or "") or ""
-        if text ~= "" then
-            return text
-        end
-        local names = window:ListConfigs()
-        local n = #names + 1
-        while table.find(names, "Config " .. n) do
-            n += 1
-        end
-        return "Config " .. n
-    end
-
-    local function buildSlot(index, name)
-        local loaded = name and name == window.LoadedConfig
-        local auto = name and name == window:GetAutoload()
-        local cell = create(name and "Frame" or "TextButton", {
+    local function buildRow(index, name)
+        local loaded = name == window.LoadedConfig
+        local auto = name == window:GetAutoload()
+        local row = create("Frame", {
+            Size = UDim2.new(1, 0, 0, ROW_H),
             BackgroundColor3 = loaded and Theme.Surface3 or Theme.Surface2,
-            BackgroundTransparency = name and 0 or 1,
             BorderSizePixel = 0,
             LayoutOrder = index,
-            ClipsDescendants = true,
-            Parent = grid,
+            Parent = list,
         })
-        if not name then
-            cell.Text = ""
-            cell.AutoButtonColor = false
-        end
-        corner(cell, UDim.new(0, 10))
-        local st = stroke(cell, loaded and Theme.Text or Theme.Stroke, loaded and 0.55 or 0, 1)
-        if not name then
-            st.Transparency = 0.2
-            local first = true
-            label({
-                Size = UDim2.fromScale(1, 1),
-                Text = "+  New slot",
-                TextColor3 = Theme.Muted,
-                TextTransparency = first and 0 or 0.5,
-                TextSize = 13,
-                TextXAlignment = Enum.TextXAlignment.Center,
-                Parent = cell,
-            })
-            cell.MouseButton1Click:Connect(function()
-                local n = slotName()
-                if not validConfigName(n) then
-                    notify(false, "Bad name", "Use letters, numbers, spaces, - or _")
-                    return
-                end
-                local ok, err = window:SaveConfig(n)
-                if ok then
-                    window.LoadedConfig = n
-                    meta[n] = os.time()
-                    saveMeta()
-                    if nameInput then nameInput:Set("") end
-                    notify(true, "Saved", n)
-                else
-                    notify(false, "Save failed", tostring(err))
-                end
-                refresh()
-            end)
-            return
-        end
-        label({
-            Position = UDim2.fromOffset(10, 8),
-            Size = UDim2.new(1, -20, 0, 12),
-            Text = ("SLOT %d"):format(index),
-            TextSize = 10,
-            TextColor3 = Theme.Muted,
-            FontFace = Fonts.SemiBold or Fonts.Medium,
-            Parent = cell,
+        corner(row, UDim.new(0, 11))
+        stroke(row, loaded and Theme.Text or Theme.Stroke, loaded and 0.6 or 0, 1)
+        local badge = create("Frame", {
+            Position = UDim2.fromOffset(10, 10),
+            Size = UDim2.fromOffset(34, 34),
+            BackgroundColor3 = Theme.Surface3,
+            BorderSizePixel = 0,
+            Parent = row,
         })
-        label({
-            Position = UDim2.fromOffset(10, 22),
-            Size = UDim2.new(1, -20, 0, 18),
+        corner(badge, UDim.new(0, 9))
+        local badgeIcon = create("ImageLabel", {
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.fromScale(0.5, 0.5),
+            Size = UDim2.fromOffset(16, 16),
+            BackgroundTransparency = 1,
+            ImageColor3 = Theme.Text,
+            Parent = badge,
+        })
+        applyIcon(badgeIcon, loaded and "folder-open" or "folder")
+        local top = create("Frame", {
+            Position = UDim2.fromOffset(54, 9),
+            Size = UDim2.new(1, -170, 0, 20),
+            BackgroundTransparency = 1,
+            Parent = row,
+        })
+        create("UIListLayout", {
+            FillDirection = Enum.FillDirection.Horizontal,
+            VerticalAlignment = Enum.VerticalAlignment.Center,
+            Padding = UDim.new(0, 6),
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            Parent = top,
+        })
+        local title = label({
+            Size = UDim2.fromOffset(0, 20),
+            AutomaticSize = Enum.AutomaticSize.X,
             Text = name,
             TextSize = 14,
-            FontFace = Fonts.SemiBold or Fonts.Medium,
-            Parent = cell,
+            FontFace = Fonts.Bold,
+            LayoutOrder = 1,
+            Parent = top,
         })
+        title.TextTruncate = Enum.TextTruncate.None
+        if loaded then chip(top, "loaded", false, 2) end
+        if auto then chip(top, "★ auto", true, 3) end
         label({
-            Position = UDim2.fromOffset(10, 39),
-            Size = UDim2.new(1, -124, 0, 14),
-            Text = (loaded and "loaded · " or "") .. ago(meta[name]),
-            TextSize = 11,
+            Position = UDim2.fromOffset(54, 30),
+            Size = UDim2.new(1, -170, 0, 14),
+            Text = ago(meta[name]),
+            TextSize = 11.5,
             TextColor3 = Theme.Muted,
             FontFace = Fonts.Regular,
-            Parent = cell,
+            Parent = row,
         })
-        if auto then
-            local ribbon = create("Frame", {
-                AnchorPoint = Vector2.new(0.5, 0.5),
-                Position = UDim2.new(1, -14, 0, 12),
-                Size = UDim2.fromOffset(80, 13),
-                Rotation = 35,
-                BackgroundColor3 = Theme.Text,
-                BorderSizePixel = 0,
-                Parent = cell,
-            })
-            label({
-                Size = UDim2.fromScale(1, 1),
-                Text = "AUTO",
-                TextSize = 9,
-                TextColor3 = Theme.Background,
-                FontFace = Fonts.Bold or Fonts.SemiBold or Fonts.Medium,
-                TextXAlignment = Enum.TextXAlignment.Center,
-                Parent = ribbon,
-            })
-        end
-        local bar = create("Frame", {
+        local actions = create("Frame", {
             AnchorPoint = Vector2.new(1, 0.5),
-            Position = UDim2.new(1, -8, 0, 46),
-            Size = UDim2.new(0, 104, 0, 22),
+            Position = UDim2.new(1, -10, 0.5, 0),
+            Size = UDim2.fromOffset(102, 30),
             BackgroundTransparency = 1,
-            Parent = cell,
+            Parent = row,
         })
         create("UIListLayout", {
             FillDirection = Enum.FillDirection.Horizontal,
             HorizontalAlignment = Enum.HorizontalAlignment.Right,
-            Padding = UDim.new(0, 4),
+            Padding = UDim.new(0, 6),
             SortOrder = Enum.SortOrder.LayoutOrder,
-            Parent = bar,
+            Parent = actions,
         })
-        smallButton(bar, loaded and "save" or "play", 1, false, function()
+        iconButton(actions, loaded and "download" or "play", 1, nil, function()
             if loaded then
                 local ok, err = window:SaveConfig(name)
                 if ok then meta[name] = os.time() saveMeta() end
@@ -11756,31 +11837,17 @@ function Tab:SettingsPage(opts)
             end
             refresh()
         end)
-        smallButton(bar, auto and "star-off" or "star", 2, false, function()
+        iconButton(actions, "star", 2, auto and Color3.fromRGB(242, 230, 160) or nil, function()
             window:SetAutoload(auto and nil or name)
-            notify(true, auto and "Autoload off" or "Autoload", auto and "Nothing loads on launch" or (name .. " loads on launch"))
+            notify(true, auto and "Autoload off" or "Autoload on", auto and "Nothing loads on launch" or (name .. " loads on launch"))
             refresh()
         end)
-        smallButton(bar, "pencil", 3, false, function()
-            local newName = nameInput and trim(nameInput:Get() or "") or ""
-            if newName == "" or newName == name then
-                notify(false, "Rename", "Type the new name in the box below first")
-                return
-            end
-            local ok, err = window:RenameConfig(name, newName)
-            if ok then
-                meta[newName], meta[name] = meta[name], nil
-                saveMeta()
-                nameInput:Set("")
-            end
-            notify(ok ~= false, ok ~= false and "Renamed" or "Rename failed", ok ~= false and newName or tostring(err))
-            refresh()
-        end)
-        smallButton(bar, "trash-2", 4, true, function()
+        iconButton(actions, "trash-2", 3, DANGER, function()
             local ok, err = window:DeleteConfig(name)
             if ok ~= false then
                 meta[name] = nil
                 saveMeta()
+                if auto then window:SetAutoload(nil) end
             end
             notify(ok ~= false, ok ~= false and "Deleted" or "Delete failed", ok ~= false and name or tostring(err))
             refresh()
@@ -11788,55 +11855,50 @@ function Tab:SettingsPage(opts)
     end
 
     refresh = function()
-        for _, child in ipairs(grid:GetChildren()) do
-            if not child:IsA("UIGridLayout") then
+        for _, child in ipairs(list:GetChildren()) do
+            if not child:IsA("UIListLayout") then
                 child:Destroy()
             end
         end
         local names = window:ListConfigs()
-        local slots = #names + 1
-        local rows = math.ceil(slots / COLS)
-        gridCard.Size = UDim2.new(1, 0, 0, rows * CELL_H + (rows - 1) * GAP + 4)
-        for i = 1, slots do
-            buildSlot(i, names[i])
+        for i, name in ipairs(names) do
+            buildRow(i, name)
         end
+        if #names == 0 then
+            label({
+                Size = UDim2.new(1, 0, 0, ROW_H),
+                Text = "No configs yet - name one above and press Save",
+                TextColor3 = Theme.Muted,
+                TextSize = 12.5,
+                TextXAlignment = Enum.TextXAlignment.Center,
+                Parent = list,
+            })
+        end
+        local count = math.max(#names, 1)
+        listCard.Size = UDim2.new(1, 0, 0, count * ROW_H + (count - 1) * ROW_GAP)
         window._controlsDirty = true
     end
 
-    nameInput = box:Input({
-        Name = "Slot name",
-        Desc = "Name for a new slot, or type one and press ✎ to rename",
-        Placeholder = "e.g. Bounty",
-        Callback = function() end,
-    })
-
-    -- auto save: writes the loaded slot whenever a setting changes
     local autoSave = opts.AutoSave ~= false
     box:Toggle({
         Name = "Auto save",
-        Desc = "Saves into the loaded slot on every change",
+        Desc = "Keeps the loaded config up to date",
         CurrentValue = autoSave,
-        Callback = function(v)
-            autoSave = v
-        end,
+        Callback = function(v) autoSave = v end,
     })
     task.spawn(function()
         local last
         while task.wait(3) do
-            if window._destroyed then
-                break
-            end
+            if window._destroyed then break end
             local name = window.LoadedConfig
             if autoSave and name then
                 local ok, snapshot = pcall(function()
                     return HttpService:JSONEncode(collectFlags(window))
                 end)
                 if ok then
-                    if last and last ~= snapshot then
-                        if window:SaveConfig(name) then
-                            meta[name] = os.time()
-                            saveMeta()
-                        end
+                    if last and last ~= snapshot and window:SaveConfig(name) then
+                        meta[name] = os.time()
+                        saveMeta()
                     end
                     last = snapshot
                 end
@@ -11846,36 +11908,24 @@ function Tab:SettingsPage(opts)
         end
     end)
 
-    box:Dropdown({
-        Name = "Autoload for",
-        Options = { "All accounts", "This account" },
-        Default = window:GetAutoloadMode() == "Account" and "This account" or "All accounts",
-        AllowNone = false,
-        Callback = function(choice)
-            window:SetAutoloadMode(choice == "This account" and "Account" or "Global")
-        end,
-    })
-
     local buttons = {
         { Name = "Copy code", Callback = function()
             local code, err = window:ExportConfig(window.LoadedConfig)
-            if code and setclipboard then
-                setclipboard(code)
-            end
+            if code and setclipboard then setclipboard(code) end
             notify(code ~= nil, code and "Copied" or "Copy failed", code and "Config code is on your clipboard" or tostring(err))
         end },
         { Name = "Import code", Callback = function()
-            local code = nameInput and trim(nameInput:Get() or "") or ""
+            local code = trim(nameBox:Get() or "")
             if code == "" and getclipboard then
                 pcall(function() code = getclipboard() end)
             end
             if code == "" then
-                notify(false, "Import", "Paste the code into the Slot name box first")
+                notify(false, "Import", "Paste the code into the name box first")
                 return
             end
             local ok, err, saved = window:ImportConfig(code, true)
             notify(ok, ok and "Imported" or "Import failed", ok and tostring(saved or "applied") or tostring(err))
-            if ok and nameInput then nameInput:Set("") end
+            if ok then nameBox:Set("") end
             refresh()
         end },
     }
@@ -11884,7 +11934,6 @@ function Tab:SettingsPage(opts)
     end
     box:ButtonRow(buttons)
 
-    -- keep the slots in sync with saves made anywhere else
     local oldChanged = window._configChanged
     window._configChanged = function(...)
         if oldChanged then oldChanged(...) end
@@ -11894,179 +11943,173 @@ function Tab:SettingsPage(opts)
     end
     refresh()
 
+    ---------------------------------------------------------------- discord
     if opts.Discord then
-        local about = tab:Groupbox({ Name = "Community", Icon = "message-circle", Side = "Left" })
-        about:Button({
-            Name = "Copy Discord invite",
-            Desc = (opts.Credit and (opts.Credit .. " · ") or "") .. tostring(opts.Discord):gsub("^https?://", ""),
-            Callback = function()
-                if setclipboard then setclipboard(opts.Discord) end
-                notify(true, "Discord", "Invite copied")
-            end,
+        local dbox = tab:Groupbox({ Name = "Discord", Icon = "message-circle", Side = LEFT })
+        local dcard = card(dbox, "Frame", 64, {})
+        dcard.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+        dcard.BackgroundTransparency = 0.55
+        create("UIGradient", {
+            Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 0.95) }),
+            Parent = dcard,
         })
-    end
-
-    ---------------------------------------------------------------- themes
-    -- Off by default: the page keeps the script's own theme. Themes = true brings the picker back.
-    if opts.Themes then
-    local themeBox = tab:Groupbox({ Name = "Theme", Icon = "palette", Side = "Right" })
-    local all = presetNames()
-    local featured = { "VoidHub", "Aqua", "Midnight", "Nebula", "Crimson", "Emerald", "Gold", "Sakura" }
-    local names = {}
-    for _, n in ipairs(featured) do
-        if Library.ThemePresets[n] then table.insert(names, n) end
-    end
-    local themeCard = card(themeBox, "Frame", 10, {})
-    themeCard.BackgroundTransparency = 1
-    local tgrid = create("Frame", { Position = UDim2.fromOffset(12, 0), Size = UDim2.new(1, -24, 1, 0), BackgroundTransparency = 1, Parent = themeCard })
-    create("UIGridLayout", {
-        CellSize = UDim2.new(0.25, -6, 0, 50),
-        CellPadding = UDim2.fromOffset(8, 8),
-        SortOrder = Enum.SortOrder.LayoutOrder,
-        Parent = tgrid,
-    })
-    local themeCells = {}
-    local function paintThemes()
-        local current = Library.ThemeName
-        for name, cell in pairs(themeCells) do
-            cell.Stroke.Color = name == current and Color3.new(1, 1, 1) or Color3.fromRGB(42, 42, 42)
-            cell.Stroke.Thickness = name == current and 1.5 or 1
-            cell.Star.Visible = name == current
-        end
-    end
-    for i, name in ipairs(names) do
-        local preset = Library.ThemePresets[name]
-        local bg = (type(preset) == "table" and preset.Background) or Color3.fromRGB(11, 11, 11)
-        local accent = (type(preset) == "table" and preset.Accent) or Color3.fromRGB(230, 230, 230)
-        local cell = create("TextButton", {
-            BackgroundColor3 = bg,
+        local logo = create("Frame", {
+            Position = UDim2.fromOffset(12, 12),
+            Size = UDim2.fromOffset(40, 40),
+            BackgroundColor3 = Color3.fromRGB(88, 101, 242),
+            BorderSizePixel = 0,
+            Parent = dcard,
+        })
+        corner(logo, UDim.new(0, 11))
+        local logoImage = create("ImageLabel", {
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.fromScale(0.5, 0.5),
+            Size = UDim2.fromOffset(24, 24),
+            BackgroundTransparency = 1,
+            Parent = logo,
+        })
+        task.spawn(function()
+            local asset = Library.DiscordLogoURL and Library._webImage(Library.DiscordLogoURL)
+            if asset then logoImage.Image = asset else applyIcon(logoImage, "message-circle") end
+        end)
+        label({
+            Position = UDim2.fromOffset(62, 13),
+            Size = UDim2.new(1, -180, 0, 18),
+            Text = opts.DiscordTitle or "VoidHub Discord",
+            TextSize = 14,
+            FontFace = Fonts.Bold,
+            TextColor3 = Color3.new(1, 1, 1),
+            Parent = dcard,
+        })
+        label({
+            Position = UDim2.fromOffset(62, 32),
+            Size = UDim2.new(1, -180, 0, 14),
+            Text = (opts.Credit and (opts.Credit .. " · ") or "") .. "updates, support, new scripts",
+            TextSize = 11.5,
+            FontFace = Fonts.Regular,
+            TextColor3 = Color3.fromRGB(210, 214, 240),
+            Parent = dcard,
+        })
+        local copy = create("TextButton", {
+            AnchorPoint = Vector2.new(1, 0.5),
+            Position = UDim2.new(1, -12, 0.5, 0),
+            Size = UDim2.fromOffset(104, 34),
+            BackgroundColor3 = Color3.fromRGB(240, 240, 240),
             BorderSizePixel = 0,
             AutoButtonColor = false,
-            Text = "",
-            LayoutOrder = i,
-            Parent = tgrid,
+            Text = "Copy invite",
+            TextSize = 13,
+            FontFace = Fonts.Bold,
+            TextColor3 = Color3.fromRGB(17, 17, 17),
+            Parent = dcard,
         })
-        corner(cell, UDim.new(0, 9))
-        local st = Instance.new("UIStroke")
-        st.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-        st.Parent = cell
-        for k = 0, 1 do
-            local bar = Instance.new("Frame")
-            bar.Position = UDim2.new(k * 0.5, 8 - k * 2, 0, 9)
-            bar.Size = UDim2.new(0.5, -10, 0, 6)
-            bar.BackgroundColor3 = accent
-            bar.BackgroundTransparency = k * 0.55
-            bar.BorderSizePixel = 0
-            bar.Parent = cell
-            local c = Instance.new("UICorner")
-            c.CornerRadius = UDim.new(1, 0)
-            c.Parent = bar
-        end
-        local caption = Instance.new("TextLabel")
-        caption.BackgroundTransparency = 1
-        caption.Position = UDim2.new(0, 8, 1, -22)
-        caption.Size = UDim2.new(1, -16, 0, 18)
-        caption.Text = name
-        caption.TextSize = 11
-        caption.FontFace = Fonts.Medium
-        caption.TextColor3 = Color3.fromRGB(235, 235, 235)
-        caption.TextXAlignment = Enum.TextXAlignment.Left
-        caption.TextTruncate = Enum.TextTruncate.AtEnd
-        caption.Parent = cell
-        local star = caption:Clone()
-        star.Text = "★"
-        star.TextXAlignment = Enum.TextXAlignment.Right
-        star.Parent = cell
-        themeCells[name] = { Stroke = st, Star = star }
-        cell.MouseButton1Click:Connect(function()
-            Library:SetTheme(name)
-            pcall(function() window:SetDefaultTheme(name) end)
-            paintThemes()
+        corner(copy, UDim.new(0, 9))
+        copy.MouseButton1Click:Connect(function()
+            if setclipboard then setclipboard(opts.Discord) end
+            notify(true, "Discord", "Invite copied")
         end)
     end
-    local rows = math.ceil(#names / 4)
-    themeCard.Size = UDim2.new(1, 0, 0, rows * 50 + (rows - 1) * 8)
-    paintThemes()
-    themeBox:Dropdown({
-        Name = "All themes",
-        Options = all,
-        Default = Library.ThemeName,
-        AllowNone = false,
-        Callback = function(name)
-            if name and name ~= Library.ThemeName then
-                Library:SetTheme(name)
-                pcall(function() window:SetDefaultTheme(name) end)
-                paintThemes()
-            end
-        end,
-    })
 
-    end
-
-    ---------------------------------------------------------------- interface
-    local ui = tab:Groupbox({ Name = "Interface", Icon = "monitor", Side = "Right" })
-    if window._backdrop then
-        local labels = { None = "None", Snow = "Snow", Rain = "Rain", Sakura = "Sakura", Fireflies = "Fireflies", Matrix = "Matrix", Stars = "Stars", Aurora = "Aurora" }
-        ui:Dropdown({
-            Name = "Weather",
-            Options = { "Rain", "Snow", "Sakura", "Stars", "Aurora", "Fireflies", "Matrix", "None" },
-            Default = labels[window.Weather] or "None",
-            AllowNone = false,
-            Callback = function(name)
-                if name then window:SetWeather(name) end
-            end,
-        })
-        ui:Toggle({
-            Name = "Dim the game",
-            CurrentValue = window._backdropDim ~= false,
-            Callback = function(v) window:SetDim(v) end,
-        })
-    end
-    ui:Slider({
-        Name = "UI scale",
+    ---------------------------------------------------------------- display
+    local display = tab:Groupbox({ Name = "Display", Icon = "monitor", Side = RIGHT })
+    display:Slider({
+        Name = "UI size",
         Range = { 60, 150 },
         Increment = 5,
         Suffix = "%",
         CurrentValue = math.floor(((window.Scale and window.Scale.Scale) or 1) * 100 + 0.5),
-        Callback = function(v) window:SetUIScale(v / 100) end,
+        Callback = function(v) pcall(function() window:SetUIScale(v / 100) end) end,
     })
-    ui:Keybind({
-        Name = "Toggle key",
-        Desc = "Shows or hides the window",
-        Default = window.Keybind,
-        Callback = function() end,
-        OnChanged = function(key)
-            pcall(function() window:SetKeybind(key) end)
-        end,
-    })
-    ui:Dropdown({
-        Name = "Dynamic Island",
-        Options = { "Show on Hover", "Always Show" },
-        Default = window.IslandStyle == "Always Show" and "Always Show" or "Show on Hover",
-        AllowNone = false,
-        Callback = function(style)
-            if style then pcall(function() window:SetIslandStyle(style) end) end
-        end,
-    })
-    local more = tab:Groupbox({ Name = "More", Icon = "sliders-horizontal", Side = "Right" })
-    more:Dropdown({
-        Name = "Density",
-        Options = { "Compact", "Default", "Comfortable" },
-        Default = window.Density or "Default",
-        AllowNone = false,
-        Callback = function(mode) if mode then pcall(function() window:SetDensity(mode) end) end end,
-    })
-    more:Toggle({
-        Name = "Transparent window",
-        CurrentValue = window.Transparent == true,
-        Callback = function(v) pcall(function() window:SetTransparent(v) end) end,
-    })
-    more:Toggle({
+    local densityNames = { Compact = "Compact", Default = "Normal", Comfortable = "Roomy" }
+    segmented(display, "Spacing", nil, { "Compact", "Normal", "Roomy" }, densityNames[window.Density or "Default"] or "Normal", function(choice)
+        local mode = ({ Compact = "Compact", Normal = "Default", Roomy = "Comfortable" })[choice]
+        pcall(function() window:SetDensity(mode) end)
+    end)
+    display:Toggle({
         Name = "Fit to screen",
+        Desc = "Shrinks the window on small screens",
         CurrentValue = window.AdaptiveSize ~= false,
         Callback = function(v) pcall(function() window:SetAdaptiveSize(v) end) end,
     })
-    pcall(function() more:SetCollapsed(true) end)
+
+    ---------------------------------------------------------------- controls
+    local controls = tab:Groupbox({ Name = "Controls", Icon = "keyboard", Side = RIGHT })
+    controls:Keybind({
+        Name = "Show / hide key",
+        Desc = "Tap, then press a key",
+        Default = window.Keybind,
+        Callback = function() end,
+        OnChanged = function(key) pcall(function() window:SetKeybind(key) end) end,
+    })
+    pcall(function() controls:CreateMinimizeOnStart({ Name = "Start minimized" }) end)
+    segmented(controls, "Dynamic Island", nil, { "On hover", "Always" }, window.IslandStyle == "Always Show" and "Always" or "On hover", function(choice)
+        pcall(function() window:SetIslandStyle(choice == "Always" and "Always Show" or "Show on Hover") end)
+    end)
+
+    ---------------------------------------------------------------- atmosphere
+    if window._backdrop then
+        local atmo = tab:Groupbox({ Name = "Atmosphere", Icon = "cloud-rain", Side = RIGHT })
+        local kinds = { { "Rain", "cloud-rain" }, { "Snow", "snowflake" }, { "Sakura", "flower" }, { "Stars", "sparkles" }, { "Aurora", "waves" }, { "None", "circle-off" } }
+        local tiles = card(atmo, "Frame", 60, {})
+        tiles.BackgroundTransparency = 1
+        local row = create("Frame", { Position = UDim2.fromOffset(14, 0), Size = UDim2.new(1, -28, 1, 0), BackgroundTransparency = 1, Parent = tiles })
+        create("UIGridLayout", {
+            CellSize = UDim2.new(1 / #kinds, -6, 1, 0),
+            CellPadding = UDim2.fromOffset(7, 0),
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            Parent = row,
+        })
+        local cells = {}
+        local function paint()
+            for name, c in pairs(cells) do
+                local on = (window.Weather or "None") == name
+                c.Stroke.Color = on and Theme.Text or Theme.Stroke
+                c.Stroke.Transparency = on and 0.1 or 0
+                c.Label.TextColor3 = on and Theme.Text or Theme.Muted
+            end
+        end
+        for i, kind in ipairs(kinds) do
+            local cell = create("TextButton", {
+                BackgroundColor3 = Theme.Surface2,
+                BorderSizePixel = 0,
+                AutoButtonColor = false,
+                Text = "",
+                LayoutOrder = i,
+                Parent = row,
+            })
+            corner(cell, UDim.new(0, 10))
+            local st = stroke(cell, Theme.Stroke)
+            local icon = create("ImageLabel", {
+                AnchorPoint = Vector2.new(0.5, 0),
+                Position = UDim2.new(0.5, 0, 0, 10),
+                Size = UDim2.fromOffset(18, 18),
+                BackgroundTransparency = 1,
+                ImageColor3 = Theme.Text,
+                Parent = cell,
+            })
+            applyIcon(icon, kind[2])
+            local name = label({
+                Position = UDim2.new(0, 0, 1, -24),
+                Size = UDim2.new(1, 0, 0, 16),
+                Text = kind[1] == "None" and "Off" or kind[1],
+                TextSize = 11.5,
+                TextXAlignment = Enum.TextXAlignment.Center,
+                Parent = cell,
+            })
+            cells[kind[1]] = { Stroke = st, Label = name }
+            cell.MouseButton1Click:Connect(function()
+                window:SetWeather(kind[1])
+                paint()
+            end)
+        end
+        paint()
+        atmo:Toggle({
+            Name = "Dim the game behind",
+            Desc = "Darkens the screen while the window is open",
+            CurrentValue = window._backdropDim ~= false,
+            Callback = function(v) window:SetDim(v) end,
+        })
+    end
 
     return { Refresh = refresh }
 end
