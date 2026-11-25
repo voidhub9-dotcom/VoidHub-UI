@@ -286,9 +286,10 @@ Library.Assets = {
 -- without writefile/getcustomasset, or a failed download, fall back to
 -- Assets.Logo. Set Library.LogoURL = nil before creating a window to always
 -- use the Roblox asset.
-Library.LogoURL = "https://pastevoid.lovable.app/img/Ru7BnfAV0N.png"
+-- Both live in one PasteVoid image pack ("voidhub-brand").
+Library.LogoURL = "https://pastevoid.lovable.app/pack/BoPt5krT5f/logo.png"
 -- The white Discord mark, drawn on Discord's blurple on Home.
-Library.DiscordLogoURL = "https://pastevoid.lovable.app/img/klNLY5eRIn.png"
+Library.DiscordLogoURL = "https://pastevoid.lovable.app/pack/BoPt5krT5f/discord.png"
 
 -- Downloads an image once into VoidHub/ and returns a getcustomasset id, or
 -- nil when the executor can't (no writefile / getcustomasset) or the
@@ -307,7 +308,7 @@ function Library._webImage(url)
         if type(writefile) ~= "function" or type(isfile) ~= "function" or typeof(getcustomasset) ~= "function" then
             return nil
         end
-        local path = "VoidHub/img-" .. (url:match("([%w_-]+)%.png$") or "web") .. ".png"
+        local path = "VoidHub/img-" .. (url:gsub("^https?://[^/]+/", ""):gsub("[^%w]", "_")):sub(-60) .. ".png"
         if not isfile(path) then
             local body = game:HttpGet(url, true)
             -- Only a real PNG is saved: an error page must not become an image.
