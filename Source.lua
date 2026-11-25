@@ -833,16 +833,16 @@ end
 -- Icon glow strength, 0 (off) to 1. Read whenever a glow fades in or out.
 Library.IconGlow = 1
 
--- A soft bloom that hugs an icon's own shape: two slightly larger, faded
--- copies of the icon and a faint round halo, drawn as siblings just under it
--- (children would draw over the icon and blur it). They follow the icon's
--- image, position, size and visibility. Returns a handle whose :Set(amount,
--- duration) fades it, 0 to 1. Library fields, not locals: the main chunk is
--- at Luau's 200 local limit.
+-- A soft glow behind an icon: a round halo from the glow image, drawn as a
+-- sibling just under it (a child would draw over the icon). Enlarged copies
+-- of the icon itself were tried and read as blurry double outlines in-game,
+-- so only the halo is used. It follows the icon's position, size and
+-- visibility. Returns a handle whose :Set(amount, duration) fades it, 0 to
+-- 1. Library fields, not locals: the main chunk is at Luau's 200 local limit.
 function Library._iconBloom(image, on)
     local parent = image.Parent
     local layers = {}
-    for index, spec in ipairs({ { 1.3, 0.5, false }, { 1.8, 0.8, false }, { 3, 0.86, true } }) do
+    for index, spec in ipairs({ { 2.6, 0.72, true } }) do
         local layer = create("ImageLabel", {
             Name = "IconBloom" .. index,
             AnchorPoint = Vector2.new(0.5, 0.5),
@@ -4795,6 +4795,13 @@ function Library.Window(_, opts)
             Parent = header,
         })
         applyIcon(logo, opts.Icon or Assets.Logo, true)
+        if logo:GetAttribute("CustomIcon") then
+            -- Uploaded artwork usually carries its own square backdrop;
+            -- round its corners so it reads as an app icon, not a box.
+            logo.Size = UDim2.fromOffset(40, 40)
+            logo.ScaleType = Enum.ScaleType.Crop
+            corner(logo, UDim.new(0, 10))
+        end
         Library._iconBloom(logo)
     else
         local logoTile = create("Frame", {
@@ -4819,7 +4826,9 @@ function Library.Window(_, opts)
             Parent = logoTile,
         })
         applyIcon(logo, opts.Icon or Assets.Logo, true)
-        Library._iconBloom(logo)
+        if not logo:GetAttribute("CustomIcon") then
+            Library._iconBloom(logo)
+        end
         local subtitle = opts.Version or opts.Subtitle
         label({
             Position = UDim2.new(0, 56, 0.5, subtitle and -15 or -9),
@@ -18159,19 +18168,18 @@ function Window:_buildMiniBar()
     -- dark scene without reading as a border.
     stroke(island, Theme.Text, 0.92)
 
-    -- One soft shadow under the island, drawn with the same sliced shadow
-    -- image as the window so it falls off smoothly instead of in bands. It
-    -- is a sibling (a CanvasGroup clips anything past its edge) and follows
-    -- the island's position, size and fade every frame.
+    -- One soft shadow under the island: the round glow image tinted black
+    -- and stretched to the island's shape, so it falls off to nothing on
+    -- every side. (The window's sliced shadow drew a grey box at pill size.)
+    -- It is a sibling (a CanvasGroup clips anything past its edge) and
+    -- follows the island's position, size and fade every frame.
     local islandShadow = create("ImageLabel", {
         Name = "IslandShadow",
+        AnchorPoint = Vector2.new(0.5, 0.5),
         BackgroundTransparency = 1,
-        Image = Assets.Shadow,
+        Image = Assets.Glow,
         ImageColor3 = Color3.new(0, 0, 0),
         ImageTransparency = 1,
-        ScaleType = Enum.ScaleType.Slice,
-        SliceCenter = Rect.new(49, 49, 450, 450),
-        SliceScale = 0.5,
         Visible = false,
         ZIndex = 29,
         Parent = gui,
@@ -18227,6 +18235,13 @@ function Window:_buildMiniBar()
         Parent = logoTile,
     })
     applyIcon(logo, self._logoIcon, true)
+    if logo:GetAttribute("CustomIcon") then
+        -- Uploaded artwork with its own square backdrop fills the round tile
+        -- instead of sitting in it as a small dark square.
+        logo.Size = UDim2.fromScale(1, 1)
+        logo.ScaleType = Enum.ScaleType.Crop
+        corner(logo, UDim.new(1, 0))
+    end
     -- The tile is round, so the dot sits on its rim at 45 degrees.
     local liveDot = create("Frame", {
         AnchorPoint = Vector2.new(0.5, 0.5),
@@ -19221,13 +19236,13 @@ function Window:_buildMiniBar()
         local islandAlpha = 1 - island.GroupTransparency
         islandShadow.Visible = islandAlpha > 0.02
         if islandShadow.Visible then
-            -- Offset down so the island reads as lifted, spread past the
-            -- sides so the falloff isn't cut at the edge.
+            -- Centred a little below the island so it reads as lifted, and
+            -- wider than it so the falloff starts past its edge.
             local absPos = island.AbsolutePosition - gui.AbsolutePosition
             local absSize = island.AbsoluteSize
-            islandShadow.Position = UDim2.fromOffset(absPos.X - 16, absPos.Y - 10)
-            islandShadow.Size = UDim2.fromOffset(absSize.X + 32, absSize.Y + 34)
-            islandShadow.ImageTransparency = 1 - 0.55 * islandAlpha
+            islandShadow.Position = UDim2.fromOffset(absPos.X + absSize.X / 2, absPos.Y + absSize.Y / 2 + 8)
+            islandShadow.Size = UDim2.fromOffset(absSize.X * 1.25 + 40, absSize.Y * 1.5 + 40)
+            islandShadow.ImageTransparency = 1 - 0.5 * islandAlpha
         end
     end)
 
