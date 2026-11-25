@@ -5011,12 +5011,12 @@ function Library.Window(_, opts)
         Name = "Notifications",
         AnchorPoint = Vector2.new(1, 1),
         Position = UDim2.new(1, -20, 1, -20),
-        Size = UDim2.new(0, 280, 1, -40),
+        Size = UDim2.new(0, 320, 1, -40),
         BackgroundTransparency = 1,
         Parent = gui,
     })
     local function fitToasts()
-        notifyHolder.Size = UDim2.new(0, math.min(280, gui.AbsoluteSize.X - 40), 1, -40)
+        notifyHolder.Size = UDim2.new(0, math.min(320, gui.AbsoluteSize.X - 40), 1, -40)
     end
     table.insert(self._connections, gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitToasts))
     create("UIListLayout", {
@@ -19743,7 +19743,6 @@ function Window:Notify(opts)
         self._islandActivity(opts)
     end
     local duration = opts.Duration or 4
-    local titleColor = NOTIFY_COLORS[opts.Type] or Theme.Text
 
     self._notifyOrder = self._notifyOrder + 1
     local outer = create("Frame", {
@@ -19771,6 +19770,13 @@ function Window:Notify(opts)
         ZIndex = 0,
         Parent = slide,
     })
+    -- Style G: a black card with a panel of the type's colour fading in
+    -- from the left, a large glowing icon on it, a white title, a muted
+    -- body and a thin white timer under the text. Success, Warning and
+    -- Error pick their own icon unless one is given; a plain notification
+    -- uses the bell and the accent.
+    local typeColor = NOTIFY_COLORS[opts.Type] or Theme.Accent
+    local PANEL = 70
     local toast = create("CanvasGroup", {
         Size = UDim2.new(1, 0, 0, 0),
         AutomaticSize = Enum.AutomaticSize.Y,
@@ -19779,10 +19785,39 @@ function Window:Notify(opts)
         GroupTransparency = 1,
         Parent = slide,
     })
-    corner(toast, UDim.new(0, 10))
-    local toastStroke = stroke(toast, Theme.Stroke)
-    edgeHighlight(toast)
-    glow(toast, UDim2.fromOffset(260, 120), UDim2.new(1, -10, 0, -10), 0.86, 90)
+    corner(toast, UDim.new(0, 14))
+    local toastStroke = stroke(toast, Theme.Text, 0.93)
+
+    local panel = create("Frame", {
+        Name = "TypePanel",
+        Size = UDim2.new(0, PANEL, 1, 0),
+        BackgroundColor3 = typeColor,
+        BorderSizePixel = 0,
+        Parent = toast,
+    })
+    create("UIGradient", {
+        Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.55),
+            NumberSequenceKeypoint.new(1, 1),
+        }),
+        Parent = panel,
+    })
+    local icon = opts.Icon
+    if icon == nil then
+        icon = ({ Success = "check", Warning = "triangle-alert", Error = "x" })[opts.Type] or "bell"
+    end
+    local typeIcon = create("ImageLabel", {
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.fromScale(0.5, 0.5),
+        Size = UDim2.fromOffset(24, 24),
+        BackgroundTransparency = 1,
+        ImageColor3 = typeColor,
+        ScaleType = Enum.ScaleType.Fit,
+        ZIndex = 2,
+        Parent = panel,
+    })
+    applyIcon(typeIcon, icon)
+    Library._iconBloom(typeIcon)
 
     local inner = create("Frame", {
         Size = UDim2.new(1, 0, 0, 0),
@@ -19790,59 +19825,70 @@ function Window:Notify(opts)
         BackgroundTransparency = 1,
         Parent = toast,
     })
-    padding(inner, 16, 16, 14, 24)
-
-    local titleOffset = 0
-    if opts.Icon then
-        glowIcon(inner, opts.Icon, titleColor == Theme.Text and Theme.Accent or titleColor, UDim2.new(0, 0, 0, 8))
-        titleOffset = 24
-    end
+    -- Room at the foot for the timer; a short card still clears the icon.
+    padding(inner, PANEL + 14, 34, 16, 26)
+    create("UIListLayout", {
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        Padding = UDim.new(0, 3),
+        Parent = inner,
+    })
+    create("UISizeConstraint", { MinSize = Vector2.new(0, 84), Parent = inner })
     label({
-        Position = UDim2.fromOffset(titleOffset, 0),
-        Size = UDim2.new(1, -28 - titleOffset, 0, 16),
+        Size = UDim2.new(1, 0, 0, 18),
         Text = opts.Title or "Notification",
-        TextSize = 14,
-        TextColor3 = titleColor,
-        Parent = inner,
-    })
-    local closeButton = create("TextButton", {
-        AnchorPoint = Vector2.new(1, 0),
-        Position = UDim2.new(1, 6, 0, -5),
-        Size = UDim2.fromOffset(24, 24),
-        BackgroundTransparency = 1,
-        Text = "×",
-        TextColor3 = Theme.Muted,
-        TextSize = 22,
+        TextSize = 15,
         FontFace = Fonts.Bold,
-        AutoButtonColor = false,
+        TextColor3 = Theme.Text,
+        LayoutOrder = 1,
         Parent = inner,
     })
-    closeButton.MouseEnter:Connect(function()
-        tween(closeButton, { TextColor3 = Theme.Text }, 0.15)
-    end)
-    closeButton.MouseLeave:Connect(function()
-        tween(closeButton, { TextColor3 = Theme.Muted }, 0.2)
-    end)
     if opts.Content then
         label({
-            Position = UDim2.fromOffset(titleOffset, 21),
-            Size = UDim2.new(1, -titleOffset, 0, 0),
+            Size = UDim2.new(1, 0, 0, 0),
             AutomaticSize = Enum.AutomaticSize.Y,
             Text = opts.Content,
-            TextSize = 13,
+            TextSize = 12,
             FontFace = Fonts.Regular,
             TextColor3 = Theme.Muted,
             TextWrapped = true,
             TextTruncate = Enum.TextTruncate.None,
             TextYAlignment = Enum.TextYAlignment.Top,
+            LayoutOrder = 2,
             Parent = inner,
         })
     end
+    local closeButton = create("TextButton", {
+        AnchorPoint = Vector2.new(1, 0),
+        Position = UDim2.new(1, -6, 0, 6),
+        Size = UDim2.fromOffset(24, 24),
+        BackgroundTransparency = 1,
+        Text = "",
+        AutoButtonColor = false,
+        ZIndex = 3,
+        Parent = toast,
+    })
+    local closeIcon = create("ImageLabel", {
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.fromScale(0.5, 0.5),
+        Size = UDim2.fromOffset(12, 12),
+        BackgroundTransparency = 1,
+        ImageColor3 = Theme.Muted,
+        ScaleType = Enum.ScaleType.Fit,
+        ZIndex = 3,
+        Parent = closeButton,
+    })
+    applyIcon(closeIcon, "x")
+    closeButton.MouseEnter:Connect(function()
+        tween(closeIcon, { ImageColor3 = Theme.Text }, 0.15)
+    end)
+    closeButton.MouseLeave:Connect(function()
+        tween(closeIcon, { ImageColor3 = Theme.Muted }, 0.2)
+    end)
 
     local track = create("Frame", {
         AnchorPoint = Vector2.new(0, 1),
-        Position = UDim2.new(0, 16, 1, -8),
-        Size = UDim2.new(1, -32, 0, 3),
+        Position = UDim2.new(0, PANEL + 14, 1, -12),
+        Size = UDim2.new(1, -(PANEL + 14) - 22, 0, 2),
         BackgroundColor3 = Theme.Surface3,
         BorderSizePixel = 0,
         Parent = toast,
@@ -19850,7 +19896,8 @@ function Window:Notify(opts)
     corner(track, UDim.new(1, 0))
     local progress = create("Frame", {
         Size = UDim2.fromScale(1, 1),
-        BackgroundColor3 = Theme.Accent,
+        BackgroundColor3 = Theme.Text,
+        BackgroundTransparency = 0.15,
         BorderSizePixel = 0,
         Parent = track,
     })
