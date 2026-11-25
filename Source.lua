@@ -491,7 +491,8 @@ local TAB_TILE_HEIGHT = TOUCH and 44 or 38
 -- SidebarStyle = "Wide" keeps the classic wide sidebar.
 Library.Rail = {
     Width = 108,
-    Tile = TOUCH and 86 or 82,
+    -- Shorter on phones, whose windows are short, so five tabs still fit.
+    Tile = TOUCH and 70 or 80,
     Profile = 100,
 }
 local CARD_HEIGHT = TOUCH and 54 or 48
@@ -4939,6 +4940,28 @@ function Library.Window(_, opts)
         Parent = stack,
     })
     self._tabStack = stack
+    if rail then
+        -- One highlight behind the tiles that glides to the selected tab.
+        local highlight = create("Frame", {
+            Name = "RailHighlight",
+            Position = UDim2.fromOffset(8, 2),
+            Size = UDim2.new(1, -16, 0, Library.Rail.Tile),
+            BackgroundColor3 = Theme.Surface2,
+            BorderSizePixel = 0,
+            Visible = false,
+            ZIndex = 1,
+            Parent = tabList,
+        })
+        corner(highlight, UDim.new(0, 12))
+        stroke(highlight, Theme.Text, 0.93)
+        self._railHighlight = highlight
+        -- Tiles shift when tabs are added or the UI rescales: follow them.
+        stack:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+            if self.CurrentTab then
+                self:_moveRailHighlight(self.CurrentTab, true)
+            end
+        end)
+    end
 
     -- More tabs than fit: a fade and a small "more" chip at the hidden end.
     self:_overflowHint(sidebar, tabList, stack, true, Theme.Surface)
@@ -17325,11 +17348,11 @@ function Window:_paintTab(tab, instant)
     tab._label.FontFace = selected and Fonts.Bold or Fonts.Medium
     tween(tab._button, {
         BackgroundColor3 = rail and Theme.Surface2 or Theme.Surface3,
-        BackgroundTransparency = selected and 0 or ((focused or hovered) and 0.55 or 1),
+        BackgroundTransparency = (selected and not self._railHighlight) and 0 or ((not selected and (focused or hovered)) and 0.55 or 1),
     }, duration)
     tween(tab._stroke, {
         Color = focused and Theme.Accent or (selected and (rail and Theme.Text or Theme.StrokeHover) or Theme.Stroke),
-        Transparency = focused and 0.12 or (selected and (rail and 0.93 or 0.48) or 1),
+        Transparency = focused and 0.12 or (selected and (rail and 1 or 0.48) or 1),
     }, duration)
     local textColor = (selected or focused or hovered) and Theme.Text or Theme.Muted
     tween(tab._label, { TextColor3 = textColor }, duration)
@@ -17385,8 +17408,8 @@ function Window:Tab(opts, icon)
         -- Rail: the icon sits centred above the label. Wide: it leads the row.
         local iconImage = create("ImageLabel", {
             AnchorPoint = Vector2.new(0.5, 0.5),
-            Position = rail and UDim2.new(0.5, 0, 0, 31) or UDim2.new(0, 23, 0.5, 0),
-            Size = rail and UDim2.fromOffset(26, 26) or UDim2.fromOffset(16, 16),
+            Position = rail and UDim2.new(0.5, 0, 0.4, 0) or UDim2.new(0, 23, 0.5, 0),
+            Size = rail and UDim2.fromOffset(TOUCH and 22 or 26, TOUCH and 22 or 26) or UDim2.fromOffset(16, 16),
             BackgroundTransparency = 1,
             ImageColor3 = Theme.Muted,
             ScaleType = Enum.ScaleType.Fit,
@@ -17403,7 +17426,8 @@ function Window:Tab(opts, icon)
     end
     if rail then
         tab._label = label({
-            Position = UDim2.fromOffset(4, hasIcon and 52 or 0),
+            AnchorPoint = Vector2.new(0, hasIcon and 1 or 0),
+            Position = hasIcon and UDim2.new(0, 4, 1, -9) or UDim2.fromOffset(4, 0),
             Size = UDim2.new(1, -8, hasIcon and 0 or 1, hasIcon and 17 or 0),
             Text = tab.Name,
             TextSize = 13,
@@ -18119,6 +18143,7 @@ function Window:SelectTab(tab)
         self:_paintTab(previous)
     end
     self:_paintTab(tab, not previous)
+    self:_moveRailHighlight(tab, not previous)
 
     task.defer(function()
         if not self._destroyed and self.CurrentTab == tab then
@@ -18137,7 +18162,7 @@ function Window:SelectTab(tab)
         self._inPage = page
         local down = (table.find(self.Tabs, tab) or 0) >= (table.find(self.Tabs, previous) or 0)
         layer.GroupTransparency = 1
-        layer.Position = UDim2.fromOffset(0, down and 16 or -16)
+        layer.Position = UDim2.fromOffset(0, down and 22 or -22)
         layer.Visible = true
         tween(layer, { GroupTransparency = 0, Position = UDim2.fromOffset(0, 0) }, 0.32, Enum.EasingStyle.Quint)
         task.delay(0.33, function()
@@ -18147,6 +18172,29 @@ function Window:SelectTab(tab)
         end)
     end
     return true
+end
+
+-- Glides the rail highlight behind the selected tile.
+function Window:_moveRailHighlight(tab, instant)
+    local highlight = self._railHighlight
+    if not highlight then
+        return
+    end
+    task.defer(function()
+        if self._destroyed or self.CurrentTab ~= tab then
+            return
+        end
+        local scale = math.max(self.Scale.Scale, 0.01)
+        local y = (tab._button.AbsolutePosition.Y - self._tabStack.AbsolutePosition.Y) / scale + 2
+        local target = { Position = UDim2.fromOffset(8, y), Size = UDim2.new(1, -16, 0, Library.Rail.Tile) }
+        if instant or not highlight.Visible then
+            highlight.Visible = true
+            highlight.Position = target.Position
+            highlight.Size = target.Size
+        else
+            tween(highlight, target, 0.38, Enum.EasingStyle.Quint)
+        end
+    end)
 end
 
 function Window:_settleIn()
@@ -18372,7 +18420,46 @@ function Window:_buildOpenEffects(enabled)
         }),
         Parent = rimStroke,
     })
-    self._openEffects = { Rim = rim, Stroke = rimStroke, Gradient = gradient }
+    -- A bright band that crosses the whole window, clipped to its corners.
+    local glass = create("CanvasGroup", {
+        Name = "OpeningGlass",
+        Size = UDim2.fromScale(1, 1),
+        BackgroundTransparency = 1,
+        GroupTransparency = 0,
+        Parent = rim,
+    })
+    corner(glass, UDim.new(0, 10))
+    local band = create("Frame", {
+        Size = UDim2.fromScale(1, 1),
+        BackgroundColor3 = Color3.new(1, 1, 1),
+        BackgroundTransparency = 0.82,
+        BorderSizePixel = 0,
+        Parent = glass,
+    })
+    local bandGradient = create("UIGradient", {
+        Rotation = 22,
+        Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 1),
+            NumberSequenceKeypoint.new(0.4, 1),
+            NumberSequenceKeypoint.new(0.5, 0),
+            NumberSequenceKeypoint.new(0.6, 1),
+            NumberSequenceKeypoint.new(1, 1),
+        }),
+        Parent = band,
+    })
+    -- A burst of light out of the logo (the "iris").
+    local burst = create("ImageLabel", {
+        Name = "LogoBurst",
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.fromOffset(54, 36),
+        Size = UDim2.fromOffset(0, 0),
+        BackgroundTransparency = 1,
+        Image = Assets.Glow,
+        ImageColor3 = Color3.new(1, 1, 1),
+        ImageTransparency = 1,
+        Parent = glass,
+    })
+    self._openEffects = { Rim = rim, Stroke = rimStroke, Gradient = gradient, Band = bandGradient, Burst = burst }
 end
 
 function Window:_cancelOpenEffect()
@@ -18396,7 +18483,20 @@ function Window:_playOpenEffect()
     effect.Stroke.Transparency = 0.55
     effect.Rim.Visible = true
     effect.Sweep = tween(effect.Gradient, { Offset = Vector2.new(0.8, 0) }, 0.46, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
-    local fade = tween(effect.Stroke, { Transparency = 1 }, 0.48, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+    -- Light sweep across the glass.
+    effect.Band.Offset = Vector2.new(-1, 0)
+    tween(effect.Band, { Offset = Vector2.new(1, 0) }, 0.62, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+    -- Iris: light bursts out of the logo and fades.
+    local logoX = self.SidebarStyle == "Rail" and (self.SidebarWidth or 108) / 2 or 30
+    effect.Burst.Position = UDim2.fromOffset(logoX, 36)
+    effect.Burst.Size = UDim2.fromOffset(20, 20)
+    effect.Burst.ImageTransparency = 0.15
+    tween(effect.Burst, { Size = UDim2.fromOffset(520, 520), ImageTransparency = 1 }, 0.7, Enum.EasingStyle.Quint)
+    -- Rise: the window settles up into place.
+    local fit = self._fitScale or 1
+    self.Scale.Scale = fit * 0.965
+    tween(self.Scale, { Scale = fit }, 0.45, Enum.EasingStyle.Back)
+    local fade = tween(effect.Stroke, { Transparency = 1 }, 0.72, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
     effect.Fade = fade
     fade.Completed:Once(function()
         if effect.Fade == fade then
