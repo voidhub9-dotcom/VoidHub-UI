@@ -11069,11 +11069,11 @@ function Tab:ThemeManager(opts)
         menu = self:Groupbox({ Name = opts.MenuName or "Menu", Icon = opts.MenuIcon or "monitor", Side = opts.MenuSide or opts.Side })
         menu._manager = true
     end
-    local labels = { None = "None", Snow = "Snow", Rain = "Rain", Ember = "Hell Fire", Sakura = "Sakura", Fireflies = "Fireflies", Matrix = "Matrix" }
+    local labels = { None = "None", Snow = "Snow", Rain = "Rain", Ember = "Hell Fire", Sakura = "Sakura", Fireflies = "Fireflies", Matrix = "Matrix", Stars = "Stars", Aurora = "Aurora" }
     if window._backdrop and opts.Weather ~= false then
         weather = menu:Dropdown({
             Name = "Weather",
-            Options = { "Snow", "Rain", "Hell Fire", "Sakura", "Fireflies", "Matrix", "None" },
+            Options = { "Snow", "Rain", "Hell Fire", "Sakura", "Stars", "Aurora", "Fireflies", "Matrix", "None" },
             Default = labels[window.Weather] or "None",
             AllowNone = false,
             Callback = function(name)
@@ -18652,6 +18652,10 @@ local WEATHER = {
     -- that flip as they fall, matrix columns are text strips.
     Sakura = { Petal = true, Count = 46, Glow = Color3.fromRGB(255, 150, 190), GlowAmount = 0.1 },
     Fireflies = { Image = Assets.Glow, Count = 34, Glow = Color3.fromRGB(70, 150, 60), GlowAmount = 0.16 },
+    -- Night sky: twinkling star glints and now and then a shooting star.
+    Stars = { Image = Assets.Glow, Count = 70, Glow = Color3.fromRGB(70, 90, 160), GlowAmount = 0.08 },
+    -- Wide soft colour curtains drifting across the top of the screen.
+    Aurora = { Image = Assets.Glow, Count = 7, Glow = Color3.fromRGB(40, 160, 120), GlowAmount = 0.1 },
     Matrix = {
         Text = true,
         Count = 38,
@@ -18674,9 +18678,29 @@ local WEATHER_NAMES = {
     fireflies = "Fireflies",
     matrix = "Matrix",
     matrixrain = "Matrix",
+    stars = "Stars",
+    star = "Stars",
+    night = "Stars",
+    aurora = "Aurora",
+    northernlights = "Aurora",
     code = "Matrix",
 }
 local RAIN_STREAK = Vector2.new(7 / 420, 151 / 263)
+
+-- Hand-made sprites in the PasteVoid "voidhub-weather" image pack: real
+-- snowflake crystals, a raindrop streak, a shaded petal, an ember, a star
+-- glint, an aurora curtain and a shooting-star tail. Downloaded once with
+-- getcustomasset; each kind falls back to the soft glow if they can't load.
+Library.WeatherPackURL = "https://pastevoid.lovable.app/pack/1WLw8kEmaa/"
+local WEATHER_SPRITES = {
+    Snow = { "snow-1", "snow-2", "snow-3", "snow-4" },
+    Rain = { "rain" },
+    Sakura = { "petal" },
+    Ember = { "ember" },
+    Stars = { "star", "trail" },
+    Aurora = { "aurora" },
+}
+Library._weatherSprites = {}
 local weatherRandom = Random.new()
 
 -- "UI" keeps the weather inside the window, behind its content; anything
@@ -18704,7 +18728,40 @@ end
 local function seedParticle(kind, particle, width, height, anywhere)
     particle.Time = roll(0, 10)
     particle.Phase = roll(0, math.pi * 2)
-    if kind == "Rain" then
+    particle.Life, particle.Age = nil, nil
+    local sprites = Library._weatherSprites[kind]
+    if kind == "Stars" then
+        -- Fixed points that fade in, twinkle and fade out somewhere else.
+        local s = roll(4, 15) * (weatherRandom:NextNumber() < 0.12 and 1.8 or 1)
+        particle.Size = Vector2.new(s, s)
+        particle.VX, particle.VY, particle.Sway, particle.Spin = 0, 0, 0, 0
+        particle.Rotation = sprites and roll(-10, 10) or 0
+        particle.Alpha = roll(0.35, 0.85)
+        particle.Life = roll(4, 10)
+        particle.Age = anywhere and roll(0, particle.Life) or 0
+        particle.Pulse = roll(1.2, 3.2)
+        particle.Color = Color3.fromRGB(230, 236, 255)
+        particle.X = roll(0, width)
+        particle.Y = roll(0, height * 0.85)
+    elseif kind == "Aurora" then
+        -- A few wide curtains, each a different colour, drifting slowly.
+        local w = roll(0.55, 0.95) * width
+        particle.Size = Vector2.new(w, roll(160, 240))
+        particle.VX = roll(-10, 10)
+        particle.VY = 0
+        particle.Sway = roll(20, 60)
+        particle.SwayY = roll(8, 20)
+        particle.Frequency = roll(0.08, 0.2)
+        particle.Spin, particle.Rotation = 0, roll(-4, 4)
+        particle.Alpha = roll(0.16, 0.32)
+        particle.Life = roll(14, 26)
+        particle.Age = anywhere and roll(0, particle.Life) or 0
+        particle.Color = ({
+            Color3.fromRGB(80, 255, 170), Color3.fromRGB(60, 210, 255), Color3.fromRGB(170, 110, 255), Color3.fromRGB(90, 255, 220),
+        })[weatherRandom:NextInteger(1, 4)]
+        particle.X = roll(0, width)
+        particle.Y = roll(height * 0.08, height * 0.32)
+    elseif kind == "Rain" then
         local w = roll(2, 3.5)
         particle.Size = Vector2.new(w, roll(26, 52))
         particle.VY = roll(950, 1400)
@@ -18712,6 +18769,7 @@ local function seedParticle(kind, particle, width, height, anywhere)
         particle.Sway, particle.Spin = 0, 0
         particle.Rotation = -math.deg(math.atan2(particle.VX, particle.VY))
         particle.Alpha = roll(0.08, 0.35)
+        particle.Wind = 3
         particle.X = roll(-0.15 * width, width)
         particle.Y = anywhere and roll(-40, height) or roll(-120, -particle.Size.Y)
     elseif kind == "Snow" then
@@ -18729,6 +18787,13 @@ local function seedParticle(kind, particle, width, height, anywhere)
         particle.Rotation = roll(0, 360)
         particle.Alpha = 0.05 + depth * roll(0.08, 0.2)
         particle.Color = Color3.fromRGB(232, 244, 255)
+        particle.Wind = 0.4 + depth * 0.8
+        if sprites then
+            -- Crystals: a little smaller, brighter, and they turn slowly.
+            particle.Size = Vector2.new(s * 0.8, s * 0.8)
+            particle.Alpha = 0.18 + depth * roll(0.25, 0.45)
+            particle.Image = sprites[weatherRandom:NextInteger(1, 4)]
+        end
         particle.X = roll(0, width)
         particle.Y = anywhere and roll(-20, height) or roll(-60, -s)
     elseif kind == "Sakura" then
@@ -18743,6 +18808,12 @@ local function seedParticle(kind, particle, width, height, anywhere)
         particle.Rotation = roll(0, 360)
         particle.Alpha = roll(0.05, 0.35)
         particle.Color = Color3.fromRGB(255, 205, 220):Lerp(Color3.fromRGB(255, 140, 180), roll(0, 1))
+        particle.Wind = 1.5
+        if sprites then
+            particle.Size = Vector2.new(s * 1.3, s * 1.3)
+            particle.Alpha = roll(0.45, 0.85)
+            particle.Color = Color3.new(1, 1, 1)
+        end
         particle.X = roll(-0.25 * width, width)
         particle.Y = anywhere and roll(-20, height) or roll(-60, -s)
     elseif kind == "Fireflies" then
@@ -18800,11 +18871,25 @@ local function seedParticle(kind, particle, width, height, anywhere)
         particle.Rotation = roll(0, 360)
         particle.Alpha = 0.04 + depth * roll(0.1, 0.28)
         particle.Color = Color3.fromRGB(255, 70, 20):Lerp(Color3.fromRGB(255, 190, 70), roll(0, 1))
+        particle.Wind = 0.3
+        if sprites then
+            -- The sprite carries its own hot core and glow.
+            particle.Size = Vector2.new(s * 2.2, s * 2.2)
+            particle.Alpha = 0.25 + depth * roll(0.3, 0.55)
+            particle.Color = Color3.new(1, 1, 1)
+        end
         particle.X = roll(0, width)
         particle.Y = anywhere and roll(height * 0.2, height + 10) or height + roll(10, 80)
     end
     local label = particle.Label
-    if kind == "Rain" then
+    if sprites and label:IsA("ImageLabel") then
+        label.Image = particle.Image or sprites[1]
+        particle.Image = nil
+    end
+    if kind == "Rain" and sprites then
+        -- The streak sprite is 1/8 as wide as its image.
+        label.Size = UDim2.fromOffset(particle.Size.X * 8, particle.Size.Y * 1.3)
+    elseif kind == "Rain" then
         label.Size = UDim2.fromOffset(particle.Size.X / RAIN_STREAK.X, particle.Size.Y / RAIN_STREAK.Y)
     else
         label.Size = UDim2.fromOffset(particle.Size.X, particle.Size.Y)
@@ -18995,6 +19080,18 @@ function Window:_buildBackdrop(opts)
         Parent = layer,
     })
     heat.Parent = field
+    -- Lightning: a white flash over the scene (rain only).
+    self._weatherFlash = create("Frame", {
+        Size = UDim2.fromScale(1, 1),
+        BackgroundColor3 = Color3.fromRGB(225, 235, 255),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        ZIndex = 3,
+        Parent = field,
+    })
+    self._weatherClock = 0
+    self._nextLightning = 6
+    self._splashes, self._splashIndex = {}, 0
     self._backdrop = layer
     self._backdropTintFrame = tint
     self._backdropHeat = heat
@@ -19035,6 +19132,30 @@ function Window:_rebuildWeather()
     if not definition then
         return
     end
+    -- The sprites download in the background; the weather starts with the
+    -- soft glow and rebuilds with the real sprites once they're in.
+    local kind = self.Weather
+    local wanted = WEATHER_SPRITES[kind]
+    if wanted and Library._weatherSprites[kind] == nil then
+        Library._weatherSprites[kind] = false
+        task.spawn(function()
+            local list = {}
+            for _, name in ipairs(wanted) do
+                local asset = Library._webImage(Library.WeatherPackURL .. name .. ".png")
+                if not asset then
+                    return
+                end
+                table.insert(list, asset)
+            end
+            Library._weatherSprites[kind] = list
+            for _, window in ipairs(Library.Windows) do
+                if not window._destroyed and window.Weather == kind and window._weatherField then
+                    window:_rebuildWeather()
+                end
+            end
+        end)
+    end
+    local sprites = Library._weatherSprites[kind] or nil
     -- The glow along the bottom: red heat for hell fire, a soft tint for the
     -- others that ask for one.
     self._backdropHeat.BackgroundColor3 = definition.Glow or Color3.fromRGB(255, 60, 15)
@@ -19073,7 +19194,7 @@ function Window:_rebuildWeather()
                 }),
                 Parent = instance,
             })
-        elseif definition.Petal then
+        elseif definition.Petal and not sprites then
             property = "BackgroundTransparency"
             instance = create("Frame", {
                 AnchorPoint = Vector2.new(0.5, 0.5),
@@ -19094,9 +19215,9 @@ function Window:_rebuildWeather()
             instance = create("ImageLabel", {
                 AnchorPoint = Vector2.new(0.5, 0.5),
                 BackgroundTransparency = 1,
-                Image = definition.Image,
+                Image = definition.Image or Assets.Glow,
                 ImageTransparency = 1,
-                ScaleType = definition.Stretch and Enum.ScaleType.Stretch or Enum.ScaleType.Fit,
+                ScaleType = (definition.Stretch or kind == "Aurora") and Enum.ScaleType.Stretch or Enum.ScaleType.Fit,
                 ZIndex = 2,
                 Parent = self._weatherField,
             })
@@ -19104,6 +19225,89 @@ function Window:_rebuildWeather()
         local particle = { Label = instance, Property = property }
         seedParticle(self.Weather, particle, size.X, size.Y, true)
         table.insert(self._weatherParticles, particle)
+    end
+end
+
+-- A ring that spreads where a raindrop lands (screen mode only).
+function Window:_rainSplash(x, height)
+    if self.WeatherMode == "UI" or not Library._weatherSprites.Rain then
+        return
+    end
+    local pool = self._splashes
+    self._splashIndex = self._splashIndex % 16 + 1
+    local ring = pool[self._splashIndex]
+    if not ring then
+        ring = create("Frame", {
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            BackgroundTransparency = 1,
+            ZIndex = 2,
+            Parent = self._weatherField,
+        })
+        corner(ring, UDim.new(1, 0))
+        ring:SetAttribute("Stroke", true)
+        create("UIStroke", { Color = Color3.fromRGB(200, 220, 255), Thickness = 1, Transparency = 1, Parent = ring })
+        pool[self._splashIndex] = ring
+    end
+    local ringStroke = ring:FindFirstChildOfClass("UIStroke")
+    ring.Position = UDim2.fromOffset(x, height - roll(4, 60))
+    ring.Size = UDim2.fromOffset(2, 1)
+    ringStroke.Transparency = 0.45
+    tween(ring, { Size = UDim2.fromOffset(roll(14, 24), roll(4, 7)) }, 0.45, Enum.EasingStyle.Quad, nil, true)
+    tween(ringStroke, { Transparency = 1 }, 0.45, Enum.EasingStyle.Quad, nil, true)
+end
+
+-- Per-frame extras: lightning for rain, a shooting star for the night sky.
+function Window:_stepWeatherExtras(kind, deltaTime, speed, width, height, eased)
+    local flash = self._weatherFlash
+    if kind == "Rain" then
+        self._nextLightning -= deltaTime
+        if self._nextLightning <= 0 then
+            self._nextLightning = roll(9, 22)
+            -- A double flash, like real lightning.
+            flash.BackgroundTransparency = 1 - 0.32 * eased
+            tween(flash, { BackgroundTransparency = 1 }, 0.12, Enum.EasingStyle.Quad, nil, true)
+            task.delay(0.16, function()
+                if flash.Parent then
+                    flash.BackgroundTransparency = 1 - 0.22 * eased
+                    tween(flash, { BackgroundTransparency = 1 }, 0.5, Enum.EasingStyle.Quad, nil, true)
+                end
+            end)
+        end
+    elseif flash.BackgroundTransparency < 1 then
+        flash.BackgroundTransparency = 1
+    end
+    local sprites = Library._weatherSprites.Stars
+    local star = self._shootingStar
+    if kind == "Stars" and sprites then
+        if not star then
+            star = create("ImageLabel", {
+                AnchorPoint = Vector2.new(1, 0.5),
+                Size = UDim2.fromOffset(160, 5),
+                BackgroundTransparency = 1,
+                Image = sprites[2],
+                ImageTransparency = 1,
+                ZIndex = 2,
+                Parent = self._weatherField,
+            })
+            self._shootingStar = star
+            self._shootAge = 99
+        end
+        self._shootAge += deltaTime * speed
+        if self._shootAge > roll(3, 9) and self._shootAge > 1.2 then
+            self._shootAge = 0
+            self._shootFrom = Vector2.new(roll(width * 0.3, width), roll(0, height * 0.35))
+        end
+        if self._shootAge <= 1 then
+            local from = self._shootFrom
+            local travel = self._shootAge * 520
+            star.Position = UDim2.fromOffset(from.X - travel * 0.92, from.Y + travel * 0.39)
+            star.Rotation = 180 - 23
+            star.ImageTransparency = 1 - (1 - self._shootAge) * eased
+        else
+            star.ImageTransparency = 1
+        end
+    elseif star then
+        star.ImageTransparency = 1
     end
 end
 
@@ -19147,9 +19351,15 @@ function Window:_stepBackdrop(deltaTime)
     local speed = self._weatherSpeed * (1 + kick * kick * 2.5)
     local size = self:_weatherSize()
     local width, height = size.X, size.Y
+    -- Shared wind with gusts: everything that drifts leans the same way.
+    self._weatherClock += deltaTime
+    local clock = self._weatherClock
+    local wind = math.sin(clock * 0.35) * 18 + math.sin(clock * 1.1) * 8
+        + math.max(math.sin(clock * 0.13) - 0.6, 0) * 90
+    self:_stepWeatherExtras(kind, deltaTime, speed, width, height, eased)
     for _, particle in ipairs(self._weatherParticles) do
         particle.Time += deltaTime
-        particle.X += particle.VX * deltaTime * speed
+        particle.X += (particle.VX + wind * (particle.Wind or 0)) * deltaTime * speed
         particle.Y += particle.VY * deltaTime * speed
         particle.Rotation += particle.Spin * deltaTime * speed
         local margin = math.max(particle.Size.X, particle.Size.Y)
@@ -19158,6 +19368,9 @@ function Window:_stepBackdrop(deltaTime)
         end
         if (particle.Life and particle.Age > particle.Life)
             or (not particle.Life and ((particle.VY > 0 and particle.Y > height + margin) or (particle.VY < 0 and particle.Y < -margin))) then
+            if kind == "Rain" and not particle.Life then
+                self:_rainSplash(particle.X, height)
+            end
             seedParticle(kind, particle, width, height, false)
         elseif particle.X > width + margin * 4 then
             particle.X -= width + margin * 6
@@ -19187,6 +19400,16 @@ function Window:_stepBackdrop(deltaTime)
             local age, life = particle.Age, particle.Life
             alpha *= math.clamp(math.min(age / 1.2, (life - age) / 1.2), 0, 1)
             alpha *= 0.5 + math.sin(particle.Time * particle.Pulse + particle.Phase) * 0.5
+        elseif kind == "Stars" then
+            local age, life = particle.Age, particle.Life
+            alpha *= math.clamp(math.min(age / 1.5, (life - age) / 1.5), 0, 1)
+            alpha *= 0.45 + math.abs(math.sin(particle.Time * particle.Pulse + particle.Phase)) * 0.55
+        elseif kind == "Aurora" then
+            -- Curtains breathe slowly and ease in and out over their life.
+            y += math.sin(particle.Time * particle.Frequency * 2 + particle.Phase) * particle.SwayY
+            local age, life = particle.Age, particle.Life
+            alpha *= math.clamp(math.min(age / 4, (life - age) / 4), 0, 1)
+            alpha *= 0.7 + math.sin(particle.Time * 0.6 + particle.Phase) * 0.3
         elseif kind == "Matrix" then
             particle.Shuffle -= deltaTime * speed
             if particle.Shuffle <= 0 then
