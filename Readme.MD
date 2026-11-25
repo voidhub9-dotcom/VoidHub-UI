@@ -24,7 +24,7 @@ It ships as readable Lua source, not a Studio project. Load `Source.lua`, create
 
 <img src="design/preview-island.svg" width="880" alt="The Dynamic Island: compact pill with running count, expanded live session card, notification with timer line" />
 
-<img src="design/preview-elements.svg" width="880" alt="Element sampler: status styles, log feed, searchable table" />
+<img src="design/preview-elements.svg" width="880" alt="Element sampler: status styles with a pinned status on the island pill, log feed, searchable table" />
 
 <sub>Interface previews · design mockups rendered from the default VoidHub theme · not in-game captures</sub>
 
