@@ -17772,14 +17772,15 @@ function Window:SetWeatherSpeed(speed)
 end
 
 -- Minimize: the window folds into a Dynamic Island style pill hanging from
--- the top of the screen, lit by a soft accent glow that leaks off its edge
--- and a shadow that lifts it off the game. Compact, it shows a glyph tile,
--- a live waveform of running toggles, and the running count as a corner
--- badge. Hovering springs it open into a session card: the player, the game
--- and session time, frame rate and ping meters, the server and running
--- counts, and an accent button with the key that reopens the window. A
--- notification while minimized opens it briefly, dying the glow, the chip,
--- and the title with its type colour. Click or tap restores.
+-- the top of the screen: a black body with a hairline edge, lifted off the
+-- game by one soft sliced shadow (no halo rings). Compact, it shows a round
+-- glyph tile with a live dot, the pinned status, a live waveform of running
+-- toggles and the running count on a chip inside the pill. Hovering springs
+-- it open into a session card: the player, the game and session time, frame
+-- rate and ping meters, the server and running counts, and a restore button
+-- with the key that reopens the window. A notification while minimized opens
+-- it briefly; its type colour stays on the icon chip, the waveform and a
+-- timer line that drains while it shows. Click or tap restores.
 
 -- One table, not separate locals: the main chunk is at Luau's 200 local limit.
 local Mini = {
@@ -17788,7 +17789,7 @@ local Mini = {
     Width = UserInputService.TouchEnabled and 224 or 212,
     Height = UserInputService.TouchEnabled and 44 or 40,
     Wide = 360,
-    Radius = 24,
+    Radius = 28,
     Bars = 4,
     Pinned = 6,
 }
@@ -17859,76 +17860,27 @@ function Window:_buildMiniBar()
         Parent = gui,
     })
     local islandCorner = Library._fixedCorner(island, UDim.new(0, Mini.Height / 2))
-    local islandStroke = stroke(island, Theme.Stroke, 1)
-    islandStroke.Transparency = 0.32
+    -- A hairline in the text colour, barely there: it defines the edge on a
+    -- dark scene without reading as a border.
+    stroke(island, Theme.Text, 0.92)
 
-    -- The accent glow: soft halos behind the pill. They are siblings of
-    -- the island (a CanvasGroup would clip anything drawn past its edge)
-    -- and follow its position, size and radius every frame, breathing
-    -- slowly. A notification dyes them with its type colour, and an accent
-    -- too dark to glow falls back to neutral grey.
-    local glowColor = Theme.Accent
-    do
-        local _, _, glowValue = glowColor:ToHSV()
-        if glowValue < 0.35 then
-            glowColor = Color3.fromRGB(120, 120, 125)
-        end
-    end
-    local activityGlow = nil
-    local halos = {}
-    for index = 1, 3 do
-        local halo = create("Frame", {
-            Name = "IslandGlow" .. index,
-            AnchorPoint = Vector2.new(0.5, 0),
-            BackgroundColor3 = glowColor,
-            BackgroundTransparency = 1,
-            BorderSizePixel = 0,
-            Visible = false,
-            ZIndex = 29,
-            Parent = gui,
-        })
-        halos[index] = {
-            Frame = halo,
-            Corner = Library._fixedCorner(halo, UDim.new(0, Mini.Height / 2)),
-            Pad = ({ 5, 12, 22 })[index],
-            Base = ({ 0.14, 0.05, 0.02 })[index],
-        }
-    end
-    -- A shadow beneath the pill, so the island sits above the game
-    -- instead of being pasted onto it.
-    local glowShadow = create("Frame", {
+    -- One soft shadow under the island, drawn with the same sliced shadow
+    -- image as the window so it falls off smoothly instead of in bands. It
+    -- is a sibling (a CanvasGroup clips anything past its edge) and follows
+    -- the island's position, size and fade every frame.
+    local islandShadow = create("ImageLabel", {
         Name = "IslandShadow",
-        AnchorPoint = Vector2.new(0.5, 0),
-        BackgroundColor3 = Color3.new(0, 0, 0),
         BackgroundTransparency = 1,
-        BorderSizePixel = 0,
+        Image = Assets.Shadow,
+        ImageColor3 = Color3.new(0, 0, 0),
+        ImageTransparency = 1,
+        ScaleType = Enum.ScaleType.Slice,
+        SliceCenter = Rect.new(49, 49, 450, 450),
+        SliceScale = 0.5,
         Visible = false,
-        ZIndex = 28,
+        ZIndex = 29,
         Parent = gui,
     })
-    local shadowCorner = Library._fixedCorner(glowShadow, UDim.new(0, Mini.Height / 2))
-    -- The running count rides a small badge pinned over the pill's corner.
-    local _, _, badgeValue = Theme.Accent:ToHSV()
-    local badge = create("TextLabel", {
-        Name = "IslandBadge",
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        BackgroundColor3 = Theme.Accent,
-        BackgroundTransparency = 1,
-        BorderSizePixel = 0,
-        FontFace = Fonts.Bold,
-        Size = UDim2.fromOffset(18, 18),
-        Text = "",
-        TextSize = 10,
-        TextColor3 = badgeValue >= 0.5 and Color3.fromRGB(13, 13, 15) or Theme.Text,
-        TextTransparency = 1,
-        Visible = false,
-        ZIndex = 31,
-        Parent = gui,
-    })
-    corner(badge, UDim.new(1, 0))
-    local badgeBump = create("UIScale", { Parent = badge })
-    local badgeCutout = stroke(badge, Theme.Background, 3)
-    local badgeCount = 0
     local running = 0
 
     local islandScale = create("UIScale", { Parent = island })
@@ -17949,40 +17901,27 @@ function Window:_buildMiniBar()
         })
     end
 
-    -- Compact: the logo leading, a live meter of running toggles trailing.
-    -- A raised theme surface, lit from the top, so the pill isn't a flat
-    -- slab; it fades with the layer, leaving the open card on Background.
+    -- Compact: the logo leading, a live meter of running toggles trailing,
+    -- all on the island's own black body.
     local compact = create("CanvasGroup", {
         Name = "Compact",
         Size = UDim2.fromScale(1, 1),
-        BackgroundColor3 = Theme.Surface2,
+        BackgroundTransparency = 1,
         BorderSizePixel = 0,
         Parent = island,
     })
-    create("UIGradient", {
-        Rotation = 90,
-        Transparency = NumberSequence.new({
-            NumberSequenceKeypoint.new(0, 0),
-            NumberSequenceKeypoint.new(1, 0.32),
-        }),
-        Parent = compact,
-    })
-    -- The logo sits in a rounded accent tile, like an app glyph, its
-    -- corners soft instead of a flat disc, with a live dot badge over the
-    -- corner while anything runs.
+    -- The logo sits in a round raised tile, with a live dot over its
+    -- shoulder while anything runs.
     local logoUnit = Mini.Height - 12
     local logoTile = create("Frame", {
         AnchorPoint = Vector2.new(0, 0.5),
         Position = UDim2.new(0, 6, 0.5, 0),
         Size = UDim2.fromOffset(logoUnit, logoUnit),
-        BackgroundColor3 = Theme.Accent,
-        BackgroundTransparency = 0.85,
+        BackgroundColor3 = Theme.Surface3,
         BorderSizePixel = 0,
         Parent = compact,
     })
-    corner(logoTile, UDim.new(0, math.max(6, math.floor(logoUnit * 0.3 + 0.5))))
-    local logoTileEdge = stroke(logoTile, Theme.Accent, 1)
-    logoTileEdge.Transparency = 0.5
+    corner(logoTile, UDim.new(1, 0))
     local logo = create("ImageLabel", {
         AnchorPoint = Vector2.new(0.5, 0.5),
         Position = UDim2.fromScale(0.5, 0.5),
@@ -17993,23 +17932,27 @@ function Window:_buildMiniBar()
         Parent = logoTile,
     })
     applyIcon(logo, self._logoIcon, true)
+    -- The tile is round, so the dot sits on its rim at 45 degrees.
     local liveDot = create("Frame", {
         AnchorPoint = Vector2.new(0.5, 0.5),
-        Position = UDim2.new(1, -1, 0, 1),
-        Size = UDim2.fromOffset(7, 7),
-        BackgroundColor3 = Theme.Accent,
+        Position = UDim2.fromScale(0.854, 0.146),
+        Size = UDim2.fromOffset(8, 8),
+        BackgroundColor3 = Theme.Success,
         BorderSizePixel = 0,
         Visible = false,
         ZIndex = 2,
         Parent = logoTile,
     })
     corner(liveDot, UDim.new(1, 0))
-    local liveDotRim = stroke(liveDot, Theme.Surface2, 2)
+    stroke(liveDot, Theme.Background, 0, 2)
     -- The script's name beside the logo, so the pill reads at a glance.
+    -- Both lines stop short of the meter, whose width changes with what it
+    -- shows (the clock grows, the waveform and count chip replace it).
+    local textLeft = Mini.Height + 2
     local miniTitle = label({
         AnchorPoint = Vector2.new(0, 0.5),
-        Position = UDim2.new(0, Mini.Height + 2, 0.5, -7),
-        Size = UDim2.new(1, -Mini.Height - 2 - 72, 0, 18),
+        Position = UDim2.new(0, textLeft, 0.5, -7),
+        Size = UDim2.new(1, -textLeft - 72, 0, 18),
         Text = self.Title,
         TextSize = 13,
         FontFace = Fonts.Bold,
@@ -18018,9 +17961,9 @@ function Window:_buildMiniBar()
     })
     local miniSubtitle = label({
         AnchorPoint = Vector2.new(0, 0.5),
-        Position = UDim2.new(0, Mini.Height + 2, 0.5, 9),
-        Size = UDim2.new(1, -Mini.Height - 76, 0, 13),
-        Text = "UI minimized",
+        Position = UDim2.new(0, textLeft, 0.5, 9),
+        Size = UDim2.new(1, -textLeft - 72, 0, 13),
+        Text = "Minimized",
         TextSize = 10,
         TextColor3 = Theme.Muted,
         RichText = true,
@@ -18029,7 +17972,7 @@ function Window:_buildMiniBar()
     })
     local meter = create("Frame", {
         AnchorPoint = Vector2.new(1, 0.5),
-        Position = UDim2.new(1, -14, 0.5, 0),
+        Position = UDim2.new(1, -8, 0.5, 0),
         Size = UDim2.fromOffset(0, 18),
         AutomaticSize = Enum.AutomaticSize.X,
         BackgroundTransparency = 1,
@@ -18084,6 +18027,37 @@ function Window:_buildMiniBar()
         LayoutOrder = 0,
         Parent = meter,
     })
+    -- The running count, on a small chip inside the pill after the waveform.
+    local countChip = create("TextLabel", {
+        Name = "RunningCount",
+        Size = UDim2.fromOffset(Mini.Height - 18, Mini.Height - 18),
+        AutomaticSize = Enum.AutomaticSize.X,
+        BackgroundColor3 = Theme.Surface3,
+        BorderSizePixel = 0,
+        FontFace = Fonts.Bold,
+        Text = "",
+        TextSize = 11,
+        TextColor3 = Theme.Text,
+        Visible = false,
+        LayoutOrder = 2,
+        Parent = meter,
+    })
+    corner(countChip, UDim.new(1, 0))
+    padding(countChip, 6, 6, 0, 0)
+    local countBump = create("UIScale", { Parent = countChip })
+    -- Keeps the title and subtitle clear of the meter. Measured as a share
+    -- of the pill's drawn width so the island's own scale cancels out.
+    local function fitTitles()
+        local drawn = compact.AbsoluteSize.X
+        if drawn < 1 then
+            return
+        end
+        local reserve = math.ceil(meter.AbsoluteSize.X / drawn * island.Size.X.Offset) + 8 + 8
+        miniTitle.Size = UDim2.new(1, -textLeft - reserve, 0, 18)
+        miniSubtitle.Size = UDim2.new(1, -textLeft - reserve, 0, 13)
+    end
+    meter:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitTitles)
+    compact:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitTitles)
 
     -- Expanded, on hover: the player's session.
     local expanded = layer("Expanded")
@@ -18112,7 +18086,7 @@ function Window:_buildMiniBar()
         Text = "LIVE SESSION",
         TextSize = 10,
         FontFace = Fonts.Bold,
-        TextColor3 = Theme.Accent,
+        TextColor3 = Theme.Muted,
         Parent = eyebrowRow,
     })
     local cardWaveHolder = create("Frame", {
@@ -18152,9 +18126,17 @@ function Window:_buildMiniBar()
         Image = "rbxthumb://type=AvatarHeadShot&id=" .. tostring(LocalPlayer.UserId) .. "&w=150&h=150",
         Parent = top,
     })
-    corner(face, UDim.new(0, 12))
-    -- A soft accent ring round the avatar: the session is live.
-    stroke(face, Theme.Accent, 1).Transparency = 0.45
+    corner(face, UDim.new(1, 0))
+    -- A thin ring round the avatar in the success colour: the session is live.
+    local faceRing = create("Frame", {
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.fromScale(0.5, 0.5),
+        Size = UDim2.new(1, 6, 1, 6),
+        BackgroundTransparency = 1,
+        Parent = face,
+    })
+    corner(faceRing, UDim.new(1, 0))
+    stroke(faceRing, Theme.Success, 0.1, 1.5)
     local facePlaceholder = create("ImageLabel", {
         AnchorPoint = Vector2.new(0.5, 0.5),
         Position = UDim2.fromScale(0.5, 0.5),
@@ -18228,6 +18210,7 @@ function Window:_buildMiniBar()
             Parent = meters,
         })
         corner(cell, UDim.new(0, 12))
+        stroke(cell, Theme.Text, 0.96)
         local value = label({
             Position = UDim2.fromOffset(12, 7),
             Size = UDim2.new(1, -24, 0, 24),
@@ -18250,7 +18233,7 @@ function Window:_buildMiniBar()
         local track = create("Frame", {
             AnchorPoint = Vector2.new(0, 1),
             Position = UDim2.new(0, 12, 1, -8),
-            Size = UDim2.new(1, -24, 0, 2),
+            Size = UDim2.new(1, -24, 0, 3),
             BackgroundColor3 = Theme.Surface3,
             BorderSizePixel = 0,
             Parent = cell,
@@ -18339,54 +18322,43 @@ function Window:_buildMiniBar()
         LayoutOrder = 4,
         Parent = expandedList,
     })
-    -- The restore affordance is a filled accent button with the keybind on
-    -- a small key chip: one clear CTA on black, and the ink flips for
-    -- custom themes with a darker accent.
-    local _, _, accentValue = Theme.Accent:ToHSV()
-    local easeInk = accentValue >= 0.4 and Color3.fromRGB(14, 14, 16) or Theme.Text
+    -- The restore affordance is a quiet raised pill with the keybind on a
+    -- small key chip: readable on any theme without a bright slab on black.
     local restoreRow = create("Frame", {
         Name = "RestoreHint",
         Size = UDim2.new(1, 0, 0, 34),
-        BackgroundColor3 = Theme.Accent,
+        BackgroundColor3 = Theme.Surface2,
         BorderSizePixel = 0,
         LayoutOrder = 5,
         Parent = expandedList,
     })
-    corner(restoreRow, UDim.new(0, 10))
+    corner(restoreRow, UDim.new(1, 0))
+    stroke(restoreRow, Theme.Text, 0.92)
     local hint = label({
-        Position = UDim2.fromOffset(12, 0),
-        Size = UDim2.new(1, -90, 1, 0),
+        Position = UDim2.fromOffset(14, 0),
+        Size = UDim2.new(1, -86, 1, 0),
         TextSize = 12,
         FontFace = Fonts.Bold,
-        TextColor3 = easeInk,
+        TextColor3 = Theme.Text,
         TextTruncate = Enum.TextTruncate.AtEnd,
         Parent = restoreRow,
     })
     local keyChip = create("TextLabel", {
         AnchorPoint = Vector2.new(1, 0.5),
-        Position = UDim2.new(1, -28, 0.5, 0),
-        Size = UDim2.new(0, 44, 0, 19),
+        Position = UDim2.new(1, -8, 0.5, 0),
+        Size = UDim2.new(0, 46, 0, 20),
         AutomaticSize = Enum.AutomaticSize.X,
-        BackgroundColor3 = easeInk,
-        BackgroundTransparency = 0.78,
+        BackgroundColor3 = Theme.Surface3,
         BorderSizePixel = 0,
         FontFace = Fonts.Bold,
         TextSize = 10,
-        TextColor3 = Theme.Accent,
+        TextColor3 = Theme.Muted,
         Text = "",
         TextXAlignment = Enum.TextXAlignment.Center,
         Parent = restoreRow,
     })
-    corner(keyChip, UDim.new(0, 5))
-    local restoreIcon = create("ImageLabel", {
-        AnchorPoint = Vector2.new(1, 0.5),
-        Position = UDim2.new(1, -7, 0.5, 0),
-        Size = UDim2.fromOffset(14, 14),
-        BackgroundTransparency = 1,
-        ImageColor3 = easeInk,
-        Parent = restoreRow,
-    })
-    applyIcon(restoreIcon, "arrow-up-right")
+    corner(keyChip, UDim.new(0, 6))
+    padding(keyChip, 6, 6, 0, 0)
 
     -- Frame rate is counted every frame; the card's values refresh twice a
     -- second while it's open.
@@ -18404,7 +18376,7 @@ function Window:_buildMiniBar()
         sessionLabel.Text = formatDuration(os.clock() - sessionStart)
         idleLabel.Text = sessionLabel.Text
         tween(idleDot, { BackgroundColor3 = Library._healthColor(fps, 50, 30) }, 0.4)
-        local unit = '<font size="12" color="#8A8A93"> %s</font>'
+        local unit = '<font size="12" color="' .. hexOf(Theme.Muted) .. '"> %s</font>'
         fpsValue.Text = fps .. string.format(unit, "fps")
         tween(fpsFill, {
             Size = UDim2.fromScale(math.clamp(fps / 60, 0.05, 1), 1),
@@ -18434,36 +18406,38 @@ function Window:_buildMiniBar()
     end)
 
     -- Activity: a notification that arrives while minimized drops in here.
+    -- Its type colour stays on the icon chip, the waveform and the timer
+    -- line; the title and body keep the theme's text colours.
     local activity = layer("Activity")
     local activityList = create("Frame", {
-        Position = UDim2.fromOffset(16, 13),
-        Size = UDim2.new(1, -32, 0, 0),
+        Position = UDim2.fromOffset(14, 14),
+        Size = UDim2.new(1, -28, 0, 0),
         AutomaticSize = Enum.AutomaticSize.Y,
         BackgroundTransparency = 1,
         Parent = activity,
     })
     local activityChip = create("Frame", {
-        Size = UDim2.fromOffset(34, 34),
+        Size = UDim2.fromOffset(40, 40),
         BackgroundColor3 = Theme.Accent,
-        BackgroundTransparency = 0.85,
+        BackgroundTransparency = 0.84,
         BorderSizePixel = 0,
         Parent = activityList,
     })
     corner(activityChip, UDim.new(1, 0))
-    local chipStroke = stroke(activityChip, Theme.Accent, 1)
-    chipStroke.Transparency = 0.5
     local activityIcon = create("ImageLabel", {
         AnchorPoint = Vector2.new(0.5, 0.5),
         Position = UDim2.fromScale(0.5, 0.5),
-        Size = UDim2.fromOffset(17, 17),
+        Size = UDim2.fromOffset(18, 18),
         BackgroundTransparency = 1,
         ImageColor3 = Theme.Accent,
         ScaleType = Enum.ScaleType.Fit,
         Parent = activityChip,
     })
+    -- The text column stops short of the waveform slot on the right, so a
+    -- long title truncates instead of running under it.
     local activityText = create("Frame", {
-        Position = UDim2.fromOffset(46, 0),
-        Size = UDim2.new(1, -46, 0, 0),
+        Position = UDim2.fromOffset(52, 1),
+        Size = UDim2.new(1, -52 - 30, 0, 0),
         AutomaticSize = Enum.AutomaticSize.Y,
         BackgroundTransparency = 1,
         Parent = activityList,
@@ -18477,6 +18451,7 @@ function Window:_buildMiniBar()
         Size = UDim2.new(1, 0, 0, 18),
         TextSize = 14,
         FontFace = Fonts.Bold,
+        TextColor3 = Theme.Text,
         LayoutOrder = 1,
         Parent = activityText,
     })
@@ -18493,11 +18468,38 @@ function Window:_buildMiniBar()
         LayoutOrder = 2,
         Parent = activityText,
     })
+    -- A thin timer line under the text that drains while the notification
+    -- shows, so it's clear when the island will fold back.
+    local timerRow = create("Frame", {
+        Size = UDim2.new(1, 0, 0, 10),
+        BackgroundTransparency = 1,
+        LayoutOrder = 3,
+        Parent = activityText,
+    })
+    local timerTrack = create("Frame", {
+        AnchorPoint = Vector2.new(0, 1),
+        Position = UDim2.fromScale(0, 1),
+        Size = UDim2.new(1, 0, 0, 2),
+        BackgroundColor3 = Theme.Surface3,
+        BorderSizePixel = 0,
+        Parent = timerRow,
+    })
+    corner(timerTrack, UDim.new(1, 0))
+    local timerFill = create("Frame", {
+        Size = UDim2.fromScale(1, 1),
+        BackgroundColor3 = Theme.Accent,
+        BorderSizePixel = 0,
+        Parent = timerTrack,
+    })
+    corner(timerFill, UDim.new(1, 0))
+    local timerTween
 
-    -- The waveform motif trails the notification while anything runs.
+    -- The waveform rides beside the title in the notification's colour.
+    -- Pinned to the top: the layer is 400px tall, so centring it would put
+    -- it far below the island's visible edge.
     local actWaveHolder = create("Frame", {
         AnchorPoint = Vector2.new(1, 0.5),
-        Position = UDim2.new(1, -14, 0.5, 0),
+        Position = UDim2.new(1, -18, 0, 24),
         Size = UDim2.fromOffset(17, 14),
         BackgroundTransparency = 1,
         Visible = false,
@@ -18540,11 +18542,17 @@ function Window:_buildMiniBar()
     local activityToken = 0
     local activityLive = false
 
+    -- Content heights are read from AbsoluteSize, which includes the
+    -- island's own squeeze/lean scale; divide it back out, or a card opened
+    -- mid-lean comes out a few percent too tall or short.
+    local function unscaled(height)
+        return height / math.max(islandScale.Scale, 0.01)
+    end
     local function shapeFor(name)
         if name == "Expanded" then
-            return Vector2.new(wideWidth(), math.floor(expandedList.AbsoluteSize.Y + 32 + 0.5)), Mini.Radius
+            return Vector2.new(wideWidth(), math.floor(unscaled(expandedList.AbsoluteSize.Y) + 32 + 0.5)), Mini.Radius
         elseif name == "Activity" then
-            return Vector2.new(wideWidth(), math.floor(math.max(activityList.AbsoluteSize.Y, 34) + 26 + 0.5)), Mini.Radius
+            return Vector2.new(wideWidth(), math.floor(math.max(unscaled(activityList.AbsoluteSize.Y), 40) + 28 + 0.5)), Mini.Radius + 2
         end
         return Vector2.new(Mini.Width, Mini.Height), Mini.Height / 2
     end
@@ -18690,7 +18698,6 @@ function Window:_buildMiniBar()
     function self:_miniLand()
         hovered, activityLive = false, false
         activityToken += 1
-        activityGlow = nil
         islandScale.Scale = 1
         setMode("Compact", true)
         local size = Vector2.new(Mini.Width, Mini.Height)
@@ -18827,7 +18834,7 @@ function Window:_buildMiniBar()
         if sizeTween then sizeTween:Cancel() end
         if cornerTween then cornerTween:Cancel() end
         if positionTween then positionTween:Cancel() end
-        activityGlow = nil
+        if timerTween then timerTween:Cancel() end
         islandScale.Scale = 1
         -- Clicked open while expanded: once the island has faded out, fold it
         -- back to the pill so the next minimize starts from it.
@@ -18846,7 +18853,6 @@ function Window:_buildMiniBar()
         end
         local color = NOTIFY_COLORS[opts.Type] or Theme.Accent
         activityTitle.Text = tostring(opts.Title or "Notification")
-        activityTitle.TextColor3 = NOTIFY_COLORS[opts.Type] or Theme.Text
         activityBody.Text = tostring(opts.Content or "")
         activityBody.Visible = activityBody.Text ~= ""
         local icon = opts.Icon
@@ -18857,15 +18863,23 @@ function Window:_buildMiniBar()
         if not activityIcon:GetAttribute("CustomIcon") then
             activityIcon.ImageColor3 = color
         end
-        -- The chip stays glass tinted, its ring follows, and the glow
-        -- around the pill dyes itself with the notification's type.
+        -- The type colour tints the chip, the waveform and the timer line.
         activityChip.BackgroundColor3 = color
-        activityChip.BackgroundTransparency = 0.86
-        chipStroke.Color = color
-        activityGlow = color
+        activityChip.BackgroundTransparency = 0.84
+        for _, bar in ipairs(actWave) do
+            bar.BackgroundColor3 = color
+        end
+        actWaveHolder.Visible = true
         activityLive = true
         activityToken += 1
         local token = activityToken
+        local shown = math.clamp(tonumber(opts.Duration) or 3, 1.5, 5)
+        if timerTween then
+            timerTween:Cancel()
+        end
+        timerFill.BackgroundColor3 = color
+        timerFill.Size = UDim2.fromScale(1, 1)
+        timerTween = tween(timerFill, { Size = UDim2.fromScale(0, 1) }, shown, Enum.EasingStyle.Linear)
         task.defer(function()
             if activityToken == token and self.Minimized and not self._destroyed and island.Parent and not hovered and not dragging then
                 setMode("Activity")
@@ -18873,10 +18887,9 @@ function Window:_buildMiniBar()
                 tween(islandScale, { Scale = 1 }, 0.4, Enum.EasingStyle.Back)
             end
         end)
-        task.delay(math.clamp(tonumber(opts.Duration) or 3, 1.5, 5), function()
+        task.delay(shown, function()
             if activityToken == token and not self._destroyed and island.Parent then
                 activityLive = false
-                activityGlow = nil
                 if self.Minimized and not hovered then
                     settleMode()
                 end
@@ -18885,9 +18898,9 @@ function Window:_buildMiniBar()
     end
 
     -- The meter dances while anything runs and lies flat when nothing does,
-    -- and the same waveform pulses in the session card and beside a
-    -- notification. This pass also keeps the glow, the shadow and the
-    -- corner badge glued to the pill while it morphs.
+    -- and the same waveform pulses in the session card while anything runs
+    -- and beside every notification. This pass also keeps the shadow glued
+    -- to the island while it morphs and fades.
     local function waveStep(list, unit, speed, amp)
         local now = os.clock()
         for index, bar in ipairs(list) do
@@ -18897,6 +18910,7 @@ function Window:_buildMiniBar()
     end
     self:_listen("Render", function()
         if not island.Parent or not island.Visible then
+            islandShadow.Visible = false
             return
         end
         if running > 0 then
@@ -18905,45 +18919,26 @@ function Window:_buildMiniBar()
             elseif mode == "Expanded" then
                 waveStep(cardWave, 2, 7, 7)
             end
-            if activityLive then
-                waveStep(actWave, 2, 7, 7)
-            end
         end
-        local absPos = island.AbsolutePosition - gui.AbsolutePosition
-        local absSize = island.AbsoluteSize
-        local radius = islandCorner.CornerRadius.Offset
+        if mode == "Activity" then
+            waveStep(actWave, 2, 7, 7)
+        end
         local islandAlpha = 1 - island.GroupTransparency
-        local breathe = 0.85 + 0.15 * math.sin(os.clock() * 0.9)
-        for _, halo in ipairs(halos) do
-            local alpha = halo.Base * islandAlpha * breathe
-            halo.Frame.Visible = alpha > 0.004
-            if halo.Frame.Visible then
-                halo.Frame.Position = UDim2.fromOffset(absPos.X - halo.Pad, absPos.Y - halo.Pad)
-                halo.Frame.Size = UDim2.fromOffset(absSize.X + halo.Pad * 2, absSize.Y + halo.Pad * 2)
-                halo.Corner.CornerRadius = UDim.new(0, radius + halo.Pad)
-                halo.Frame.BackgroundColor3 = activityGlow or glowColor
-                halo.Frame.BackgroundTransparency = 1 - alpha
-            end
-        end
-        glowShadow.Visible = islandAlpha > 0.02
-        if glowShadow.Visible then
-            glowShadow.Position = UDim2.fromOffset(absPos.X - 14, absPos.Y - 6)
-            glowShadow.Size = UDim2.fromOffset(absSize.X + 28, absSize.Y + 24)
-            shadowCorner.CornerRadius = UDim.new(0, radius + 12)
-            glowShadow.BackgroundTransparency = 1 - 0.3 * islandAlpha
-        end
-        badge.Visible = badgeCount > 0 and mode == "Compact" and islandAlpha > 0.02
-        if badge.Visible then
-            badge.Position = UDim2.fromOffset(absPos.X + absSize.X - 5, absPos.Y - 5)
-            badge.BackgroundTransparency = 1 - islandAlpha
-            badge.TextTransparency = 1 - islandAlpha
-            badgeCutout.Transparency = 1 - islandAlpha
+        islandShadow.Visible = islandAlpha > 0.02
+        if islandShadow.Visible then
+            -- Offset down so the island reads as lifted, spread past the
+            -- sides so the falloff isn't cut at the edge.
+            local absPos = island.AbsolutePosition - gui.AbsolutePosition
+            local absSize = island.AbsoluteSize
+            islandShadow.Position = UDim2.fromOffset(absPos.X - 16, absPos.Y - 10)
+            islandShadow.Size = UDim2.fromOffset(absSize.X + 32, absSize.Y + 34)
+            islandShadow.ImageTransparency = 1 - 0.55 * islandAlpha
         end
     end)
 
     -- The pinned status and the running count both live in the single
     -- pill: the status joins the subtitle line with its value tinted, and
-    -- the count rides the corner badge. No budded bubbles.
+    -- the count sits on its chip after the waveform.
     local pinnedLead = nil
 
     local cardRows = {}
@@ -18957,11 +18952,10 @@ function Window:_buildMiniBar()
         if count ~= running then
             local rising = count > running
             running = count
-            -- The count moves to the corner badge and the logo goes live.
-            badgeCount = count
-            badge.Text = tostring(count)
+            -- The count moves to its chip and the logo goes live.
+            countChip.Text = tostring(count)
+            countChip.Visible = count > 0
             liveDot.Visible = count > 0
-            actWaveHolder.Visible = count > 0
             cardWaveHolder.Visible = count > 0
             for _, bar in ipairs(bars) do
                 tween(bar, { BackgroundColor3 = count > 0 and Theme.Accent or Theme.Muted }, 0.25)
@@ -18970,14 +18964,14 @@ function Window:_buildMiniBar()
                 end
             end
             -- A small bump, like a live activity updating: the pill leans in
-            -- and the badge pops.
+            -- and the count chip pops.
             if rising and mode == "Compact" and island.Visible then
                 islandScale.Scale = 1.06
                 tween(islandScale, { Scale = 1 }, 0.4, Enum.EasingStyle.Back)
             end
             if count > 0 and island.Visible then
-                badgeBump.Scale = 1.45
-                tween(badgeBump, { Scale = 1 }, 0.35, Enum.EasingStyle.Back)
+                countBump.Scale = 1.3
+                tween(countBump, { Scale = 1 }, 0.35, Enum.EasingStyle.Back)
             end
         end
         bigCount.Text = tostring(count)
@@ -18993,8 +18987,9 @@ function Window:_buildMiniBar()
             shownNames[index] = Library._rich(names[index])
         end
         local extra = #names - #shownNames
-        runningNames.Text = '<font color="#8A8A93">Running </font>' .. table.concat(shownNames, '<font color="#8A8A93"> · </font>')
-            .. (extra > 0 and string.format('<font color="#8A8A93">  +%d</font>', extra) or "")
+        local muted = hexOf(Theme.Muted)
+        runningNames.Text = '<font color="' .. muted .. '">Running </font>' .. table.concat(shownNames, '<font color="' .. muted .. '"> · </font>')
+            .. (extra > 0 and string.format('<font color="%s">  +%d</font>', muted, extra) or "")
         runningNames.Visible = #names > 0
         pinnedLead = nil
         for _, handle in ipairs(self._pinned) do
@@ -19021,7 +19016,7 @@ function Window:_buildMiniBar()
                 pinnedLead = nil
             end
         end
-        -- The pill's own meter: the waveform and corner badge while
+        -- The pill's own meter: the waveform and count chip while
         -- anything runs, the session clock otherwise. A pinned status joins
         -- the subtitle line with its value tinted.
         local barsHere = running > 0
@@ -19031,7 +19026,7 @@ function Window:_buildMiniBar()
         if pinName then
             miniSubtitle.Text = Library._rich(pinName) .. ' <font color="' .. pinColor .. '">' .. pinRich .. "</font>"
         else
-            miniSubtitle.Text = running > 0 and (tostring(running) .. " active") or "UI minimized"
+            miniSubtitle.Text = running > 0 and (tostring(running) .. " active") or "Minimized"
         end
         local key = typeof(self.Keybind) == "EnumItem" and keyName(self.Keybind)
         if usingTouch() then

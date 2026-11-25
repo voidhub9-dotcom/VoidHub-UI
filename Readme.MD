@@ -22,7 +22,7 @@ It ships as readable Lua source, not a Studio project. Load `Source.lua`, create
 
 <img src="design/preview-window.svg" width="880" alt="VoidHub window: sidebar tabs, preferences groupbox with toggle, slider, dropdown and keybind, info groupbox with status, progress, button and log feed, notification toast" />
 
-<img src="design/preview-island.svg" width="880" alt="The Dynamic Island: compact pill with count badge, expanded live session card, notification with dyed glow" />
+<img src="design/preview-island.svg" width="880" alt="The Dynamic Island: compact pill with running count, expanded live session card, notification with timer line" />
 
 <img src="design/preview-elements.svg" width="880" alt="Element sampler: status styles, log feed, searchable table" />
 
@@ -89,11 +89,11 @@ loadstring(game:HttpGet(
 
 ## The Dynamic Island
 
-Minimizing folds the window into a black pill hanging from the top of the screen, lit by a soft accent glow with a shadow that lifts it off the game.
+Minimizing folds the window into a black pill hanging from the top of the screen, with a hairline edge and one soft shadow that lifts it off the game.
 
-- **Compact** — the glyph tile carries a live dot while anything runs, a waveform dances next to the session clock, a corner badge shows the running count, and a pinned status joins the subtitle line with its value tinted.
+- **Compact** — the glyph tile carries a live dot while anything runs, a waveform replaces the session clock, a small chip inside the pill shows the running count, and a pinned status joins the subtitle line with its value tinted.
 - **Hover** (desktop, or `IslandStyle = "Always Show"`) — the pill springs open into a live session card: avatar, game, session time, frame rate and latency meters, players, running count, current tab, and a restore button with the UI keybind.
-- **Notifications** — a notification that arrives while minimized drops into the island and dyes the chip, the title, and the glow with its type colour.
+- **Notifications** — a notification that arrives while minimized drops into the island; its type colour tints the icon chip, the waveform, and a timer line that drains while it shows.
 - **Drag** — press and pull to move it anywhere; drop it near the top centre and it snaps home. The position persists. `Window:ResetIslandPosition()` undoes it, and `Window:SetIslandStyle` picks between `Show on Hover` and `Always Show`.
 
 The morph engine carries all of this: the window squeezes into the pill, springs it open, and settles every state with the same elastic timing.
@@ -199,7 +199,7 @@ else
 end
 ```
 
-`RegisterTheme` returns `true`, or `false, error`. Palette keys are `Background`, `Surface`, `Surface2`, `Surface3`, `Stroke`, `StrokeHover`, `Accent`, `AccentDark`, `Text`, `Muted`, `Success`, `Warning`, and `Error`; values may be `Color3` or hex strings, and omitted keys inherit the current theme. Presets include the default `VoidHub` monochrome, the `Aqua` family, `Aqua Ice`, `Aqua Mono`, `Midnight`, and many more; the theme manager lists them all. The island's glow follows the accent, so a colored theme recolors the whole thing.
+`RegisterTheme` returns `true`, or `false, error`. Palette keys are `Background`, `Surface`, `Surface2`, `Surface3`, `Stroke`, `StrokeHover`, `Accent`, `AccentDark`, `Text`, `Muted`, `Success`, `Warning`, and `Error`; values may be `Color3` or hex strings, and omitted keys inherit the current theme. Presets include the default `VoidHub` monochrome, the `Aqua` family, `Aqua Ice`, `Aqua Mono`, `Midnight`, and many more; the theme manager lists them all.
 
 ### Backgrounds and profiles
 
