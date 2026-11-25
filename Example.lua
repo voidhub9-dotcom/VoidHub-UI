@@ -5824,12 +5824,14 @@ function Window:_sidebarResize(sidebar, width)
     end)
 end
 
--- Ambient light: a soft white glow falling in from the window's top-left
--- corner, with a faint counter-light at the bottom right, drawn over the
--- body so it catches the rail, the header and the groupboxes alike. It sits
--- in a CanvasGroup so it is clipped to the window's rounded corners, and it
--- never takes input. AmbientLight = false turns it off; a number from 0 to 1
--- sets its strength (default 1).
+-- Ambient light, after the Airflow look: soft white glows that pool at the
+-- top of the sidebar behind the logo, at its foot behind the profile, at the
+-- bottom middle of the content and faintly in the top-right corner, so the
+-- black reads as lit rather than flat. Drawn over the body in a CanvasGroup
+-- clipped to the window's rounded corners; the sidebar's glows sit in a
+-- frame clipped to the sidebar so they don't spill into the content. It
+-- never takes input. AmbientLight = false turns it off; a number from 0 to
+-- 1 sets its strength (default 1).
 function Window:_buildAmbientLight(body, amount)
     local group = create("CanvasGroup", {
         Name = "AmbientLight",
@@ -5839,25 +5841,47 @@ function Window:_buildAmbientLight(body, amount)
         Parent = body,
     })
     corner(group, UDim.new(0, 10))
+    local railClip = create("Frame", {
+        Name = "SidebarLight",
+        Size = UDim2.new(0, self.SidebarWidth or SIDEBAR_WIDTH, 1, 0),
+        BackgroundTransparency = 1,
+        ClipsDescendants = true,
+        Parent = group,
+    })
     self._ambientLayers = {}
-    for _, spec in ipairs({
-        -- position, size, transparency at full strength
-        { UDim2.fromOffset(-30, -50), UDim2.fromOffset(640, 480), 0.84 },
-        { UDim2.fromOffset(40, 10), UDim2.fromOffset(300, 220), 0.9 },
-        { UDim2.new(1, 40, 1, 60), UDim2.fromOffset(460, 320), 0.95 },
-    }) do
+    local function glowAt(parent, position, size, rest)
         local image = create("ImageLabel", {
             AnchorPoint = Vector2.new(0.5, 0.5),
-            Position = spec[1],
-            Size = spec[2],
+            Position = position,
+            Size = size,
             BackgroundTransparency = 1,
             Image = Assets.Glow,
             ImageColor3 = Theme.Text,
             ImageTransparency = 1,
-            Parent = group,
+            Parent = parent,
         })
-        table.insert(self._ambientLayers, { Image = image, Rest = spec[3] })
+        table.insert(self._ambientLayers, { Image = image, Rest = rest })
     end
+    -- Sidebar: bright behind the logo, softer behind the profile.
+    glowAt(railClip, UDim2.new(0.5, 0, 0, 6), UDim2.new(3, 0, 0, 230), 0.72)
+    glowAt(railClip, UDim2.new(0.5, 0, 1, 10), UDim2.new(2, 0, 0, 190), 0.85)
+    -- Content: a wide pool at the bottom middle, a faint top-right corner.
+    local contentGlow = create("Frame", {
+        Name = "ContentLight",
+        Position = UDim2.fromOffset(self.SidebarWidth or SIDEBAR_WIDTH, 0),
+        Size = UDim2.new(1, -(self.SidebarWidth or SIDEBAR_WIDTH), 1, 0),
+        BackgroundTransparency = 1,
+        Parent = group,
+    })
+    glowAt(contentGlow, UDim2.new(0.5, 0, 1, 40), UDim2.new(1.3, 0, 0, 380), 0.8)
+    glowAt(contentGlow, UDim2.new(1, 10, 0, -20), UDim2.fromOffset(380, 260), 0.92)
+    -- A wide sidebar can be dragged: keep the split in step with it.
+    self.Sidebar:GetPropertyChangedSignal("Size"):Connect(function()
+        local width = self.Sidebar.Size.X.Offset
+        railClip.Size = UDim2.new(0, width, 1, 0)
+        contentGlow.Position = UDim2.fromOffset(width, 0)
+        contentGlow.Size = UDim2.new(1, -width, 1, 0)
+    end)
     self:SetAmbientLight(amount == nil and 1 or amount, true)
 end
 

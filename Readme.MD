@@ -177,7 +177,7 @@ Appearance methods attach to windows created by `CreateVoidHubWindow` (or its le
 Window:CreateAppearanceTab({ Name = "Appearance", Icon = "palette" })
 
 Library:SetTheme("VoidHub")
-Window:SetAmbientLight(0.6) -- soft white light from the top-left corner, 0..1 (window option AmbientLight)
+Window:SetAmbientLight(0.6) -- soft white light pooling in the sidebar and content, 0..1 (window option AmbientLight)
 Library.IconGlow = 1         -- glow on the logo, selected tab, page and groupbox icons, 0..1
 Window:SetUIScale(1.1)
 Window:SetAdaptiveSize(true)
