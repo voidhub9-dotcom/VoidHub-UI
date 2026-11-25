@@ -16591,9 +16591,608 @@ local function homePage(sub, page)
     end
 end
 
+-- The Home banner: the game you're in as the backdrop (its place thumbnail,
+-- over a zoomed game icon in case the thumbnail can't load), shaded to black
+-- at the foot. On it: your avatar, display name and @username, live chips
+-- for the game, players, ping, frame rate and executor, the script's tier
+-- and expiry when given, and the privacy switches that hide your name and
+-- avatar everywhere (remembered in the config folder). Returns a refresh.
+function Window:_homeBanner(list, opts, order)
+    local banner = create("Frame", {
+        Name = "Banner",
+        Size = UDim2.new(1, 0, 0, 214),
+        BackgroundColor3 = Theme.Surface2,
+        BorderSizePixel = 0,
+        ClipsDescendants = true,
+        LayoutOrder = order,
+        Parent = list,
+    })
+    banner:SetAttribute("NoDrag", true)
+    corner(banner, UDim.new(0, 14))
+    stroke(banner, Theme.Text, 0.93)
+    -- Two layers: the square game icon zoomed to cover, then the place's
+    -- wide thumbnail over it. An image that fails to load draws nothing, so
+    -- the icon shows through.
+    create("ImageLabel", {
+        Name = "GameIcon",
+        Size = UDim2.fromScale(1, 1),
+        BackgroundTransparency = 1,
+        Image = "rbxthumb://type=GameIcon&id=" .. tostring(game.GameId) .. "&w=512&h=512",
+        ScaleType = Enum.ScaleType.Crop,
+        Parent = banner,
+    })
+    create("ImageLabel", {
+        Name = "PlaceThumbnail",
+        Size = UDim2.fromScale(1, 1),
+        BackgroundTransparency = 1,
+        Image = "rbxthumb://type=Asset&id=" .. tostring(game.PlaceId) .. "&w=768&h=432",
+        ScaleType = Enum.ScaleType.Crop,
+        Parent = banner,
+    })
+    local shade = create("Frame", {
+        Name = "Shade",
+        Size = UDim2.fromScale(1, 1),
+        BackgroundColor3 = Theme.Background,
+        BorderSizePixel = 0,
+        Parent = banner,
+    })
+    create("UIGradient", {
+        Rotation = 90,
+        Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.85),
+            NumberSequenceKeypoint.new(0.5, 0.45),
+            NumberSequenceKeypoint.new(1, 0),
+        }),
+        Parent = shade,
+    })
+
+    -- A glass chip: icon and text on a faint white fill.
+    local function glassChip(parent, order_, icon, text)
+        local chip = create("Frame", {
+            Size = UDim2.fromOffset(0, 24),
+            AutomaticSize = Enum.AutomaticSize.X,
+            BackgroundColor3 = Theme.Text,
+            BackgroundTransparency = 0.9,
+            BorderSizePixel = 0,
+            LayoutOrder = order_,
+            ZIndex = 2,
+            Parent = parent,
+        })
+        corner(chip, UDim.new(1, 0))
+        padding(chip, 9, 10)
+        create("UIListLayout", {
+            FillDirection = Enum.FillDirection.Horizontal,
+            VerticalAlignment = Enum.VerticalAlignment.Center,
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            Padding = UDim.new(0, 6),
+            Parent = chip,
+        })
+        local image = create("ImageLabel", {
+            Size = UDim2.fromOffset(12, 12),
+            BackgroundTransparency = 1,
+            ImageColor3 = Theme.Text,
+            ScaleType = Enum.ScaleType.Fit,
+            LayoutOrder = 1,
+            ZIndex = 2,
+            Parent = chip,
+        })
+        applyIcon(image, icon)
+        local text_ = label({
+            Size = UDim2.fromOffset(0, 24),
+            AutomaticSize = Enum.AutomaticSize.X,
+            Text = text,
+            TextSize = 12,
+            FontFace = Fonts.Bold,
+            TextTruncate = Enum.TextTruncate.None,
+            LayoutOrder = 2,
+            ZIndex = 2,
+            Parent = chip,
+        })
+        return chip, text_, image
+    end
+    local function row(position, anchor)
+        local frame = create("Frame", {
+            AnchorPoint = anchor or Vector2.zero,
+            Position = position,
+            Size = UDim2.fromOffset(0, 24),
+            AutomaticSize = Enum.AutomaticSize.X,
+            BackgroundTransparency = 1,
+            ZIndex = 2,
+            Parent = banner,
+        })
+        create("UIListLayout", {
+            FillDirection = Enum.FillDirection.Horizontal,
+            VerticalAlignment = Enum.VerticalAlignment.Center,
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            Padding = UDim.new(0, 6),
+            Parent = frame,
+        })
+        return frame
+    end
+
+    -- Top left: the script's tier and expiry, when the script gives them.
+    local badges = row(UDim2.fromOffset(16, 14))
+    if opts.Tier then
+        local _, tierText = glassChip(badges, 1, opts.TierIcon or "sparkles", tostring(opts.Tier))
+        self.TierLabel = tierText
+    end
+    local expiryChip, expiryText = glassChip(badges, 2, "clock", "")
+    expiryChip.Visible = false
+
+    -- Top right: privacy. Each switch hides the name or the avatar on Home,
+    -- the sidebar and the island, and is remembered for next time.
+    local privacy = create("Frame", {
+        AnchorPoint = Vector2.new(1, 0),
+        Position = UDim2.new(1, -14, 0, 12),
+        Size = UDim2.fromOffset(0, 30),
+        AutomaticSize = Enum.AutomaticSize.X,
+        BackgroundColor3 = Theme.Surface,
+        BackgroundTransparency = 0.25,
+        BorderSizePixel = 0,
+        ZIndex = 2,
+        Parent = banner,
+    })
+    corner(privacy, UDim.new(1, 0))
+    stroke(privacy, Theme.Text, 0.92)
+    padding(privacy, 12, 3)
+    create("UIListLayout", {
+        FillDirection = Enum.FillDirection.Horizontal,
+        VerticalAlignment = Enum.VerticalAlignment.Center,
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        Padding = UDim.new(0, 4),
+        Parent = privacy,
+    })
+    label({
+        Size = UDim2.fromOffset(0, 30),
+        AutomaticSize = Enum.AutomaticSize.X,
+        Text = "Privacy  ",
+        TextSize = 11,
+        FontFace = Fonts.Bold,
+        TextColor3 = Theme.Muted,
+        TextTruncate = Enum.TextTruncate.None,
+        LayoutOrder = 0,
+        ZIndex = 2,
+        Parent = privacy,
+    })
+    local function privacySwitch(order_, text, get, set)
+        local button = create("TextButton", {
+            Size = UDim2.fromOffset(0, 24),
+            AutomaticSize = Enum.AutomaticSize.X,
+            BackgroundColor3 = Theme.Text,
+            BackgroundTransparency = 0.94,
+            BorderSizePixel = 0,
+            Text = "",
+            AutoButtonColor = false,
+            LayoutOrder = order_,
+            ZIndex = 2,
+            Parent = privacy,
+        })
+        corner(button, UDim.new(1, 0))
+        padding(button, 8, 10)
+        create("UIListLayout", {
+            FillDirection = Enum.FillDirection.Horizontal,
+            VerticalAlignment = Enum.VerticalAlignment.Center,
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            Padding = UDim.new(0, 5),
+            Parent = button,
+        })
+        local image = create("ImageLabel", {
+            Size = UDim2.fromOffset(12, 12),
+            BackgroundTransparency = 1,
+            ImageColor3 = Theme.Text,
+            ScaleType = Enum.ScaleType.Fit,
+            LayoutOrder = 1,
+            ZIndex = 2,
+            Parent = button,
+        })
+        label({
+            Size = UDim2.fromOffset(0, 24),
+            AutomaticSize = Enum.AutomaticSize.X,
+            Text = text,
+            TextSize = 11,
+            FontFace = Fonts.Bold,
+            TextTruncate = Enum.TextTruncate.None,
+            LayoutOrder = 2,
+            ZIndex = 2,
+            Parent = button,
+        })
+        local function paint()
+            local hidden = get()
+            applyIcon(image, hidden and "eye-off" or "eye")
+            tween(button, { BackgroundTransparency = hidden and 0.8 or 0.94 }, 0.15)
+        end
+        paint()
+        button.MouseButton1Click:Connect(function()
+            set(not get())
+            paint()
+        end)
+        return paint
+    end
+    privacySwitch(1, "Name", function()
+        return self._hideName
+    end, function(on)
+        self:SetHideName(on)
+        self:_writeConfigSettings({ HideName = on })
+    end)
+    privacySwitch(2, "Avatar", function()
+        return self._hideAvatar
+    end, function(on)
+        self:SetHideAvatar(on)
+        self:_writeConfigSettings({ HideAvatar = on })
+    end)
+
+    -- Bottom left: you.
+    avatar(self, banner, {
+        AnchorPoint = Vector2.new(0, 1),
+        Position = UDim2.new(0, 18, 1, -18),
+        Size = UDim2.fromOffset(66, 66),
+        ZIndex = 2,
+    }, Theme.Text, 0.6, 2)
+    local textX = 98
+    label({
+        AnchorPoint = Vector2.new(0, 1),
+        Position = UDim2.new(0, textX, 1, -96),
+        Size = UDim2.new(1, -textX - 16, 0, 14),
+        Text = string.upper(opts.Welcome or "Welcome back"),
+        TextSize = 11,
+        FontFace = Fonts.Bold,
+        TextColor3 = Theme.Muted,
+        ZIndex = 2,
+        Parent = banner,
+    })
+    local nameLabel = label({
+        AnchorPoint = Vector2.new(0, 1),
+        Position = UDim2.new(0, textX, 1, -66),
+        Size = UDim2.new(1, -textX - 16, 0, 30),
+        TextSize = 26,
+        FontFace = Fonts.Bold,
+        ZIndex = 2,
+        Parent = banner,
+    })
+    self:_trackName(nameLabel, "Display")
+    local userLabel = label({
+        AnchorPoint = Vector2.new(0, 1),
+        Position = UDim2.new(0, textX, 1, -48),
+        Size = UDim2.new(1, -textX - 16, 0, 16),
+        TextSize = 12,
+        FontFace = Fonts.Regular,
+        TextColor3 = Theme.Muted,
+        ZIndex = 2,
+        Parent = banner,
+    })
+    self:_trackName(userLabel, "User")
+
+    -- Live chips: the game, the server's players, your ping and frame rate,
+    -- and the executor.
+    local chips = row(UDim2.new(0, textX, 1, -16), Vector2.new(0, 1))
+    local _, gameText = glassChip(chips, 1, "globe", "…")
+    local _, playersText = glassChip(chips, 2, "users", "")
+    local _, pingText, pingIcon = glassChip(chips, 3, "wifi", "")
+    local _, fpsText, fpsIcon = glassChip(chips, 4, "gauge", "")
+    glassChip(chips, 5, "terminal", detectExecutor())
+    task.spawn(function()
+        local info = fetchGameInfo()
+        gameText.Text = info and info.Name or detectGameName()
+    end)
+    local frames, clock, fps = 0, os.clock(), 0
+    self:_listen("Render", function()
+        frames += 1
+        local now = os.clock()
+        if now - clock >= 1 then
+            fps = math.floor(frames / (now - clock) + 0.5)
+            frames, clock = 0, now
+        end
+    end)
+
+    return function()
+        playersText.Text = #Players:GetPlayers() .. " in server"
+        local okPing, ping = pcall(function()
+            return math.floor(LocalPlayer:GetNetworkPing() * 1000 + 0.5)
+        end)
+        pingText.Text = okPing and (ping .. " ms") or "-"
+        if okPing then
+            pingIcon.ImageColor3 = Library._healthColor(ping, 90, 180, true)
+        end
+        fpsText.Text = fps > 0 and (fps .. " fps") or "-"
+        if fps > 0 then
+            fpsIcon.ImageColor3 = Library._healthColor(fps, 50, 30)
+        end
+        local value = opts.Expiry
+        if type(value) == "function" then
+            local ok, result = pcall(value)
+            value = ok and result or nil
+        end
+        if type(value) == "number" then
+            local left = value - os.time()
+            expiryText.Text = left > 0 and (formatDuration(left) .. " left") or "Expired"
+        elseif value ~= nil then
+            expiryText.Text = tostring(value)
+        end
+        expiryChip.Visible = expiryText.Text ~= ""
+    end
+end
+
+-- Big buttons into every other tab, with its icon and description. Rebuilt
+-- whenever a tab is added, so tabs made after the window still show.
+function Window:_homeShortcuts(list, order)
+    local grid = create("Frame", {
+        Name = "TabButtons",
+        Size = UDim2.new(1, 0, 0, 0),
+        AutomaticSize = Enum.AutomaticSize.Y,
+        BackgroundTransparency = 1,
+        LayoutOrder = order,
+        Parent = list,
+    })
+    create("UIGridLayout", {
+        CellSize = UDim2.new(1 / 3, -7, 0, 96),
+        CellPadding = UDim2.fromOffset(10, 10),
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        Parent = grid,
+    })
+    local cards = {}
+    local function build(tab, index)
+        local card = create("TextButton", {
+            BackgroundColor3 = Theme.Surface2,
+            BorderSizePixel = 0,
+            Text = "",
+            AutoButtonColor = false,
+            ClipsDescendants = true,
+            LayoutOrder = index,
+            Parent = grid,
+        })
+        card:SetAttribute("NoDrag", true)
+        corner(card, UDim.new(0, 12))
+        local cardStroke = stroke(card, Theme.Text, 0.93)
+        local tile = create("Frame", {
+            Position = UDim2.fromOffset(14, 14),
+            Size = UDim2.fromOffset(38, 38),
+            BackgroundColor3 = Theme.Surface3,
+            BorderSizePixel = 0,
+            Parent = card,
+        })
+        corner(tile, UDim.new(0, 10))
+        local image = create("ImageLabel", {
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.fromScale(0.5, 0.5),
+            Size = UDim2.fromOffset(20, 20),
+            BackgroundTransparency = 1,
+            ImageColor3 = Theme.Accent,
+            ScaleType = Enum.ScaleType.Fit,
+            ZIndex = 2,
+            Parent = tile,
+        })
+        applyIcon(image, tab._iconName or "layout-grid")
+        Library._iconBloom(image)
+        local arrow = create("ImageLabel", {
+            AnchorPoint = Vector2.new(1, 0),
+            Position = UDim2.new(1, -14, 0, 16),
+            Size = UDim2.fromOffset(16, 16),
+            BackgroundTransparency = 1,
+            ImageColor3 = Theme.Muted,
+            ScaleType = Enum.ScaleType.Fit,
+            Parent = card,
+        })
+        applyIcon(arrow, "arrow-right")
+        label({
+            Position = UDim2.fromOffset(14, 60),
+            Size = UDim2.new(1, -28, 0, 18),
+            Text = tab.Name,
+            TextSize = 15,
+            FontFace = Fonts.Bold,
+            Parent = card,
+        })
+        label({
+            Position = UDim2.fromOffset(14, 78),
+            Size = UDim2.new(1, -28, 0, 14),
+            Text = tab.Desc or "",
+            TextSize = 12,
+            FontFace = Fonts.Regular,
+            TextColor3 = Theme.Muted,
+            Parent = card,
+        })
+        card.MouseEnter:Connect(function()
+            tween(cardStroke, { Transparency = 0.8 }, 0.15)
+            tween(arrow, { Position = UDim2.new(1, -10, 0, 16), ImageColor3 = Theme.Text }, 0.2, Enum.EasingStyle.Quint)
+        end)
+        card.MouseLeave:Connect(function()
+            tween(cardStroke, { Transparency = 0.93 }, 0.2)
+            tween(arrow, { Position = UDim2.new(1, -14, 0, 16), ImageColor3 = Theme.Muted }, 0.2, Enum.EasingStyle.Quint)
+        end)
+        card.MouseButton1Click:Connect(function()
+            ripple(card)
+            self:SelectTab(tab)
+        end)
+        return card
+    end
+    local function refresh()
+        if self._destroyed or not grid.Parent then
+            return
+        end
+        for _, card in ipairs(cards) do
+            card:Destroy()
+        end
+        table.clear(cards)
+        local index = 0
+        for _, tab in ipairs(self.Tabs) do
+            if tab ~= self.Home and index < 6 then
+                index += 1
+                table.insert(cards, build(tab, index))
+            end
+        end
+        grid.Visible = index > 0
+    end
+    self._homeShortcutsRefresh = refresh
+    refresh()
+end
+
+-- One row of the server actions; Rejoin is the filled one.
+function Window:_homeActionRow(list, order)
+    local bar = create("Frame", {
+        Name = "ServerActions",
+        Size = UDim2.new(1, 0, 0, 38),
+        BackgroundTransparency = 1,
+        LayoutOrder = order,
+        Parent = list,
+    })
+    create("UIGridLayout", {
+        CellSize = UDim2.new(0.25, -6, 1, 0),
+        CellPadding = UDim2.fromOffset(8, 0),
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        Parent = bar,
+    })
+    local _, _, accentValue = Theme.Accent:ToHSV()
+    local ink = accentValue >= 0.5 and Theme.Background or Theme.Text
+    for index, spec in ipairs({
+        { "refresh-cw", "Rejoin", function() self:Rejoin() end },
+        { "shuffle", "Server hop", function() self:ServerHop() end },
+        { "arrow-down", "Smallest", function() self:JoinLowestServer() end },
+        { "copy", "Copy Job ID", function() self:CopyToClipboard(game.JobId, "Job ID") end },
+    }) do
+        local primary = index == 1
+        local button = create("TextButton", {
+            BackgroundColor3 = primary and Theme.Accent or Theme.Surface3,
+            BorderSizePixel = 0,
+            Text = "",
+            AutoButtonColor = false,
+            ClipsDescendants = true,
+            LayoutOrder = index,
+            Parent = bar,
+        })
+        corner(button, UDim.new(0, 10))
+        if not primary then
+            stroke(button, Theme.Text, 0.94)
+        end
+        create("UIListLayout", {
+            FillDirection = Enum.FillDirection.Horizontal,
+            HorizontalAlignment = Enum.HorizontalAlignment.Center,
+            VerticalAlignment = Enum.VerticalAlignment.Center,
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            Padding = UDim.new(0, 7),
+            Parent = button,
+        })
+        local image = create("ImageLabel", {
+            Size = UDim2.fromOffset(15, 15),
+            BackgroundTransparency = 1,
+            ImageColor3 = primary and ink or Theme.Text,
+            ScaleType = Enum.ScaleType.Fit,
+            LayoutOrder = 1,
+            Parent = button,
+        })
+        applyIcon(image, spec[1])
+        label({
+            Size = UDim2.fromOffset(0, 38),
+            AutomaticSize = Enum.AutomaticSize.X,
+            Text = spec[2],
+            TextSize = 12,
+            FontFace = Fonts.Bold,
+            TextColor3 = primary and ink or Theme.Text,
+            TextTruncate = Enum.TextTruncate.None,
+            LayoutOrder = 2,
+            Parent = button,
+        })
+        button.MouseEnter:Connect(function()
+            tween(button, { BackgroundTransparency = 0.15 }, 0.15)
+        end)
+        button.MouseLeave:Connect(function()
+            tween(button, { BackgroundTransparency = 0 }, 0.2)
+        end)
+        button.MouseButton1Click:Connect(function()
+            ripple(button)
+            safeCall(spec[3])
+        end)
+    end
+end
+
+-- What's switched on: up to four running toggles by name, and a count.
+function Window:_homeRunning(parent, order)
+    local card = self:_homeCard(parent, order)
+    self:_homeCaption(card, "Switched on", 0)
+    local rows = create("Frame", {
+        Size = UDim2.new(1, 0, 0, 0),
+        AutomaticSize = Enum.AutomaticSize.Y,
+        BackgroundTransparency = 1,
+        LayoutOrder = 1,
+        Parent = card,
+    })
+    create("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Parent = rows })
+    local footer = label({
+        Size = UDim2.new(1, 0, 0, 22),
+        Text = "",
+        TextSize = 12,
+        FontFace = Fonts.Regular,
+        TextColor3 = Theme.Muted,
+        TextYAlignment = Enum.TextYAlignment.Bottom,
+        LayoutOrder = 2,
+        Parent = card,
+    })
+    local lines = {}
+    return function()
+        local names = {}
+        for _, element in pairs(self.Flags) do
+            if element._type == "Toggle" and element.Value == true then
+                table.insert(names, element._searchName ~= "" and element._searchName or element.Name or "Feature")
+            end
+        end
+        table.sort(names)
+        for index = 1, math.max(#lines, math.min(#names, 4)) do
+            local line = lines[index]
+            if index <= math.min(#names, 4) then
+                if not line then
+                    local frame = create("Frame", {
+                        Size = UDim2.new(1, 0, 0, 28),
+                        BackgroundTransparency = 1,
+                        LayoutOrder = index,
+                        Parent = rows,
+                    })
+                    local dot = create("Frame", {
+                        AnchorPoint = Vector2.new(0, 0.5),
+                        Position = UDim2.new(0, 0, 0.5, 0),
+                        Size = UDim2.fromOffset(7, 7),
+                        BackgroundColor3 = Theme.Success,
+                        BorderSizePixel = 0,
+                        Parent = frame,
+                    })
+                    corner(dot, UDim.new(1, 0))
+                    local nameLabel = label({
+                        Position = UDim2.fromOffset(16, 0),
+                        Size = UDim2.new(1, -16, 1, 0),
+                        TextSize = 13,
+                        FontFace = Fonts.Bold,
+                        Parent = frame,
+                    })
+                    line = { Frame = frame, Label = nameLabel }
+                    lines[index] = line
+                end
+                line.Frame.Visible = true
+                line.Label.Text = names[index]
+            elseif line then
+                line.Frame.Visible = false
+            end
+        end
+        if #names == 0 then
+            footer.Text = "Nothing on yet. Switch features on in your tabs."
+        elseif #names > 4 then
+            footer.Text = string.format("%d running  ·  %d more", #names, #names - 4)
+        else
+            footer.Text = #names == 1 and "1 running" or (#names .. " running")
+        end
+    end
+end
+
 function Window:_buildHome(opts)
-    self._hideName = opts.HideName == true
-    self._hideAvatar = opts.HideAvatar == true
+    -- A script's HideName / HideAvatar wins; otherwise the player's own
+    -- choice from the Home privacy switches is remembered.
+    local saved = self:_readConfigSettings()
+    if opts.HideName ~= nil then
+        self._hideName = opts.HideName == true
+    else
+        self._hideName = saved.HideName == true
+    end
+    if opts.HideAvatar ~= nil then
+        self._hideAvatar = opts.HideAvatar == true
+    else
+        self._hideAvatar = saved.HideAvatar == true
+    end
     self:_renderIdentity(true)
     local tab = self:Tab({
         Name = opts.Name or "Home",
@@ -16613,15 +17212,16 @@ function Window:_buildHome(opts)
     overview._order = 100
     local list = overview.List
 
-    local refreshExpiry = self:_homeProfile(list, opts, 1)
-    local refreshStats, resetStats = self:_homeStats(list, opts, 2, tab)
+    local refreshBanner = self:_homeBanner(list, opts, 1)
+    self:_homeShortcuts(list, 2)
+    self:_homeActionRow(list, 3)
 
     -- Server and links side by side, stacked when narrow.
     local split = create("Frame", {
         Size = UDim2.new(1, 0, 0, 0),
         AutomaticSize = Enum.AutomaticSize.Y,
         BackgroundTransparency = 1,
-        LayoutOrder = 3,
+        LayoutOrder = 4,
         Parent = list,
     })
     local splitLayout = create("UIListLayout", {
@@ -16641,7 +17241,7 @@ function Window:_buildHome(opts)
         return frame
     end
     local leftColumn, rightColumn = column(1), column(2)
-    local refreshGame = self:_homeGame(leftColumn, 1)
+    local refreshRunning = self:_homeRunning(leftColumn, 1)
     local linksCard, refreshFeatures = self:_homeLinks(rightColumn, opts, 1)
     if not linksCard then
         rightColumn:Destroy()
@@ -16658,27 +17258,21 @@ function Window:_buildHome(opts)
     split:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitSplit)
     task.defer(fitSplit)
 
-    self:_homeExecutor(list, opts, 4)
-
     if type(pages) == "table" then
         for _, page in ipairs(pages) do
             homePage(tab:SubTab({ Name = page.Name or page.Title or "Page", Icon = page.Icon }), page)
         end
     end
 
-    refreshExpiry()
-    refreshStats()
-    refreshGame()
+    refreshBanner()
+    refreshRunning()
     task.spawn(function()
         while not self._destroyed and tab._page.Parent do
             task.wait(1)
             if self.Open and self.CurrentTab == tab then
-                refreshStats()
-                refreshExpiry()
-                refreshGame()
+                refreshBanner()
+                refreshRunning()
                 refreshFeatures()
-            else
-                resetStats()
             end
         end
     end)
@@ -16882,8 +17476,13 @@ function Window:Tab(opts, icon)
         end
     end)
     self:_fitTitle(tab)
+    tab.Desc = opts.Desc
 
     table.insert(self.Tabs, tab)
+    -- Home's tab buttons list every other tab; let it catch up.
+    if self._homeShortcutsRefresh then
+        task.defer(self._homeShortcutsRefresh)
+    end
     if #self.Tabs == 1 then
         task.defer(function()
             if not self.CurrentTab then
@@ -17494,14 +18093,18 @@ function Window:SelectTab(tab)
     page.Position = UDim2.fromOffset(0, 0)
     page.Visible = true
     if previous and self._introDone and self.Open and not self.Minimized then
+        -- The new page fades in and slides 16px towards its place: up from
+        -- below when moving down the tab list, down from above when moving
+        -- up, so the motion follows the rail.
         local layer = self._inLayer
         page.Parent = layer
         self._inPage = page
-        layer.GroupTransparency = 0.22
-        layer.Position = UDim2.fromOffset(0, 4)
+        local down = (table.find(self.Tabs, tab) or 0) >= (table.find(self.Tabs, previous) or 0)
+        layer.GroupTransparency = 1
+        layer.Position = UDim2.fromOffset(0, down and 16 or -16)
         layer.Visible = true
-        tween(layer, { GroupTransparency = 0, Position = UDim2.fromOffset(0, 0) }, 0.18, Enum.EasingStyle.Quint)
-        task.delay(0.19, function()
+        tween(layer, { GroupTransparency = 0, Position = UDim2.fromOffset(0, 0) }, 0.32, Enum.EasingStyle.Quint)
+        task.delay(0.33, function()
             if not self._destroyed and self._transitionGeneration == generation then
                 self:_settleIn()
             end
