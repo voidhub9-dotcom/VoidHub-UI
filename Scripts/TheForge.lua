@@ -414,11 +414,12 @@ local function buildBasket()
 		end
 	end
 	if F("SellRunes") then
-		local runeRar = set(list("RuneRarities"))
+		local tiers, kinds = set(list("RuneTiers")), set(list("RuneKinds"))
+		local favs = d.Favorites or {}
 		for _, m in ipairs(d.Inventory.Misc or {}) do
-			if m.GUID and m.Id and itemKind(m.Id) == "Rune" and not m.Favorite then
-				local r = (ItemTypes()[m.Id] or {})[3]
-				if not next(runeRar) or runeRar[tostring(r)] or runeRar[m.Id] then basket[m.GUID] = 1 count += 1 end
+			if m.GUID and m.Id and itemKind(m.Id) == "Rune" and not favs[m.GUID] then
+				local kind, tier = m.Id:match("^(.-)_(T%d+)$")
+				if (not next(tiers) or tiers[tier]) and (not next(kinds) or kinds[kind]) then basket[m.GUID] = 1 count += 1 end
 			end
 		end
 	end
@@ -450,6 +451,55 @@ local function sellNow()
 	local gained = (Data() and Data().Gold or 0) - g0
 	if gained > 0 then Hub.Stats.Sold += count end
 	return gained > 0, ("+%d gold for %d items"):format(math.floor(gained), count)
+end
+
+-- Gear (weapons / armor): sold to Marbles, basket {[GUID] = true}
+local function equippedGUIDs()
+	local t = {}
+	local d = Data()
+	if d then for _, e in pairs(d.Equipped or {}) do if type(e) == "table" and e.GUID then t[e.GUID] = true end end end
+	return t
+end
+local function buildGearBasket()
+	local d = Data() if not d then return {}, 0 end
+	local kinds = set(list("GearKinds"))
+	local maxQ = F("GearMaxQuality") or 50
+	local eq, favs = equippedGUIDs(), d.Favorites or {}
+	local basket, n = {}, 0
+	for _, e in ipairs(d.Inventory.Equipments or {}) do
+		local kind = itemKind(e.Type)
+		if e.GUID and not eq[e.GUID] and not favs[e.GUID] and (e.Quality or 0) <= maxQ and (not next(kinds) or kinds[kind]) then
+			if not (F("GearKeepRuned") and e.Runes and next(e.Runes)) and (e.Upgrade or 0) <= (F("GearMaxUpgrade") or 0) then
+				basket[e.GUID] = true n += 1
+			end
+		end
+	end
+	return basket, n
+end
+local function sellGear()
+	local basket, n = buildGearBasket()
+	if n == 0 then return false, "No gear matches" end
+	local d = Data()
+	local g0 = d.Gold
+	setState("Selling gear", n .. " items")
+	if d.Gamepasses and d.Gamepasses.SellAnywhere then
+		invoke("InventoryService", "SellAnywhere", basket, true)
+	else
+		local npc = workspace.Proximity:FindFirstChild("Marbles")
+		if not npc then return false, "Marbles is not on this island" end
+		local back = Root() and Root().CFrame
+		if not travel(npc:GetPivot() * CFrame.new(0, 0, -5)) then return false, "Travel interrupted" end
+		task.wait(0.3)
+		invoke("ProximityService", "ForceDialogue", npc, "SellConfirm")
+		task.wait(0.3)
+		invoke("DialogueService", "RunCommand", "SellConfirm", { Basket = basket })
+		task.wait(0.5)
+		closeDialogue()
+		if F("ReturnAfterSell") and back then travel(back) end
+	end
+	task.wait(0.5)
+	local gained = (Data().Gold or 0) - g0
+	return gained > 0, ("+%d gold for %d gear"):format(math.floor(gained), n)
 end
 
 local lastSell = 0
@@ -717,6 +767,10 @@ local function brain()
 			if retreatStep() then return end
 			if sellDue() then local _, msg = sellNow() lastSell = tick() Hub.LastSell = msg return end
 			if buyStep() then return end
+			if F("AutoSellGear") then
+				local _, n = buildGearBasket()
+				if n >= (F("GearSellAt") or 3) then local _, msg = sellGear() Hub.LastGear = msg return end
+			end
 			if F("AutoForge") and recipeReady() then local _, msg = forgeOnce() Hub.LastForge = msg return end
 			if F("MobFarm") then if mobFarmStep() then return end end
 			if F("AutoMine") then
@@ -1061,7 +1115,7 @@ Flags = Window.Flags
 Hub.Window = Window
 local function notify(title, content, kind) Window:Notify({ Title = title, Content = content, Type = kind, Duration = 4 }) end
 
-local AutoToggles = { "AutoMine", "MobFarm", "AutoForge", "AutoSell", "AutoBuy", "AutoPotions", "AutoHealthPotion", "Fly", "Noclip", "WalkSpeedOn", "JumpPowerOn", "InfJump" }
+local AutoToggles = { "AutoSellGear", "AutoClaim", "AutoMine", "MobFarm", "AutoForge", "AutoSell", "AutoBuy", "AutoPotions", "AutoHealthPotion", "Fly", "Noclip", "WalkSpeedOn", "JumpPowerOn", "InfJump" }
 
 -- Farm tab ------------------------------------------------------------
 local Farm = Window:CreateTab({ Name = "Farm", Desc = "Mining, combat, forge, selling, potions", Icon = "pickaxe" })
@@ -1173,8 +1227,14 @@ SBox:CreateStepper({ Name = "Keep of each ore", Range = { 0, 500 }, Increment = 
 SBox:CreateDropdown({ Name = "Sell when", Options = { "Ore count", "Bag full", "Interval" }, CurrentOption = "Ore count", AllowNone = false, Flag = "SellMode" })
 SBox:CreateSlider({ Name = "Ore count", Range = { 10, 1000 }, Increment = 10, CurrentValue = 150, Flag = "SellThreshold" })
 SBox:CreateSlider({ Name = "Interval", Range = { 60, 1800 }, Increment = 30, CurrentValue = 300, Suffix = " s", Flag = "SellInterval" })
-SBox:CreateToggle({ Name = "Sell runes too", Desc = "Untested basket format for runes.", Flag = "SellRunes", CurrentValue = false })
-SBox:CreateDropdown({ Name = "Rune rarities", Options = RarityList, MultipleOptions = true, AllowNone = true, NoneText = "All runes", Flag = "RuneRarities" })
+SBox:CreateToggle({ Name = "Sell runes too", Desc = "Favorited runes are kept.", Flag = "SellRunes", CurrentValue = false })
+local runeKinds, runeSeen = {}, {}
+for k, v in pairs(ItemTypes()) do
+	if type(v) == "table" and v[1] == "Rune" then local kind = tostring(k):match("^(.-)_T%d+$") if kind and not runeSeen[kind] then runeSeen[kind] = true table.insert(runeKinds, kind) end end
+end
+table.sort(runeKinds)
+SBox:CreateDropdown({ Name = "Rune tiers", Options = { "T1", "T2", "T3", "T4", "T5" }, MultipleOptions = true, AllowNone = true, NoneText = "All tiers", Flag = "RuneTiers" })
+SBox:CreateDropdown({ Name = "Rune types", Options = runeKinds, MultipleOptions = true, AllowNone = true, Searchable = true, NoneText = "All types", Flag = "RuneKinds" })
 SBox:CreateToggle({ Name = "Fly back after selling", Flag = "ReturnAfterSell", CurrentValue = true })
 SBox:CreateButton({ Name = "Sell now", Style = "Primary", Callback = function() task.spawn(function() local ok, msg = sellNow() notify("Sell", msg, ok and "Success" or "Warning") end) end })
 
@@ -1185,6 +1245,21 @@ BasketBox:CreateStatusList({ Name = "Will sell", MaxRows = 8, EmptyText = "Nothi
 	return rows
 end })
 BasketBox:CreateStatus({ Name = "Bag", Style = "Row", Update = function() return ("%d / %d ores"):format(oreTotal(), bagCapacity()) end })
+
+local GearBox = SellPage:CreateGroupbox({ Name = "Gear sell", Side = "Left", Icon = "sword" })
+GearBox:CreateToggle({ Name = "Auto sell gear", Desc = "Never sells equipped or favorited gear.", Flag = "AutoSellGear", CurrentValue = false })
+GearBox:CreateDropdown({ Name = "Gear types", Options = { "Weapon", "Armor" }, MultipleOptions = true, AllowNone = true, NoneText = "Weapons and armor", Flag = "GearKinds" })
+GearBox:CreateSlider({ Name = "Sell at or below quality", Range = { 0, 100 }, Increment = 1, CurrentValue = 50, Flag = "GearMaxQuality" })
+GearBox:CreateStepper({ Name = "Max upgrade level", Range = { 0, 20 }, Increment = 1, CurrentValue = 0, Flag = "GearMaxUpgrade" })
+GearBox:CreateToggle({ Name = "Keep gear with runes", Flag = "GearKeepRuned", CurrentValue = true })
+GearBox:CreateStepper({ Name = "Sell when this many match", Range = { 1, 50 }, Increment = 1, CurrentValue = 3, Flag = "GearSellAt" })
+GearBox:CreateStatusList({ Name = "Will sell", MaxRows = 6, EmptyText = "Nothing matches", Update = function()
+	local rows, d = {}, Data()
+	local b = buildGearBasket()
+	for _, e in ipairs(d and d.Inventory.Equipments or {}) do if b[e.GUID] then table.insert(rows, { Text = tostring(e.Type), Value = ("Q%.0f %s"):format(e.Quality or 0, tostring(e.Ore)) }) end end
+	return rows
+end })
+GearBox:CreateButton({ Name = "Sell gear now", Style = "Primary", Callback = function() task.spawn(function() local ok, msg = sellGear() notify("Gear", msg, ok and "Success" or "Warning") end) end })
 
 local ShopBox = SellPage:CreateGroupbox({ Name = "Shop", Side = "Right", Icon = "store" })
 local shopItems = {}
