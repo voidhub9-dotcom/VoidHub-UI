@@ -95,10 +95,17 @@ end))
 
 -- Holding: keeps the character still at a CFrame without falling
 local Hold = { cf = nil }
-conn(RunService.Heartbeat:Connect(function()
+conn(RunService.Heartbeat:Connect(function(dt)
 	local r = Root()
 	if Hold.cf and r then
-		r.CFrame = Hold.cf
+		-- never jump: move toward the hold point at most at travel speed (instant moves trip the server check)
+		local delta = Hold.cf.Position - r.Position
+		local step = (F("TweenSpeed") or 70) * dt
+		if delta.Magnitude > step then
+			r.CFrame = CFrame.new(r.Position + delta.Unit * step) * Hold.cf.Rotation
+		else
+			r.CFrame = Hold.cf
+		end
 		r.AssemblyLinearVelocity = Vector3.zero
 		r.AssemblyAngularVelocity = Vector3.zero
 	end
