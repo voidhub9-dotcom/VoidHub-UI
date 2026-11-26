@@ -75,7 +75,12 @@ local function alive() local h = Hum() return h and h.Health > 0 and Root() ~= n
 local function hpPct() local h = Hum() return h and h.MaxHealth > 0 and h.Health / h.MaxHealth * 100 or 0 end
 
 local Flags -- set after window creation
-local function F(name) local f = Flags and Flags[name] return f and f.Value end
+local function F(name)
+	local f = Flags and Flags[name]
+	if not f then return nil end
+	if f.Get then local ok, v = pcall(f.Get, f) if ok then return v end end
+	return f.Value
+end
 local function list(name) local v = F(name) if type(v) == "table" then return v end if v == nil or v == "" then return {} end return { v } end
 local function set(t) local s = {} for _, v in ipairs(t) do s[v] = true end return s end
 
