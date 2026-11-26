@@ -967,6 +967,13 @@ local function brain()
 				if n >= (F("GearSellAt") or 3) then local _, msg = sellGear() Hub.LastGear = msg return end
 			end
 			if F("AutoForge") and recipeReady() then local _, msg = forgeOnce() Hub.LastForge = msg return end
+			if F("AbyssCollect") and Hub.DropQueue and #Hub.DropQueue > 0 then
+				local pos = table.remove(Hub.DropQueue, 1)
+				setState("Collecting drop", "")
+				travel(CFrame.new(pos + Vector3.new(0, 2, 0)))
+				task.wait(0.3)
+				return
+			end
 			if F("HuntGoblin") and workspace:FindFirstChild("Living") then
 				for _, m in ipairs(workspace.Living:GetChildren()) do
 					if isMob(m) and m.Name:find("Treasure Goblin") then fightMob(m, 60) return end
@@ -1747,13 +1754,29 @@ do
 		if not ok or type(info) ~= "table" then return "<Muted>Unknown</Muted>" end
 		return ("%s, cleared %s"):format(info.Unlocked and "<Success>Unlocked</Success>" or "<Error>Locked</Error>", tostring(info.Cleared or 0))
 	end })
-	AB:CreateButton({ Name = "Enter Abyss", Style = "Primary", Callback = function()
-		task.spawn(function() local ok, _, r = pcall(function() return AbyssSvc:Enter():await() end) elog("Enter: " .. tostring(ok and (type(r) == "table" and (r.Message or r.Ok) or r))) end)
+	AB:CreateButton({ Name = "Start Abyss run", Desc = "Enters the lobby, makes a party and starts.", Style = "Primary", Callback = function()
+		task.spawn(function()
+			local party = workspace.Proximity:FindFirstChild("AbyssCreateParty")
+			if not party then
+				local ok, _, r = pcall(function() return AbyssSvc:Enter():await() end)
+				elog("Enter lobby: " .. tostring(ok and r))
+				task.wait(4)
+				party = workspace.Proximity:FindFirstChild("AbyssCreateParty")
+			end
+			if not party then elog("Abyss lobby not found") return end
+			local prompt = party:FindFirstChildWhichIsA("ProximityPrompt", true)
+			local kind = prompt and prompt:GetAttribute("PartyType") or party:GetAttribute("PartyType")
+			local PartySvc = Knit.GetService("PartyService")
+			if not Knit.GetController("PartyController").CurrentParty then pcall(function() PartySvc:CreateParty(kind):await() end) task.wait(1) end
+			local _, ok = pcall(function() return PartySvc:Activate():await() end)
+			elog("Start run: " .. tostring(ok))
+		end)
 	end })
 	AB:CreateButton({ Name = "Leave Abyss", Style = "Danger", Callback = function() pcall(function() AbyssSvc:Leave() end) end })
 	AB:CreateToggle({ Name = "Auto farm inside", Desc = "Fights every enemy in the run (uses Combat settings).", Flag = "AbyssFarm", CurrentValue = false, Callback = function(on)
 		if on then Flags.MobTypes:Set({}) Flags.MobFarm:Set(true) end
 	end })
+	AB:CreateToggle({ Name = "Auto collect shard drops", Flag = "AbyssCollect", CurrentValue = true })
 	AB:CreateToggle({ Name = "Auto pick buff cards", Flag = "AbyssPick", CurrentValue = false })
 	AB:CreateInput({ Name = "Card priority", PlaceholderText = "words, best first: damage, health, luck", Flag = "AbyssCardPrio" })
 	AB:CreateToggle({ Name = "Skip cards instead", Flag = "AbyssSkip", CurrentValue = false })
@@ -1780,6 +1803,10 @@ do
 				if not bestRank or rank < bestRank then best, bestRank = c, rank end
 			end
 			if best then pcall(function() AbyssSvc:PickCard(best) end) elog("Picked card: " .. cardText(best):sub(1, 60)) end
+		end))
+		Hub.DropQueue = {}
+		conn(Svc.AbyssService.RE.Drops.OnClientEvent:Connect(function(d)
+			if type(d) == "table" and d.Kind == "Drop" and typeof(d.Position) == "Vector3" then table.insert(Hub.DropQueue, d.Position) end
 		end))
 		conn(Svc.AbyssService.RE.Progress.OnClientEvent:Connect(function(...) elog("Abyss progress: " .. table.concat((function(...) local t = {} for _, v in ipairs({ ... }) do t[#t + 1] = type(v) == "table" and "{..}" or tostring(v) end return t end)(...), " ")) end))
 	end)
