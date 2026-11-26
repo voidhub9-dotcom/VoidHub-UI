@@ -128,7 +128,7 @@ local GRADES = { "Very Early", "Early", "Slightly Early", "Good", "PERFECT", "Sl
 local Timing = { offsets = {}, pending = false, ours = false, lastPress = 0, rtt = 0.12, cur = nil }
 Hub.Timing = Timing
 local function holdFor(meter)
-	local base = F("HoldTime") or 0.27
+	local base = F("HoldTime") or 0.29
 	local off = Timing.offsets[meter or "?"] or 0
 	local ping = F("PingComp") and math.clamp(Timing.rtt - 0.12, -0.05, 0.15) * (F("PingFactor") or 0.5) or 0
 	return math.clamp(base + off - ping, 0.05, 1.5)
@@ -397,9 +397,9 @@ do -- Offense
 
 	local t = PT:CreateGroupbox({ Name = "Perfect Timing", Side = "Left", Icon = "timer" })
 	t:CreateToggle({ Name = "Perfect Timing", Desc = "Replaces your release with a timed one.", Flag = "PerfectTiming", CurrentValue = true })
-	t:CreateSlider({ Name = "Hold time", Range = { 0.1, 0.8 }, Increment = 0.005, CurrentValue = 0.27, Suffix = " s", Flag = "HoldTime", Desc = "0.20 s graded Early, 0.35 s Late in tests." })
+	t:CreateSlider({ Name = "Hold time", Range = { 0.1, 0.8 }, Increment = 0.005, CurrentValue = 0.29, Suffix = " s", Flag = "HoldTime", Desc = "Perfect at 0.28-0.30 s in tests (Vertical meter)." })
 	t:CreateToggle({ Name = "Auto calibrate", Desc = "Learns from the game's own shot feedback.", Flag = "AutoCalibrate", CurrentValue = true })
-	t:CreateToggle({ Name = "Ping compensation", Flag = "PingComp", CurrentValue = true })
+	t:CreateToggle({ Name = "Ping compensation", Desc = "Off by default: shortened holds graded Early in tests.", Flag = "PingComp", CurrentValue = false })
 	t:CreateSlider({ Name = "Ping factor", Range = { 0, 1 }, Increment = 0.05, CurrentValue = 0.5, Flag = "PingFactor" })
 	t:CreateButton({ Name = "Reset calibration", Callback = function() Timing.offsets = {} end })
 	local s = PT:CreateGroupbox({ Name = "Stats", Side = "Right", Icon = "activity" })
