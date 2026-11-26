@@ -220,7 +220,7 @@ oldNC = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
 				end)
 				return r
 			elseif a.Shoot == false and Timing.pending then
-				return -- the player's own release is replaced by the timed one
+				return
 			end
 		end
 	end
