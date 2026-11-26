@@ -40,7 +40,7 @@ local function isPlayerChar(c) return c:IsA("Model") and c:FindFirstChild("Human
 local function others()
 	local t = {}
 	for _, c in ipairs(workspace.Characters:GetChildren()) do
-		if c ~= MyChar() and isPlayerChar(c) and attr(c, "OnCourt") ~= false then table.insert(t, c) end
+		if c ~= MyChar() and isPlayerChar(c) and (Players:FindFirstChild(c.Name) or attr(c, "OnCourt") == true) then table.insert(t, c) end
 	end
 	return t
 end
@@ -58,7 +58,7 @@ local function ballCarrier()
 		local bp = b:GetPivot().Position
 		for _, c in ipairs(workspace.Characters:GetChildren()) do
 			local r = Root(c)
-			if r and isPlayerChar(c) and (r.Position - bp).Magnitude < 4 then return c, b end
+			if r and isPlayerChar(c) and (c == MyChar() or Players:FindFirstChild(c.Name) or attr(c, "OnCourt") == true) and (r.Position - bp).Magnitude < 4 then return c, b end
 		end
 	end
 end
@@ -235,8 +235,10 @@ local function shootTap()
 	local me = MyChar()
 	if os.clock() - lastTap < 1.6 or Timing.pending or attr(me, "Action") == "Shooting" then return false end
 	lastTap = os.clock()
+	stopSteer() task.wait(0.15)
 	fire(Input.Shoot, { Shoot = true, Input = "E", UseSpace = true })
-	if not F("PerfectTiming") then task.delay(F("HoldTime") or 0.27, function() fire(Input.Shoot, { Shoot = false }) end) end
+	if not F("PerfectTiming") then task.delay(F("HoldTime") or 0.29, function() fire(Input.Shoot, { Shoot = false }) end) end
+	return true
 end
 
 local DribbleMap = require(RS.Aero.Shared.Config.Game.Dribbling).Input
@@ -339,7 +341,7 @@ task.spawn(function()
 					if F("AutoRebound") and best:GetPivot().Position.Y - r.Position.Y > 4 and bd < 8 and os.clock() - lastJump > 1 then lastJump = os.clock() jump() end
 				end
 			end
-			if not moving then stopSteer() end
+			if not moving and not F("AutoPlay") then stopSteer() end
 		end)
 		if not ok then log("loop: " .. tostring(e)) end
 		task.wait(F("ReactionTime") and (F("ReactionTime") / 1000) or 0.05)
@@ -368,10 +370,10 @@ local function autoPlayStep()
 	local rim, rimD = nearestRim(r.Position)
 	if carrier == me then
 		local p = contestInfo()
-		if rim and rimD <= 9 and (F("APDunks") or F("APRimRun")) then shootTap() log("AutoPlay: finish at rim") return end
+		if rim and rimD <= 9 and (F("APDunks") or F("APRimRun")) then if shootTap() then log("AutoPlay: finish at rim") end return end
 		local three = rimD and rimD > 22
 		local wantShoot = (F("APShootOpen") and p <= (F("MaxContest") or 35)) and rimD and rimD <= (F("ShootRange") or 30)
-		if wantShoot and (not three or math.random(100) <= (F("AP3Chance") or 40)) and (F("APMidrange") or three) then shootTap() log("AutoPlay: shot") return end
+		if wantShoot and (not three or math.random(100) <= (F("AP3Chance") or 40)) and (F("APMidrange") or three) then if shootTap() then log("AutoPlay: shot") end return end
 		if F("APPass") and p >= 60 then local t = openTeammate() if t then pass(t.Name, 1) log("AutoPlay: pass to " .. t.Name) return end end
 		if F("APBreakAnkles") and p >= 40 and os.clock() - lastMove > 1.2 then
 			lastMove = os.clock()
