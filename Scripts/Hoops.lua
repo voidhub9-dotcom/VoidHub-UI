@@ -94,6 +94,45 @@ local function steer(worldTarget)
 end
 local function stopSteer() if steering then Mobile.MoveVector = Vector3.zero steering = false end end
 
+-- ===================================================================== ping + server position prediction
+local function pingMs()
+	local ms
+	pcall(function()
+		local item = game:GetService("Stats").Network.ServerStatsItem:FindFirstChild("Data Ping")
+		if item then ms = item:GetValue() end
+	end)
+	if not ms or ms <= 0 then
+		local ok, p = pcall(function() return LP:GetNetworkPing() end)
+		if ok and type(p) == "number" then ms = p <= 5 and p * 1000 or p end
+	end
+	return math.clamp(ms or 60, 1, 5000)
+end
+Hub.Ping = pingMs
+local cfHistory = {}
+conn(RunService.Heartbeat:Connect(function()
+	local now = tick()
+	for _, c in ipairs(workspace.Characters:GetChildren()) do
+		local r = c:FindFirstChild("HumanoidRootPart")
+		if r then
+			local h = cfHistory[c] or {}
+			cfHistory[c] = h
+			h[#h + 1] = { t = now, p = r.Position }
+			while #h > 0 and now - h[1].t > 2 do table.remove(h, 1) end
+		end
+	end
+	for c in pairs(cfHistory) do if not c.Parent then cfHistory[c] = nil end end
+end))
+-- where the server most likely has this character right now (client view is ping * 1.2 ahead for us)
+local function serverPos(c)
+	local r = Root(c) if not r then return nil end
+	if not F("Prediction") then return r.Position end
+	local h = cfHistory[c]
+	if not h or #h == 0 then return r.Position end
+	local target = tick() - pingMs() / 1000 * (F("PredictionMult") or 1.2)
+	for i = 1, #h do if h[i].t >= target then return h[i].p end end
+	return r.Position
+end
+
 -- ===================================================================== contest / coverage
 local function contestInfo()
 	local r = Root() if not r then return 0, nil, math.huge end
@@ -130,7 +169,7 @@ Hub.Timing = Timing
 local function holdFor(meter)
 	local base = F("HoldTime") or 0.29
 	local off = Timing.offsets[meter or "?"] or 0
-	local ping = F("PingComp") and math.clamp(Timing.rtt - 0.12, -0.05, 0.15) * (F("PingFactor") or 0.5) or 0
+	local ping = F("PingComp") and math.clamp(pingMs() / 1000 / 2, 0, 0.15) * (F("PingFactor") or 0.5) or 0
 	return math.clamp(base + off - ping, 0.05, 1.5)
 end
 
@@ -191,7 +230,11 @@ end))
 -- ===================================================================== actions
 local function fire(remote, ...) local a = table.pack(...) pcall(function() remote:FireServer(table.unpack(a, 1, a.n)) end) end
 local function jump() fire(Input.Jump) end
+local lastTap = 0
 local function shootTap()
+	local me = MyChar()
+	if os.clock() - lastTap < 1.6 or Timing.pending or attr(me, "Action") == "Shooting" then return false end
+	lastTap = os.clock()
 	fire(Input.Shoot, { Shoot = true, Input = "E", UseSpace = true })
 	if not F("PerfectTiming") then task.delay(F("HoldTime") or 0.27, function() fire(Input.Shoot, { Shoot = false }) end) end
 end
@@ -252,7 +295,7 @@ task.spawn(function()
 			if F("AutoBlock") and os.clock() - lastBlock > 1 then
 				for _, c in ipairs(opponents()) do
 					local cr = Root(c)
-					if cr and attr(c, "Action") == "Shooting" and (cr.Position - r.Position).Magnitude <= (F("BlockRange") or 10) then
+					if cr and attr(c, "Action") == "Shooting" and (cr.Position - (serverPos(me) or r.Position)).Magnitude <= (F("BlockRange") or 10) then
 						if not (F("PumpFakeFilter") and attr(c, "GatherType") == "Pumpfake" and not attr(c, "InAir")) then
 							lastBlock = os.clock()
 							if F("SwatAway") then steer(cr.Position) end
@@ -267,7 +310,7 @@ task.spawn(function()
 			-- auto steal near the ball handler
 			if F("AutoSteal") and carrier and carrier ~= me and isOpponent(carrier) and os.clock() - lastSteal > (F("StealCooldown") or 1.2) then
 				local cr = Root(carrier)
-				if cr and (cr.Position - r.Position).Magnitude <= (F("StealRange") or 6) and not attr(me, "Fouled") then
+				if cr and (cr.Position - (serverPos(me) or r.Position)).Magnitude <= (F("StealRange") or 6) and not attr(me, "Fouled") then
 					lastSteal = os.clock() fire(Input.Steal) log("Steal attempt")
 				end
 			end
@@ -508,7 +551,7 @@ do -- Offense
 	local s = PT:CreateGroupbox({ Name = "Stats", Side = "Right", Icon = "activity" })
 	s:CreateStatus({ Name = "Last shot", Style = "Row", Update = function() return Hub.LastGrade or "-" end })
 	s:CreateStatus({ Name = "Perfect / shots", Style = "Row", Update = function() return ("%d / %d"):format(Hub.Stats.Perfect, Hub.Stats.Shots) end })
-	s:CreateStatus({ Name = "Ping (press to meter)", Style = "Row", Update = function() return ("%d ms"):format(Timing.rtt * 1000) end })
+	s:CreateStatus({ Name = "Ping", Style = "Row", Update = function() return ("%d ms (press to meter %d ms)"):format(pingMs(), Timing.rtt * 1000) end })
 	s:CreateStatusList({ Name = "Learned offsets", MaxRows = 6, EmptyText = "None yet", Update = function()
 		local rows = {} for m, o in pairs(Timing.offsets) do rows[#rows + 1] = { Text = m, Value = ("%+.3f s"):format(o) } end return rows
 	end })
@@ -595,6 +638,8 @@ do -- Defense
 	b:CreateToggle({ Name = "Ball magnet", Desc = "Walks to the nearest loose ball.", Flag = "BallMagnet", CurrentValue = false })
 	b:CreateSlider({ Name = "Magnet range", Range = { 5, 120 }, Increment = 5, CurrentValue = 40, Flag = "MagnetRange" })
 	b:CreateToggle({ Name = "Team check", Flag = "TeamCheck", CurrentValue = true })
+	b:CreateToggle({ Name = "Prediction mode", Desc = "Uses your ping-delayed server position for block and steal range.", Flag = "Prediction", CurrentValue = true })
+	b:CreateSlider({ Name = "Prediction multiplier", Range = { 0.5, 2 }, Increment = 0.05, CurrentValue = 1.2, Flag = "PredictionMult" })
 	local g = G:CreateGroupbox({ Name = "Guard", Side = "Left", Icon = "shield" })
 	g:CreateToggle({ Name = "Auto guard", Desc = "Stays between the ball handler and the rim.", Flag = "AutoGuard", CurrentValue = false })
 	g:CreateToggle({ Name = "Auto hold G", Flag = "AutoHoldG", CurrentValue = true })
