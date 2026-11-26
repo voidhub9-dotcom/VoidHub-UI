@@ -1435,7 +1435,7 @@ local DefBox = CombatPage:CreateGroupbox({ Name = "Defense", Side = "Right", Ico
 DefBox:CreateToggle({ Name = "Auto block (parry)", Desc = "Blocks on the mob's ParryWindow cue. 0 damage taken in tests.", Flag = "AutoBlock", CurrentValue = true })
 DefBox:CreateToggle({ Name = "Auto dodge", Desc = "Hops above for 0.8 s when a mob winds up.", Flag = "AutoDodge", CurrentValue = false })
 DefBox:CreateToggle({ Name = "Retreat on low health", Flag = "RetreatEnabled", CurrentValue = true })
-DefBox:CreateSlider({ Name = "Retreat below", Range = { 5, 90 }, Increment = 1, CurrentValue = 35, Suffix = "%", Flag = "RetreatAt" })
+DefBox:CreateSlider({ Name = "Retreat below", Range = { 5, 90 }, Increment = 1, CurrentValue = 55, Suffix = "%", Desc = "Some late-island mobs hit for 80%+ HP in one swing; keep this high if your gear is low.", Flag = "RetreatAt" })
 DefBox:CreateSlider({ Name = "Resume at", Range = { 20, 100 }, Increment = 1, CurrentValue = 80, Suffix = "%", Flag = "ResumeAt" })
 DefBox:CreateSlider({ Name = "Retreat height", Range = { 20, 200 }, Increment = 5, CurrentValue = 60, Flag = "RetreatHeight" })
 
