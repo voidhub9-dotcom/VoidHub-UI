@@ -235,7 +235,11 @@ local function shootTap()
 	local me = MyChar()
 	if os.clock() - lastTap < 1.6 or Timing.pending or attr(me, "Action") == "Shooting" then return false end
 	lastTap = os.clock()
-	stopSteer() task.wait(0.15)
+	stopSteer()
+	local r = Root(me)
+	local t0 = os.clock()
+	while r and (r.AssemblyLinearVelocity * Vector3.new(1, 0, 1)).Magnitude > 1.5 and os.clock() - t0 < 0.8 do task.wait() end
+	task.wait(0.1)
 	fire(Input.Shoot, { Shoot = true, Input = "E", UseSpace = true })
 	if not F("PerfectTiming") then task.delay(F("HoldTime") or 0.29, function() fire(Input.Shoot, { Shoot = false }) end) end
 	return true
