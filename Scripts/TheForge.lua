@@ -1035,6 +1035,7 @@ end
 
 -- ============================================================ ESP
 local ESP = { objs = {}, draw = {} }
+Hub.ESP = ESP
 local hasDrawing = pcall(function() local l = Drawing.new("Line") l:Remove() end)
 local espFolder = Instance.new("Folder")
 espFolder.Name = "ForgeHubESP"
