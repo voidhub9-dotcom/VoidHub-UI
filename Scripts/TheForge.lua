@@ -468,7 +468,7 @@ local function buildGearBasket()
 	local basket, n = {}, 0
 	for _, e in ipairs(d.Inventory.Equipments or {}) do
 		local kind = itemKind(e.Type)
-		if e.GUID and not eq[e.GUID] and not favs[e.GUID] and (e.Quality or 0) <= maxQ and (not next(kinds) or kinds[kind]) then
+		if e.GUID and e.Type and e.Quality and (kind == "Weapon" or kind == "Armor") and not eq[e.GUID] and not favs[e.GUID] and e.Quality <= maxQ and (not next(kinds) or kinds[kind]) then
 			if not (F("GearKeepRuned") and e.Runes and next(e.Runes)) and (e.Upgrade or 0) <= (F("GearMaxUpgrade") or 0) then
 				basket[e.GUID] = true n += 1
 			end
