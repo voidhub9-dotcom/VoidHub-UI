@@ -303,6 +303,106 @@ task.spawn(function()
 	end
 end)
 
+
+-- ===================================================================== auto play
+local function openTeammate()
+	local me = MyChar() local r = Root(me) if not r then return end
+	local best, bs
+	for _, c in ipairs(others()) do
+		if not isOpponent(c) and Players:FindFirstChild(c.Name) then
+			local cr = Root(c)
+			local near = math.huge
+			for _, o in ipairs(opponents()) do local orr = Root(o) if orr and cr then near = math.min(near, (orr.Position - cr.Position).Magnitude) end end
+			if cr and (not bs or near > bs) then best, bs = c, near end
+		end
+	end
+	return best, bs
+end
+local lastPlay, lastMove = 0, 0
+local function autoPlayStep()
+	local me = MyChar() local r = Root(me) if not r then return end
+	local carrier = ballCarrier()
+	local rim, rimD = nearestRim(r.Position)
+	if carrier == me then
+		local p = contestInfo()
+		if rim and rimD <= 9 and (F("APDunks") or F("APRimRun")) then shootTap() log("AutoPlay: finish at rim") return end
+		local three = rimD and rimD > 22
+		local wantShoot = (F("APShootOpen") and p <= (F("MaxContest") or 35)) and rimD and rimD <= (F("ShootRange") or 30)
+		if wantShoot and (not three or math.random(100) <= (F("AP3Chance") or 40)) and (F("APMidrange") or three) then shootTap() log("AutoPlay: shot") return end
+		if F("APPass") and p >= 60 then local t = openTeammate() if t then pass(t.Name, 1) log("AutoPlay: pass to " .. t.Name) return end end
+		if F("APBreakAnkles") and p >= 40 and os.clock() - lastMove > 1.2 then
+			lastMove = os.clock()
+			local pool = F("APUseCombo") and (F("ComboMoves") or {}) or (F("APMoves") or {})
+			if #pool > 0 then dribble(pool[math.random(#pool)]) end
+		end
+		if rim and (F("APRimRun") or F("APDunks")) then steer(rim.Position) end
+	elseif carrier and isOpponent(carrier) then
+		if F("APDefense") then
+			local cr = Root(carrier)
+			local orim = cr and nearestRim(cr.Position)
+			if cr and orim then steer(cr.Position + ((orim.Position - cr.Position) * Vector3.new(1, 0, 1)).Unit * (F("GuardDistance") or 4)) end
+			if F("APSteal") and cr and (cr.Position - r.Position).Magnitude < (F("StealRange") or 6) and os.clock() - lastPlay > (F("StealCooldown") or 1.2) then lastPlay = os.clock() fire(Input.Steal) end
+		end
+	elseif carrier then
+		-- teammate has it: find open space toward a shooting spot
+		if rim and F("APSpots") then
+			local ang = (os.clock() * 0.2) % (math.pi * 2)
+			steer(rim.Position + Vector3.new(math.cos(ang), 0, math.sin(ang)) * 20)
+		end
+	else
+		local best, bd
+		for _, b in ipairs(balls()) do local d = (b:GetPivot().Position - r.Position).Magnitude if not bd or d < bd then best, bd = b, d end end
+		if best then steer(best:GetPivot().Position) if best:GetPivot().Position.Y - r.Position.Y > 4 and bd < 8 then jump() end end
+	end
+end
+task.spawn(function()
+	while Hub.Running do
+		if F("AutoPlay") then
+			local ok, e = pcall(autoPlayStep) if not ok then log("autoplay: " .. tostring(e)) end
+			-- jump ball: the court status label says JUMP BALL
+			if F("AutoJumpBall") then
+				for _, d in ipairs(LP.PlayerGui:GetDescendants()) do if d:IsA("TextLabel") and d.Name == "Status" and d.Visible and d.Text:upper():find("JUMP") then jump() break end end
+			end
+		end
+		task.wait(0.1)
+	end
+end)
+
+-- ===================================================================== matches
+local function webhook(title, fields)
+	local url = F("WebhookURL") if not url or url == "" then return end
+	local req = request or http_request if not req then return end
+	pcall(req, { Url = url, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = HttpService:JSONEncode({ embeds = { { title = title, fields = fields, color = 0xE6E6E6 } } }) })
+end
+Hub.Session = { games = 0, wins = 0 }
+conn(Remote.InterfaceService.Summary.OnClientEvent:Connect(function(data)
+	Hub.Session.games += 1
+	local fields = {}
+	if type(data) == "table" then
+		for k, v in pairs(data) do if type(v) ~= "table" and #fields < 20 then fields[#fields + 1] = { name = tostring(k), value = tostring(v), inline = true } end end
+		if data.Won == true or data.Result == "Win" then Hub.Session.wins += 1 end
+	end
+	fields[#fields + 1] = { name = "Session", value = ("%d games, %d wins"):format(Hub.Session.games, Hub.Session.wins) }
+	log("Game over (" .. Hub.Session.games .. ")")
+	if F("ResultWebhook") then webhook("Game result", fields) end
+	if F("AutoLeaveRec") then task.delay(4, function() pcall(function() Remote.InterfaceService.LeaveRec:InvokeServer() end) end) end
+	if F("BadgeFarm") then
+		if (F("LeaveAfter") or 0) > 0 and Hub.Session.games >= F("LeaveAfter") then Flags.BadgeFarm:Set(false) return end
+		task.delay(5, function() pcall(function() Remote.InterfaceService.JoinPlace:InvokeServer("BlacktopMatchmaking") end) end)
+	end
+end))
+local function queueReload()
+	if queue_on_teleport then pcall(queue_on_teleport, 'task.wait(6) loadstring(game:HttpGet("https://raw.githubusercontent.com/voidhub9-dotcom/VoidHub-UI/claude/admiring-brown-dzzpni/Scripts/Hoops.lua"))()') end
+end
+task.spawn(function()
+	while Hub.Running do
+		if F("HopNoOpponents") and #opponents() == 0 and MyChar() and attr(MyChar(), "InGame") then
+			log("No opponents, hopping") queueReload()
+			pcall(function() game:GetService("TeleportService"):Teleport(game.PlaceId, LP) end)
+		end
+		task.wait(15)
+	end
+end)
 -- ===================================================================== overhead contest + range + ESP
 local gui = Instance.new("BillboardGui")
 gui.Name = "HoopHubContest" gui.Size = UDim2.fromOffset(160, 44) gui.StudsOffset = Vector3.new(0, 3.6, 0) gui.AlwaysOnTop = true
@@ -402,6 +502,9 @@ do -- Offense
 	t:CreateToggle({ Name = "Ping compensation", Desc = "Off by default: shortened holds graded Early in tests.", Flag = "PingComp", CurrentValue = false })
 	t:CreateSlider({ Name = "Ping factor", Range = { 0, 1 }, Increment = 0.05, CurrentValue = 0.5, Flag = "PingFactor" })
 	t:CreateButton({ Name = "Reset calibration", Callback = function() Timing.offsets = {} end })
+	t:CreateDropdown({ Name = "Meter", Options = { "None", "Bat", "Roblox", "Rocket", "Hoop", "Vertical", "Funnel", "Funnel2", "Pill", "Arrow", "Tube", "Diamond" }, AllowNone = true, NoneText = "Keep current", Flag = "MeterType", Callback = function(v)
+		if v then fire(Remote.PlayerService.UpdateSetting, { "Meter" }, "Type", v) end
+	end })
 	local s = PT:CreateGroupbox({ Name = "Stats", Side = "Right", Icon = "activity" })
 	s:CreateStatus({ Name = "Last shot", Style = "Row", Update = function() return Hub.LastGrade or "-" end })
 	s:CreateStatus({ Name = "Perfect / shots", Style = "Row", Update = function() return ("%d / %d"):format(Hub.Stats.Perfect, Hub.Stats.Shots) end })
@@ -439,6 +542,43 @@ do -- Offense
 	p:CreateButton({ Name = "Refresh players", Callback = function() dd:SetOptions(names()) end })
 	p:CreateStepper({ Name = "Pass type", Range = { 1, 4 }, Increment = 1, CurrentValue = 1, Flag = "PassType", Desc = "4 is a lob." })
 	p:CreateKeybind({ Name = "Pass to linked", CurrentKeybind = "Q", Flag = "PassKey", Callback = function() if F("PassTarget") then pass(F("PassTarget"), F("PassType")) end end })
+end
+
+
+do -- Auto Play
+	local AP = Window:CreateTab({ Name = "Auto Play", Desc = "Plays both ends, Rec and badge farm", Icon = "bot" })
+	local P = AP:CreateSubTab({ Name = "Auto Play", Icon = "bot" })
+	local R = AP:CreateSubTab({ Name = "Rec", Icon = "users" })
+	local BF = AP:CreateSubTab({ Name = "Badge Farm", Icon = "award" })
+	local a = P:CreateGroupbox({ Name = "Auto Play", Side = "Left", Icon = "bot" })
+	a:CreateToggle({ Name = "Auto Play", Flag = "AutoPlay", CurrentValue = false })
+	a:CreateToggle({ Name = "Rim run", Flag = "APRimRun", CurrentValue = true })
+	a:CreateToggle({ Name = "Go for dunks", Flag = "APDunks", CurrentValue = true })
+	a:CreateToggle({ Name = "Midranges", Flag = "APMidrange", CurrentValue = true })
+	a:CreateSlider({ Name = "3PT chance", Range = { 0, 100 }, Increment = 5, CurrentValue = 40, Suffix = "%", Flag = "AP3Chance" })
+	a:CreateToggle({ Name = "Shoot when open", Flag = "APShootOpen", CurrentValue = true })
+	a:CreateToggle({ Name = "Pass to teammates", Flag = "APPass", CurrentValue = true })
+	a:CreateToggle({ Name = "Shooting spots", Flag = "APSpots", CurrentValue = true })
+	local b = P:CreateGroupbox({ Name = "Handles & defense", Side = "Right", Icon = "repeat" })
+	b:CreateToggle({ Name = "Break ankles", Flag = "APBreakAnkles", CurrentValue = true })
+	b:CreateDropdown({ Name = "Move pool", Options = MoveNames, MultipleOptions = true, AllowNone = true, Flag = "APMoves", NoneText = "Pick moves" })
+	b:CreateToggle({ Name = "Use my combo instead", Flag = "APUseCombo", CurrentValue = false })
+	b:CreateToggle({ Name = "Auto defense", Flag = "APDefense", CurrentValue = true })
+	b:CreateToggle({ Name = "Auto steal", Flag = "APSteal", CurrentValue = true })
+	b:CreateToggle({ Name = "Auto jump ball", Flag = "AutoJumpBall", CurrentValue = true })
+	local r = R:CreateGroupbox({ Name = "Rec", Side = "Left", Icon = "users" })
+	r:CreateToggle({ Name = "Auto leave Rec after game", Flag = "AutoLeaveRec", CurrentValue = false })
+	r:CreateButton({ Name = "Leave Rec now", Callback = function() pcall(function() Remote.InterfaceService.LeaveRec:InvokeServer() end) end })
+	r:CreateButton({ Name = "Forfeit", Style = "Danger", Confirm = true, Callback = function() fire(Remote.GamemodeService.Forfeit) end })
+	r:CreateToggle({ Name = "Server hop when no opponents", Flag = "HopNoOpponents", CurrentValue = false })
+	r:CreateInput({ Name = "Webhook URL", PlaceholderText = "https://discord.com/api/webhooks/...", Flag = "WebhookURL" })
+	r:CreateToggle({ Name = "Game results webhook", Flag = "ResultWebhook", CurrentValue = false })
+	r:CreateStatus({ Name = "Session", Style = "Row", Update = function() return ("%d games, %d wins"):format(Hub.Session.games, Hub.Session.wins) end })
+	local f = BF:CreateGroupbox({ Name = "Blacktop farm", Side = "Left", Icon = "award" })
+	f:CreateToggle({ Name = "Badge farm loop", Desc = "Queues Blacktop, auto plays, re-queues after each game.", Flag = "BadgeFarm", CurrentValue = false, Callback = function(on)
+		if on then queueReload() Flags.AutoPlay:Set(true) if not attr(MyChar(), "InGame") then pcall(function() Remote.InterfaceService.JoinPlace:InvokeServer("BlacktopMatchmaking") end) end end
+	end })
+	f:CreateStepper({ Name = "Leave after games (0 = never)", Range = { 0, 100 }, Increment = 1, CurrentValue = 0, Flag = "LeaveAfter" })
 end
 
 do -- Defense
@@ -496,6 +636,12 @@ do -- Visuals
 	w:CreateToggle({ Name = "Remove post effects", Flag = "NoFx", CurrentValue = false, Callback = postEffects })
 	w:CreateToggle({ Name = "Custom FOV", Flag = "CustomFOV", CurrentValue = false })
 	w:CreateSlider({ Name = "FOV", Range = { 50, 120 }, Increment = 1, CurrentValue = 80, Flag = "FOV" })
+	local function pnames() local t = {} for _, c in ipairs(workspace.Characters:GetChildren()) do if Players:FindFirstChild(c.Name) then t[#t + 1] = c.Name end end return t end
+	local sp = w:CreateDropdown({ Name = "Spectate", Options = pnames(), AllowNone = true, NoneText = "Myself", Flag = "Spectate", Callback = function(n)
+		local c = n and workspace.Characters:FindFirstChild(n) or MyChar()
+		if c and c:FindFirstChild("Head") then workspace.CurrentCamera.CameraSubject = c.Head end
+	end })
+	w:CreateButton({ Name = "Refresh players", Callback = function() sp:SetOptions(pnames()) end })
 end
 
 do -- Misc
