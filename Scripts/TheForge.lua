@@ -578,6 +578,7 @@ local function forgeOnce()
 	local t0 = tick()
 	while FC.Sequence ~= "OreSelect" and tick() - t0 < 6 do task.wait(0.1) end
 	if FC.Sequence ~= "OreSelect" then cancelForge() return false, "Forge did not open" end
+	task.wait(2) -- the forge UI opens ~0.4 s after OreSelect and resets state; melting earlier double-fires Melt and burns the ores
 	local ores = forgeRecipe()
 	FC.Ores = ores
 	FC.ItemType = F("ForgeType") or "Weapon"
@@ -599,7 +600,7 @@ local function forgeOnce()
 			end
 		end
 		if FC.Sequence == "Showcase" then task.wait(2.5) break end
-		if FC.Sequence == "OreSelect" and tick() - t0 > 5 then break end
+		if FC.Sequence == "OreSelect" and tick() - t0 > 15 then break end
 		if Hub.ForgeCancel then break end
 		task.wait(0.1)
 	end
