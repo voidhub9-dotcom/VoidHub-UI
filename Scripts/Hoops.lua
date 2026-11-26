@@ -52,8 +52,26 @@ end
 local function opponents() local t = {} for _, c in ipairs(others()) do if isOpponent(c) then table.insert(t, c) end end return t end
 
 local function balls() return workspace.Basketballs:GetChildren() end
+local heldSeen = {}
 local function ballCarrier()
-	-- the ball sits in the carrier's hands; nearest character within 4 studs of a ball
+	-- held ball: within 3 studs at hand height; a loose ball rests ~2-3 studs below the root.
+	-- dribbling bounces it to the floor, so a recent hand-height sample still counts (0.7 s)
+	local now = os.clock()
+	for _, b in ipairs(balls()) do
+		local bp = b:GetPivot().Position
+		for _, c in ipairs(workspace.Characters:GetChildren()) do
+			local r = Root(c)
+			if r and isPlayerChar(c) and (c == MyChar() or Players:FindFirstChild(c.Name) or attr(c, "OnCourt") == true) then
+				local d = ((bp - r.Position) * Vector3.new(1, 0, 1)).Magnitude
+				if d < 3 and bp.Y - r.Position.Y > -1.5 then heldSeen[c] = { t = now, b = b } end
+			end
+		end
+	end
+	for c, h in pairs(heldSeen) do
+		if not c.Parent or now - h.t > 0.7 then heldSeen[c] = nil
+		else local r = Root(c) if r and (h.b:GetPivot().Position - r.Position).Magnitude < 4 then return c, h.b end end
+	end
+	do return nil end
 	for _, b in ipairs(balls()) do
 		local bp = b:GetPivot().Position
 		for _, c in ipairs(workspace.Characters:GetChildren()) do
