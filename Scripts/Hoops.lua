@@ -101,7 +101,7 @@ local steering = false
 local function steer(worldTarget)
 	local r = Root() if not r then return end
 	local w = (worldTarget - r.Position) * Vector3.new(1, 0, 1)
-	if w.Magnitude < 0.5 then Mobile.MoveVector = Vector3.zero return true end
+	if w.Magnitude < (Hub.stopRadius or 0.5) then Mobile.MoveVector = Vector3.zero return true end
 	w = w.Unit
 	local cam = workspace.CurrentCamera
 	local look = Vector3.new(cam.CFrame.LookVector.X, 0, cam.CFrame.LookVector.Z).Unit
@@ -111,6 +111,18 @@ local function steer(worldTarget)
 	return false
 end
 local function stopSteer() if steering then Mobile.MoveVector = Vector3.zero steering = false end end
+-- walk onto a loose ball, then stand still so the server (which sees us ping-late) registers the pickup
+local function chaseBall(b)
+	local r = Root() if not r then return end
+	local bp = b:GetPivot().Position
+	local d = ((bp - r.Position) * Vector3.new(1, 0, 1)).Magnitude
+	if d < 2 then
+		Mobile.MoveVector = Vector3.zero
+		Hub.waitUntil = os.clock() + math.clamp(pingMs and 0 or 0, 0, 0) + 0.7
+	elseif os.clock() > (Hub.waitUntil or 0) then
+		Hub.stopRadius = 1.5 steer(bp) Hub.stopRadius = nil
+	end
+end
 
 -- ===================================================================== ping + server position prediction
 local function pingMs()
@@ -380,7 +392,7 @@ task.spawn(function()
 				local best, bd
 				for _, b in ipairs(balls()) do local d = (b:GetPivot().Position - r.Position).Magnitude if not bd or d < bd then best, bd = b, d end end
 				if best and bd <= (F("MagnetRange") or 40) then
-					steer(best:GetPivot().Position) moving = true
+					chaseBall(best) moving = true
 					if F("AutoRebound") and best:GetPivot().Position.Y - r.Position.Y > 4 and bd < 8 and os.clock() - lastJump > 1 then lastJump = os.clock() jump() end
 				end
 			end
@@ -440,7 +452,7 @@ local function autoPlayStep()
 	else
 		local best, bd
 		for _, b in ipairs(balls()) do local d = (b:GetPivot().Position - r.Position).Magnitude if not bd or d < bd then best, bd = b, d end end
-		if best then steer(best:GetPivot().Position) if best:GetPivot().Position.Y - r.Position.Y > 4 and bd < 8 then jump() end end
+		if best then chaseBall(best) if best:GetPivot().Position.Y - r.Position.Y > 4 and bd < 8 then jump() end end
 	end
 end
 task.spawn(function()
