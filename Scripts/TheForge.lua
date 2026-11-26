@@ -1319,6 +1319,55 @@ HBox:CreateButton({ Name = "Test webhook", Callback = function()
 	notify("Webhook", ok and "Sent" or "Failed (check the URL)", ok and "Success" or "Error")
 end })
 
+local ClaimPage = Misc:CreateSubTab({ Name = "Claims", Icon = "gift" })
+local function claimAll()
+	local res = {}
+	local function try(label, service, name, ...)
+		local ok, a, b = invoke(service, name, ...)
+		local msg = type(a) == "table" and (a.Message or (a.Ok and "ok") or "done") or tostring(a)
+		if b ~= nil then msg = msg .. " " .. tostring(b) end
+		table.insert(res, label .. ": " .. (ok and msg or "error"))
+	end
+	if F("ClaimMail") then try("Mail", "MailService", "ClaimAll") end
+	if F("ClaimLevel") then try("Level rewards", "LevelRewardsService", "ClaimAll") end
+	if F("ClaimDaily") then for day = 1, 7 do invoke("DailyLoginService", "Claim", day) end table.insert(res, "Daily login: checked days 1-7") end
+	if F("ClaimCodex") then try("Codex", "CodexService", "ClaimAll") end
+	if F("ClaimSeasonal") then try("Event milestones", "SeasonalEventService", "ClaimAllMilestones") try("Event quests", "SeasonalEventService", "ClaimAll") end
+	if F("ClaimAltar") then try("Twilight altar", "TwilightAltarService", "ClaimDaily") end
+	if F("ClaimGroup") then try("Group reward", "GroupRewardService", "Claim") end
+	return res
+end
+local CBox = ClaimPage:CreateGroupbox({ Name = "Auto claim", Side = "Left", Icon = "gift" })
+CBox:CreateToggle({ Name = "Auto claim every 5 min", Flag = "AutoClaim", CurrentValue = false })
+CBox:CreateToggle({ Name = "Mail", Flag = "ClaimMail", CurrentValue = true })
+CBox:CreateToggle({ Name = "Level rewards", Flag = "ClaimLevel", CurrentValue = true })
+CBox:CreateToggle({ Name = "Daily login", Flag = "ClaimDaily", CurrentValue = true })
+CBox:CreateToggle({ Name = "Codex", Flag = "ClaimCodex", CurrentValue = true })
+CBox:CreateToggle({ Name = "Event quests and milestones", Flag = "ClaimSeasonal", CurrentValue = true })
+CBox:CreateToggle({ Name = "Twilight altar daily", Flag = "ClaimAltar", CurrentValue = true })
+CBox:CreateToggle({ Name = "Group reward", Flag = "ClaimGroup", CurrentValue = true })
+local claimLog = ClaimPage:CreateGroupbox({ Name = "Results", Side = "Right", Icon = "list" }):CreateLog({ Name = "Claim log", MaxRows = 10, Timestamps = true })
+CBox:CreateButton({ Name = "Claim now", Style = "Primary", Callback = function()
+	task.spawn(function() for _, line in ipairs(claimAll()) do claimLog:Push(line) end end)
+end })
+local CodeBox = ClaimPage:CreateGroupbox({ Name = "Codes", Side = "Right", Icon = "ticket" })
+CodeBox:CreateInput({ Name = "Codes", PlaceholderText = "CODE1, CODE2, ...", Flag = "CodeList" })
+CodeBox:CreateButton({ Name = "Redeem all", Callback = function()
+	task.spawn(function()
+		for code in tostring(F("CodeList") or ""):gmatch("[^,%s]+") do
+			local ok, r = invoke("CodeService", "RedeemCode", code)
+			claimLog:Push(code .. ": " .. tostring(type(r) == "table" and r.Message or r))
+			task.wait(0.5)
+		end
+	end)
+end })
+task.spawn(function()
+	while Hub.Running do
+		if F("AutoClaim") then for _, line in ipairs(claimAll()) do claimLog:Push(line) end end
+		for _ = 1, 300 do if not Hub.Running then break end task.wait(1) end
+	end
+end)
+
 local DiagBox = SetPage:CreateGroupbox({ Name = "Runtime", Side = "Left", Icon = "activity" })
 DiagBox:CreateStatus({ Name = "State", Style = "Row", Pin = true, Update = function() return Hub.State end })
 DiagBox:CreateStatus({ Name = "Target", Style = "Row", Update = function() return Hub.Target end })
