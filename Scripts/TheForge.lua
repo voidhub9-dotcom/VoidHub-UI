@@ -1421,6 +1421,95 @@ HBox:CreateButton({ Name = "Test webhook", Callback = function()
 	notify("Webhook", ok and "Sent" or "Failed (check the URL)", ok and "Success" or "Error")
 end })
 
+-- Runes ----------------------------------------------------------------
+local RunePage = Farm:CreateSubTab({ Name = "Runes", Icon = "sparkles" })
+local EquipData = require(DataFolder.Equipments)
+local function runeTargets()
+	local out, d = {}, Data()
+	if not d then return out end
+	local function add(e, label)
+		local ok, slots = pcall(EquipData.GetRuneSlots, EquipData, e)
+		if ok and slots and slots > 0 then out[#out + 1] = { id = e.GUID or e.Name, label = ("%s (%d/%d)"):format(label, #(e.Runes or {}), slots), e = e } end
+	end
+	if type(d.Equipped.Pickaxe) == "table" then add(d.Equipped.Pickaxe, tostring(d.Equipped.Pickaxe.Name or "Pickaxe")) end
+	for _, e in ipairs(d.Inventory.Equipments or {}) do if e.Type then add(e, ("%s Q%d"):format(e.Type, math.floor(e.Quality or 0))) end end
+	return out
+end
+local function runeLabels() local t = {} for _, x in ipairs(runeTargets()) do t[#t + 1] = x.label end return t end
+local function findTarget(label) for _, x in ipairs(runeTargets()) do if x.label == label then return x end end end
+local function runesOf(id)
+	local out = {}
+	for _, m in ipairs(Data() and Data().Inventory.Misc or {}) do if m.GUID and m.Id == id then out[#out + 1] = m end end
+	return out
+end
+local runeIds = {}
+for k, v in pairs(ItemTypes()) do if type(v) == "table" and v[1] == "Rune" then runeIds[#runeIds + 1] = k end end
+table.sort(runeIds)
+local RuneSvc = Knit.GetService("RuneService")
+local SmithSvc = Knit.GetService("RunesmithService")
+
+local RA = RunePage:CreateGroupbox({ Name = "Attach / detach", Side = "Left", Icon = "link" })
+RA:CreateParagraph({ Name = "Slots", Content = "Only gear with rune slots is listed. At upgrade 0 weapons and armor had 0 slots in testing; the pickaxe had 3." })
+RA:CreateDropdown({ Name = "Gear", Options = runeLabels(), AllowNone = true, NoneText = "Pick gear", Flag = "RuneGear" })
+RA:CreateDropdown({ Name = "Rune", Options = runeIds, AllowNone = true, Searchable = true, NoneText = "Pick rune", Flag = "RuneAttachId" })
+RA:CreateButton({ Name = "Refresh gear", Callback = function() Flags.RuneGear:SetOptions(runeLabels()) end })
+RA:CreateLabel({ Text = "-", Update = function()
+	local t, id = findTarget(F("RuneGear") or ""), F("RuneAttachId")
+	if not t or not id then return "Pick gear and a rune" end
+	local r = runesOf(id)[1]
+	if not r then return "You have no " .. id end
+	local ok, _, price = pcall(function() return RuneSvc:GetPriceInfo(t.id, r.GUID, "Attach"):await() end)
+	return ok and price and ("Attach cost: %s gold"):format(tostring(price)) or "This rune can't go on that gear"
+end, UpdateRate = 3 })
+RA:CreateButton({ Name = "Attach", Style = "Primary", Callback = function()
+	local t, id = findTarget(F("RuneGear") or ""), F("RuneAttachId")
+	local r = id and runesOf(id)[1]
+	if not t or not r then notify("Runes", "Pick gear and a rune you own", "Warning") return end
+	task.spawn(function()
+		local _, ok = RuneSvc:PurchaseAttach(t.id, r.GUID):await()
+		notify("Runes", ok and ("Attached " .. id) or "Attach failed", ok and "Success" or "Error")
+		Flags.RuneGear:SetOptions(runeLabels())
+	end)
+end })
+RA:CreateButton({ Name = "Detach all from gear", Style = "Danger", Confirm = true, Callback = function()
+	local t = findTarget(F("RuneGear") or "")
+	if not t then return end
+	task.spawn(function()
+		for _, r in ipairs(t.e.Runes or {}) do
+			local rid = type(r) == "table" and (r.GUID or r.Id) or r
+			local _, ok = RuneSvc:PurchaseDetach(t.id, rid):await()
+			if not ok then notify("Runes", "Detach failed for " .. tostring(rid), "Error") end
+		end
+		Flags.RuneGear:SetOptions(runeLabels())
+	end)
+end })
+
+local RS2 = RunePage:CreateGroupbox({ Name = "Runesmith", Side = "Right", Icon = "dices" })
+RS2:CreateStatus({ Name = "Runesmith", Style = "Badge", UpdateRate = 10, Update = function()
+	local ok, _, st = pcall(function() return SmithSvc:GetState():await() end)
+	if not ok or type(st) ~= "table" then return "<Muted>Unknown</Muted>" end
+	return st.Active and "<Success>Here</Success>" or "<Warning>Not here</Warning>"
+end })
+RS2:CreateDropdown({ Name = "Rune type", Options = runeIds, AllowNone = true, Searchable = true, NoneText = "Pick rune", Flag = "SmithRune" })
+RS2:CreateDropdown({ Name = "Reroll", Options = { "Values", "Traits" }, CurrentOption = "Values", AllowNone = false, Flag = "SmithMode" })
+RS2:CreateStepper({ Name = "Rolls", Range = { 1, 50 }, Increment = 1, CurrentValue = 1, Flag = "SmithRolls" })
+RS2:CreateToggle({ Name = "Apply after rolling", Flag = "SmithApply", CurrentValue = false })
+local smithLog = RS2:CreateLog({ Name = "Runesmith log", MaxRows = 6 })
+RS2:CreateButton({ Name = "Roll", Style = "Primary", Callback = function()
+	local id = F("SmithRune")
+	local r = id and runesOf(id)[1]
+	if not r then notify("Runesmith", "Pick a rune you own", "Warning") return end
+	task.spawn(function()
+		for i = 1, F("SmithRolls") or 1 do
+			local _, res = SmithSvc:Roll(r.GUID, F("SmithMode") or "Values", {}):await()
+			smithLog:Push(("Roll %d: %s"):format(i, type(res) == "table" and tostring(res.Message or (res.Ok and "ok")) or tostring(res)))
+			if type(res) == "table" and res.Ok == false then break end
+			task.wait(0.4)
+		end
+		if F("SmithApply") then local _, res = SmithSvc:Apply(r.GUID):await() smithLog:Push("Apply: " .. tostring(type(res) == "table" and (res.Message or res.Ok) or res)) end
+	end)
+end })
+
 local ClaimPage = Misc:CreateSubTab({ Name = "Claims", Icon = "gift" })
 local function claimAll()
 	local res = {}
