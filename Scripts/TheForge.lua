@@ -284,6 +284,22 @@ local function possibleOres(name)
 	return out
 end
 local badRock = {}
+-- Money mode: expected ore multiplier per rock (average over its drop table x average ore count) divided by HP + 100 for travel time
+local moneyRank
+local function moneyScores()
+	if moneyRank then return moneyRank end
+	moneyRank = {}
+	for name, d in pairs(RockData) do
+		if type(d) == "table" and d.Health and d.Ores then
+			local tot, cnt = 0, 0
+			for _, o in ipairs(possibleOres(name)) do local info = OreInfo[o] if info then tot += info.Multiplier or 0 cnt += 1 end end
+			local sc = d.SpawnCountRange
+			local avg = type(sc) == "table" and (((sc.Min or sc[1] or 1) + (sc.Max or sc[2] or 1)) / 2) or 1
+			moneyRank[name] = cnt > 0 and (tot / cnt) * avg / (d.Health + 100) or 0
+		end
+	end
+	return moneyRank
+end
 
 local function rockOk(m, zoneSet, typeSet, neverSet, oreSet)
 	if not rockAlive(m) or badRock[m] and badRock[m] > tick() then return false end
@@ -328,6 +344,7 @@ local function pickRock()
 					local d = (m.Hitbox.Position - r.Position).Magnitude
 					if d <= range then
 						local score = (prio[m.Name] or 999) * 100000 + d
+						if F("MoneyMode") and not Hub.QuestRocks then score = -(moneyScores()[m.Name] or 0) * 1e6 + d end
 						if not bestScore or score < bestScore then best, bestScore = m, score end
 					end
 				end
@@ -1338,6 +1355,7 @@ local zoneNames = {}
 if workspace:FindFirstChild("Rocks") then for _, z in ipairs(workspace.Rocks:GetChildren()) do table.insert(zoneNames, z.Name) end end
 
 local MineBox = MinePage:CreateGroupbox({ Name = "Auto mine", Side = "Left", Icon = "pickaxe" })
+MineBox:CreateToggle({ Name = "Money mode", Desc = "Picks rocks by expected ore value per HP instead of the priority list.", Flag = "MoneyMode", CurrentValue = false })
 MineBox:CreateToggle({ Name = "Auto mine", Desc = "Flies to the best matching rock and swings the pickaxe.", Flag = "AutoMine", CurrentValue = false })
 MineBox:CreateDropdown({ Name = "Rock types", Options = RockNames, MultipleOptions = true, AllowNone = true, Searchable = true, NoneText = "Any rock", Flag = "RockTypes" })
 MineBox:CreateDropdown({ Name = "Never mine", Options = RockNames, MultipleOptions = true, AllowNone = true, Searchable = true, NoneText = "None", Flag = "NeverMine" })
