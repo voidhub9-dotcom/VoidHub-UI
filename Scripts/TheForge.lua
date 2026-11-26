@@ -1354,6 +1354,8 @@ end))
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/voidhub9-dotcom/VoidHub-UI/main/Source.lua"))()
 local Window = Library:CreateVoidHubWindow({
 	Name = "The Forge",
+	Title = "The Forge",
+	LoadingTitle = "The Forge",
 	ToggleUIKeybind = "RightControl",
 	ConfigurationSaving = { Enabled = true, FolderName = "ForgeHub" },
 	Home = { Welcome = "Forge hub" },
