@@ -1314,6 +1314,7 @@ local ForgePage = Farm:CreateSubTab({ Name = "Forge", Icon = "flame" })
 local SellPage = Farm:CreateSubTab({ Name = "Sell & Shop", Icon = "coins" })
 local PotionPage = Farm:CreateSubTab({ Name = "Potions", Icon = "flask-conical" })
 
+do
 local zoneNames = {}
 if workspace:FindFirstChild("Rocks") then for _, z in ipairs(workspace.Rocks:GetChildren()) do table.insert(zoneNames, z.Name) end end
 
@@ -1479,6 +1480,8 @@ PotStat:CreateStatusList({ Name = "Active potions", MaxRows = 8, EmptyText = "No
 	return rows
 end })
 
+end
+
 do
 -- Visuals tab ---------------------------------------------------------
 local Visuals = Window:CreateTab({ Name = "Visuals", Desc = "ESP and rendering", Icon = "eye" })
@@ -1530,6 +1533,7 @@ local StaffPage = Misc:CreateSubTab({ Name = "Staff", Icon = "shield-alert" })
 local HookPage = Misc:CreateSubTab({ Name = "Webhook", Icon = "webhook" })
 local SetPage = Misc:CreateSubTab({ Name = "Settings", Icon = "sliders-horizontal" })
 
+do
 local MoveBox = PlayerPage:CreateGroupbox({ Name = "Movement", Side = "Left", Icon = "footprints" })
 MoveBox:CreateToggle({ Name = "Anti AFK", Flag = "AntiAFK", CurrentValue = true })
 MoveBox:CreateToggle({ Name = "Noclip", Flag = "Noclip", CurrentValue = false })
@@ -1585,6 +1589,8 @@ HBox:CreateButton({ Name = "Test webhook", Callback = function()
 	local ok = webhook("Webhook test", { { name = "Status", value = "Working" } })
 	notify("Webhook", ok and "Sent" or "Failed (check the URL)", ok and "Success" or "Error")
 end })
+
+end
 
 do
 -- Runes ----------------------------------------------------------------
