@@ -164,7 +164,7 @@ end
 -- ============================================================ Mobs
 local function mobType(m) return (m.Name:gsub("%d+$", "")) end
 local function isMob(m)
-	if not m:GetAttribute("IsNpc") or m.Name:find("Dummy") then return false end
+	if not m:GetAttribute("IsNpc") or m.Name:lower():find("dummy") then return false end
 	local h = m:FindFirstChildOfClass("Humanoid")
 	return h and h.Health > 0 and m:FindFirstChild("HumanoidRootPart") ~= nil
 end
