@@ -557,6 +557,14 @@ end
 local function recipeReady()
 	local ores, total = forgeRecipe()
 	if total < 3 then return false, "Need at least 3 ores" end
+	if not Hub.BagInfo or tick() - Hub.BagInfo.t > 5 then
+		local okInfo, res = pcall(function() return RF("StatusService", "GetPlayerEquipmentInfo"):InvokeServer() end)
+		Hub.BagInfo = { t = tick(), ok = okInfo, info = res }
+	end
+	local okInfo, info = Hub.BagInfo.ok, Hub.BagInfo.info
+	if okInfo and type(info) == "table" and info.Count and info.Capacity and info.Count >= info.Capacity then
+		return false, ("Equipment bag full (%d/%d)"):format(info.Count, info.Capacity)
+	end
 	for o, q in pairs(ores) do if invCount(o) < q then return false, ("Missing %s (%d/%d)"):format(o, invCount(o), q) end end
 	return true
 end
