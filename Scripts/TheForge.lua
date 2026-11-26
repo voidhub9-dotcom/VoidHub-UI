@@ -1357,7 +1357,7 @@ local Window = Library:CreateVoidHubWindow({
 	ToggleUIKeybind = "RightControl",
 	ConfigurationSaving = { Enabled = true, FolderName = "ForgeHub" },
 	Home = { Welcome = "Forge hub" },
-	ToggleButton = { Platform = "Mobile", Icon = "hammer" },
+	ToggleButton = { Platform = "Mobile" },
 })
 Flags = Window.Flags
 Hub.Window = Window
