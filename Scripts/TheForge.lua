@@ -589,15 +589,14 @@ local function forgeOnce()
 	task.spawn(function() FC:ChangeSequence("Melt") end)
 	local clicked = false
 	t0 = tick()
-	while Hub.Running and tick() - t0 < 90 do
-		if FC.Sequence == "Hammer" and not clicked then
-			local mold = workspace.Debris:FindFirstChild("Mold")
-			local cd = mold and mold:FindFirstChildWhichIsA("ClickDetector", true)
-			if cd then
-				task.wait(0.3)
-				for _ = 1, 3 do pcall(firesignal, cd.MouseClick, LP) task.wait(0.3) end
-				clicked = true
+	while Hub.Running and tick() - t0 < 150 do
+		if FC.Sequence == "Hammer" then
+			-- the minigame only listens ~1.8 s after the mold spawns and ignores clicks past 3, so keep clicking
+			for _, mold in ipairs(workspace.Debris:GetChildren()) do
+				local cd = mold.Name == "Mold" and mold:FindFirstChildWhichIsA("ClickDetector", true)
+				if cd then pcall(firesignal, cd.MouseClick, LP) clicked = true end
 			end
+			task.wait(0.3)
 		end
 		if FC.Sequence == "Showcase" then task.wait(2.5) break end
 		if FC.Sequence == "OreSelect" and tick() - t0 > 15 then break end
