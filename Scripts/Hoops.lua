@@ -463,13 +463,10 @@ conn(Remote.InterfaceService.Summary.OnClientEvent:Connect(function(data)
 		task.delay(5, function() pcall(function() Remote.InterfaceService.JoinPlace:InvokeServer("BlacktopMatchmaking") end) end)
 	end
 end))
-local function queueReload()
-	if queue_on_teleport then pcall(queue_on_teleport, 'task.wait(6) loadstring(game:HttpGet("https://raw.githubusercontent.com/voidhub9-dotcom/VoidHub-UI/claude/admiring-brown-dzzpni/Scripts/Hoops.lua"))()') end
-end
 task.spawn(function()
 	while Hub.Running do
 		if F("HopNoOpponents") and #opponents() == 0 and MyChar() and attr(MyChar(), "InGame") then
-			log("No opponents, hopping") queueReload()
+			log("No opponents, hopping")
 			pcall(function() game:GetService("TeleportService"):Teleport(game.PlaceId, LP) end)
 		end
 		task.wait(15)
@@ -641,7 +638,7 @@ do
 	r:CreateStatus({ Name = "Session", Style = "Row", Update = function() return ("%d games, %d wins"):format(Hub.Session.games, Hub.Session.wins) end })
 	local f = BF:CreateGroupbox({ Name = "Blacktop farm", Side = "Left", Icon = "award" })
 	f:CreateToggle({ Name = "Badge farm loop", Desc = "Queues Blacktop, auto plays, re-queues after each game.", Flag = "BadgeFarm", CurrentValue = false, Callback = function(on)
-		if on then queueReload() Flags.AutoPlay:Set(true) if not attr(MyChar(), "InGame") then pcall(function() Remote.InterfaceService.JoinPlace:InvokeServer("BlacktopMatchmaking") end) end end
+		if on then Flags.AutoPlay:Set(true) if not attr(MyChar(), "InGame") then pcall(function() Remote.InterfaceService.JoinPlace:InvokeServer("BlacktopMatchmaking") end) end end
 	end })
 	f:CreateStepper({ Name = "Leave after games (0 = never)", Range = { 0, 100 }, Increment = 1, CurrentValue = 0, Flag = "LeaveAfter" })
 end
