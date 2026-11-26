@@ -226,7 +226,7 @@ end
 
 local function mobCFrame(m)
 	local mr = m.HumanoidRootPart
-	local mode, dist, h = F("MobPosition") or "Behind", F("MobDistance") or 4, F("MobHeight") or 0
+	local mode, dist, h = F("MobPosition") or "Below", F("MobDistance") or 6, F("MobHeight") or 0
 	local p
 	if mode == "Behind" then p = (mr.CFrame * CFrame.new(0, h, dist)).Position
 	elseif mode == "Front" then p = (mr.CFrame * CFrame.new(0, h, -dist)).Position
@@ -1185,7 +1185,7 @@ local SafeBox = MinePage:CreateGroupbox({ Name = "Safety while mining", Side = "
 SafeBox:CreateToggle({ Name = "Skip rocks with mobs nearby", Flag = "AvoidMobRocks", CurrentValue = true })
 SafeBox:CreateSlider({ Name = "Mob check radius", Range = { 5, 80 }, Increment = 1, CurrentValue = 25, Flag = "MobAvoidRadius" })
 SafeBox:CreateToggle({ Name = "Fight back while mining", Flag = "FightBack", CurrentValue = true })
-SafeBox:CreateSlider({ Name = "Fight back range", Range = { 5, 50 }, Increment = 1, CurrentValue = 15, Flag = "FightRange" })
+SafeBox:CreateSlider({ Name = "Fight back range", Range = { 5, 50 }, Increment = 1, CurrentValue = 25, Flag = "FightRange" })
 SafeBox:CreateToggle({ Name = "Skip rocks others mine", Flag = "SkipOthersRocks", CurrentValue = true })
 SafeBox:CreateToggle({ Name = "Avoid players", Flag = "AvoidPlayers", CurrentValue = false })
 SafeBox:CreateSlider({ Name = "Player distance", Range = { 5, 150 }, Increment = 5, CurrentValue = 30, Flag = "PlayerDistance" })
@@ -1203,13 +1203,13 @@ MobBox:CreateSlider({ Name = "Player distance", Range = { 5, 150 }, Increment = 
 MobBox:CreateStatus({ Name = "Kills", Style = "Stat", Value = 0, Update = function() return Hub.Stats.Kills end })
 
 local MobPosBox = CombatPage:CreateGroupbox({ Name = "Positioning", Side = "Right", Icon = "crosshair" })
-MobPosBox:CreateDropdown({ Name = "Stand", Options = { "Behind", "Front", "Above", "Below" }, CurrentOption = "Behind", AllowNone = false, Flag = "MobPosition" })
-MobPosBox:CreateSlider({ Name = "Distance", Range = { 1, 15 }, Increment = 0.5, CurrentValue = 4, Flag = "MobDistance" })
+MobPosBox:CreateDropdown({ Name = "Stand", Options = { "Below", "Above", "Behind", "Front" }, CurrentOption = "Below", Desc = "Below/Above: 5-10 studs hit and took 0 damage in tests.", AllowNone = false, Flag = "MobPosition" })
+MobPosBox:CreateSlider({ Name = "Distance", Range = { 1, 15 }, Increment = 0.5, CurrentValue = 6, Flag = "MobDistance" })
 MobPosBox:CreateSlider({ Name = "Height offset", Range = { -10, 10 }, Increment = 0.5, CurrentValue = 0, Flag = "MobHeight" })
 MobPosBox:CreateToggle({ Name = "Camera lock to mob", Flag = "CamLockMob", CurrentValue = false })
 
 local DefBox = CombatPage:CreateGroupbox({ Name = "Defense", Side = "Right", Icon = "shield" })
-DefBox:CreateToggle({ Name = "Auto block (parry)", Desc = "Blocks on the mob's ParryWindow cue.", Flag = "AutoBlock", CurrentValue = true })
+DefBox:CreateToggle({ Name = "Auto block (parry)", Desc = "Blocks on the mob's ParryWindow cue. 0 damage taken in tests.", Flag = "AutoBlock", CurrentValue = true })
 DefBox:CreateToggle({ Name = "Auto dodge", Desc = "Hops above for 0.8 s when a mob winds up.", Flag = "AutoDodge", CurrentValue = false })
 DefBox:CreateToggle({ Name = "Retreat on low health", Flag = "RetreatEnabled", CurrentValue = true })
 DefBox:CreateSlider({ Name = "Retreat below", Range = { 5, 90 }, Increment = 1, CurrentValue = 35, Suffix = "%", Flag = "RetreatAt" })
