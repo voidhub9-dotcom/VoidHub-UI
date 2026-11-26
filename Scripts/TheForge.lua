@@ -312,7 +312,7 @@ local function pickRock()
 	if Hub.QuestRocks then zoneSet, typeSet, neverSet, oreSet = {}, Hub.QuestRocks, {}, {} end
 	local prio = {}
 	for i, n in ipairs(F("RockPriority") or {}) do prio[n] = i end
-	local range = F("SearchRange") or 2000
+	local range = Hub.QuestRocks and 1e6 or F("SearchRange") or 2000
 	local best, bestScore
 	for _, zone in ipairs(folder:GetChildren()) do
 		for _, sp in ipairs(zone:GetChildren()) do
@@ -776,7 +776,7 @@ local function mobFarmStep()
 	for _, m in ipairs(workspace.Living:GetChildren()) do
 		if isMob(m) and (not next(types) or types[mobType(m)]) then
 			local d = (m.HumanoidRootPart.Position - r.Position).Magnitude
-			if d <= (F("FarmRange") or 500) and (not F("MobAvoidPlayers") or nearestPlayerDist(m.HumanoidRootPart.Position) > (F("MobPlayerDist") or 30)) then
+			if d <= (Hub.QuestMob and 1e6 or F("FarmRange") or 500) and (not F("MobAvoidPlayers") or nearestPlayerDist(m.HumanoidRootPart.Position) > (F("MobPlayerDist") or 30)) then
 				if not bd or d < bd then best, bd = m, d end
 			end
 		end
