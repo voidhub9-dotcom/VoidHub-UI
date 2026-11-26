@@ -581,8 +581,18 @@ end
 -- ============================================================ Forge
 local FC = Knit.GetController("ForgeController")
 local ForgeMods = RS.Controllers.ForgeController
-local Mini = { Melt = require(ForgeMods.MeltMinigame), Pour = require(ForgeMods.PourMinigame), Hammer = require(ForgeMods.HammerMinigame) }
-local MiniOrig = { Melt = Mini.Melt.Start, Pour = Mini.Pour.Start, Note = Mini.Hammer.CreateNote }
+local Mini = { Melt = require(ForgeMods.MeltMinigame), Pour = require(ForgeMods.PourMinigame), Hammer = require(ForgeMods.HammerMinigame), Golem = require(ForgeMods.GolemMinigame) }
+local MiniOrig = { Melt = Mini.Melt.Start, Pour = Mini.Pour.Start, Note = Mini.Hammer.CreateNote, Mould = Mini.Golem.Mould }
+-- Golem Build grades each strike through a local "timingNote" upvalue; accuracy is computed client-side
+local golemNoteIdx
+pcall(function()
+	for i, v in ipairs(debug.getupvalues(Mini.Golem.Build)) do
+		if type(v) == "function" then
+			local ok, info = pcall(debug.getinfo, v)
+			if ok and info and info.name == "timingNote" then golemNoteIdx = i MiniOrig.GolemNote = v end
+		end
+	end
+end)
 
 local function waitUntil(t) while workspace:GetServerTimeNow() < t do task.wait() end end
 local function setPerfect(on)
@@ -590,8 +600,11 @@ local function setPerfect(on)
 		Mini.Melt.Start = function(_, data) waitUntil(data.StartTime + data.RequiredTime + 0.05) return workspace:GetServerTimeNow() end
 		Mini.Pour.Start = function(_, data) waitUntil(data.StartTime + data.RequiredTime + 0.05) return workspace:GetServerTimeNow() end
 		Mini.Hammer.CreateNote = function(_, data) task.wait(data.Lifetime * 25 / 44) end
+		Mini.Golem.Mould = function() task.wait(3) return 1 end
+		if golemNoteIdx then pcall(debug.setupvalue, Mini.Golem.Build, golemNoteIdx, function(_, life) task.wait(life * 25 / 44) return "Perfect" end) end
 	else
-		Mini.Melt.Start, Mini.Pour.Start, Mini.Hammer.CreateNote = MiniOrig.Melt, MiniOrig.Pour, MiniOrig.Note
+		Mini.Melt.Start, Mini.Pour.Start, Mini.Hammer.CreateNote, Mini.Golem.Mould = MiniOrig.Melt, MiniOrig.Pour, MiniOrig.Note, MiniOrig.Mould
+		if golemNoteIdx then pcall(debug.setupvalue, Mini.Golem.Build, golemNoteIdx, MiniOrig.GolemNote) end
 	end
 end
 
@@ -606,13 +619,14 @@ local function forgeRecipe()
 end
 local function recipeReady()
 	local ores, total = forgeRecipe()
-	if total < 3 then return false, "Need at least 3 ores" end
+	local minOres = F("ForgeType") == "Golem" and 10 or 3
+	if total < minOres then return false, ("Need at least %d ores"):format(minOres) end
 	if not Hub.BagInfo or tick() - Hub.BagInfo.t > 5 then
 		local okInfo, res = pcall(function() return RF("StatusService", "GetPlayerEquipmentInfo"):InvokeServer() end)
 		Hub.BagInfo = { t = tick(), ok = okInfo, info = res }
 	end
 	local okInfo, info = Hub.BagInfo.ok, Hub.BagInfo.info
-	if okInfo and type(info) == "table" and info.Count and info.Capacity and info.Count >= info.Capacity then
+	if F("ForgeType") ~= "Golem" and okInfo and type(info) == "table" and info.Count and info.Capacity and info.Count >= info.Capacity then
 		return false, ("Equipment bag full (%d/%d)"):format(info.Count, info.Capacity)
 	end
 	for o, q in pairs(ores) do if invCount(o) < q then return false, ("Missing %s (%d/%d)"):format(o, invCount(o), q) end end
@@ -631,7 +645,9 @@ local function forgeOnce()
 	setState("Forging", F("ForgeType") or "Weapon")
 	if not travel(CFrame.new(forge.Position + Vector3.new(0, 0, 6))) then return false, "Travel interrupted" end
 	setPerfect(true)
-	local eq0 = Data() and #Data().Inventory.Equipments or 0
+	local isGolem = F("ForgeType") == "Golem"
+	local function made() local d = Data() return d and (isGolem and #(d.Golems or {}) or #d.Inventory.Equipments) or 0 end
+	local eq0 = made()
 	invoke("ProximityService", "Forge", forge)
 	local t0 = tick()
 	while FC.Sequence ~= "OreSelect" and tick() - t0 < 6 do task.wait(0.1) end
@@ -656,7 +672,17 @@ local function forgeOnce()
 			end
 			task.wait(0.3)
 		end
-		if FC.Sequence == "Showcase" then task.wait(2.5) break end
+		if FC.Sequence == "Water" and F("ForgeType") == "Golem" then
+			-- Awaken waits for taps on the screen
+			local vim = game:GetService("VirtualInputManager")
+			local vp = workspace.CurrentCamera.ViewportSize
+			pcall(function()
+				vim:SendMouseButtonEvent(vp.X / 2, vp.Y / 2, 0, true, game, 0) task.wait(0.05)
+				vim:SendMouseButtonEvent(vp.X / 2, vp.Y / 2, 0, false, game, 0)
+			end)
+			task.wait(0.1)
+		end
+		if FC.Sequence == "Showcase" then task.wait(F("ForgeType") == "Golem" and 4 or 2.5) break end
 		if FC.Sequence == "OreSelect" and tick() - t0 > 15 then break end
 		if Hub.ForgeCancel then break end
 		task.wait(0.1)
@@ -665,10 +691,11 @@ local function forgeOnce()
 	cancelForge()
 	if not F("PerfectForge") then setPerfect(false) end
 	task.wait(1)
-	local made = (Data() and #Data().Inventory.Equipments or 0) > eq0
-	if made then
+	if made() > eq0 then
 		Hub.Stats.Forged += 1
-		local e = Data().Inventory.Equipments[#Data().Inventory.Equipments]
+		local list_ = isGolem and Data().Golems or Data().Inventory.Equipments
+		local e = list_[#list_]
+		if isGolem then return true, ("%s golem (%s), quality %.1f"):format(tostring(e.Ore), tostring(e.Rarity), e.Quality or 0), e end
 		return true, ("%s, quality %.1f"):format(tostring(e.Type), e.Quality or 0), e
 	end
 	return false, "Forge ended without a new item"
@@ -1192,7 +1219,7 @@ DefBox:CreateSlider({ Name = "Retreat height", Range = { 20, 200 }, Increment = 
 local FBox = ForgePage:CreateGroupbox({ Name = "Auto forge", Side = "Left", Icon = "flame" })
 FBox:CreateToggle({ Name = "Auto forge", Desc = "Repeats the recipe while you have the ores.", Flag = "AutoForge", CurrentValue = false })
 FBox:CreateToggle({ Name = "Perfect melt, pour and hammer", Desc = "Also applies when you forge by hand.", Flag = "PerfectForge", CurrentValue = true, Callback = function(on) setPerfect(on) end })
-FBox:CreateDropdown({ Name = "Item type", Options = { "Weapon", "Armor" }, CurrentOption = "Weapon", AllowNone = false, Flag = "ForgeType" })
+FBox:CreateDropdown({ Name = "Item type", Desc = "Golems need at least 10 ores.", Options = { "Weapon", "Armor", "Golem" }, CurrentOption = "Weapon", AllowNone = false, Flag = "ForgeType" })
 FBox:CreateToggle({ Name = "Fast forge (gamepass)", Flag = "FastForge", CurrentValue = false })
 FBox:CreateButton({ Name = "Forge once", Icon = "hammer", Callback = function() task.spawn(function() local ok, msg = forgeOnce() notify("Forge", msg, ok and "Success" or "Warning") end) end })
 FBox:CreateButton({ Name = "Cancel forge", Style = "Danger", Callback = function() Hub.ForgeCancel = true cancelForge() end })
