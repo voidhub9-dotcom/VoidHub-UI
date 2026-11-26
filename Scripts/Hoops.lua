@@ -166,9 +166,16 @@ end
 local GRADES = { "Very Early", "Early", "Slightly Early", "Good", "PERFECT", "Slightly Late", "Late", "Very Late" }
 local Timing = { offsets = {}, pending = false, ours = false, lastPress = 0, rtt = 0.12, cur = nil }
 Hub.Timing = Timing
+local function rangeBucket()
+	local r = Root() if not r then return "mid" end
+	local _, d = nearestRim(r.Position)
+	if not d then return "mid" end
+	return d < 10 and "close" or (d > 22 and "three" or "mid")
+end
+local function calKey(meter) return (meter or "?") .. "/" .. (Timing.bucket or "mid") end
 local function holdFor(meter)
 	local base = F("HoldTime") or 0.29
-	local off = Timing.offsets[meter or "?"] or 0
+	local off = Timing.offsets[calKey(meter)] or 0
 	local ping = F("PingComp") and math.clamp(pingMs() / 1000 / 2, 0, 0.15) * (F("PingFactor") or 0.5) or 0
 	return math.clamp(base + off - ping, 0.05, 1.5)
 end
@@ -178,7 +185,7 @@ local oldNC
 local function release() Timing.ours = true pcall(function() shootRemote:FireServer({ Shoot = false }) end) Timing.ours = false Timing.pending = false end
 local function scheduleRelease(meter)
 	local d = holdFor(meter)
-	Timing.cur = { hold = d, meter = meter, t = os.clock() }
+	Timing.cur = { hold = d, meter = meter, t = os.clock(), key = calKey(meter) }
 	task.delay(d, function() if Timing.pending then release() end end)
 end
 
@@ -187,7 +194,7 @@ oldNC = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
 		local a = ...
 		if F("PerfectTiming") and type(a) == "table" then
 			if a.Shoot == true then
-				Timing.pending, Timing.lastPress, Timing.meter = true, os.clock(), nil
+				Timing.pending, Timing.lastPress, Timing.meter, Timing.bucket = true, os.clock(), nil, rangeBucket()
 				local r = oldNC(self, ...)
 				-- release starts counting from the press; meter type arrives in RegisterPacket and refines it
 				task.spawn(function()
@@ -211,18 +218,24 @@ conn(Remote.MeterService.RegisterPacket.OnClientEvent:Connect(function(pl, meter
 	end
 end))
 
+conn(Input.Output.OnClientEvent:Connect(function(kind, text)
+	local st = type(text) == "string" and text:match("Shot Type %- ([%w]+)")
+	if st then Hub.LastShotType = st end
+end))
 conn(Remote.InterfaceService.ShowFeedback.OnClientEvent:Connect(function(pl, contest, timing)
 	if not (typeof(pl) == "Instance" and pl.Name == LP.Name) then return end
 	local g = tonumber(timing)
 	Hub.Stats.Shots += 1
 	if g == 5 then Hub.Stats.Perfect += 1 end
 	local cur = Timing.cur
-	Hub.LastGrade = (GRADES[g] or "?") .. (cur and (" @ %.3fs"):format(cur.hold) or "") .. " contest " .. tostring(contest)
+	task.wait(0.05)
+	Hub.LastGrade = (GRADES[g] or "?") .. (cur and (" @ %.3fs [%s]"):format(cur.hold, cur.key) or "") .. " " .. tostring(Hub.LastShotType or "") .. " contest " .. tostring(contest)
 	log("Shot: " .. Hub.LastGrade)
 	if F("AutoCalibrate") and cur and g then
 		-- early grades mean hold longer, late grades shorter; step shrinks near perfect
 		local step = ({ 0.05, 0.03, 0.012, 0.006, 0, -0.012, -0.03, -0.05 })[g] or 0
-		Timing.offsets[cur.meter or "?"] = (Timing.offsets[cur.meter or "?"] or 0) + step
+		local k = cur.key or calKey(cur.meter)
+		Timing.offsets[k] = math.clamp((Timing.offsets[k] or 0) + step, -0.2, 0.3)
 	end
 	Timing.cur = nil
 end))
