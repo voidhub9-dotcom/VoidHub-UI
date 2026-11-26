@@ -284,6 +284,18 @@ local function possibleOres(name)
 	return out
 end
 local badRock = {}
+local badZone, zoneFails = {}, {}
+local function zoneOf(m) local z = m.Parent and m.Parent.Parent return z and z.Name end
+local function failZone(m, why)
+	local z = zoneOf(m)
+	if not z then return end
+	zoneFails[z] = (zoneFails[z] or 0) + 1
+	if zoneFails[z] >= 2 then
+		badZone[z] = tick() + 300
+		zoneFails[z] = 0
+		err(("Avoiding zone %s for 5 min (%s)"):format(z, why))
+	end
+end
 -- Money mode: expected ore multiplier per rock (average over its drop table x average ore count) divided by HP + 100 for travel time
 local moneyRank
 local function moneyScores()
@@ -303,6 +315,8 @@ end
 
 local function rockOk(m, zoneSet, typeSet, neverSet, oreSet)
 	if not rockAlive(m) or badRock[m] and badRock[m] > tick() then return false end
+	local zn = zoneOf(m)
+	if zn and badZone[zn] and badZone[zn] > tick() then return false end
 	if next(typeSet) and not typeSet[m.Name] then return false end
 	if neverSet[m.Name] then return false end
 	local zone = m.Parent and m.Parent.Parent
@@ -376,6 +390,14 @@ local function mineRock(m)
 	setState("Mining", m.Name)
 	local cf = mineCFrame(m)
 	if not travel(cf) then return end
+	task.wait(0.4)
+	local r0 = Root()
+	if r0 and (r0.Position - cf.Position).Magnitude > 15 then
+		-- the server pushed us back: this rock is behind a locked door or region
+		badRock[m] = tick() + 600
+		failZone(m, "rubber-banded")
+		return
+	end
 	hold(cf)
 	local t0, lastHp, stuck = tick(), m:GetAttribute("Health"), 0
 	while Hub.Running and (F("AutoMine") or Hub.QuestRocks) and rockAlive(m) and alive() and tick() - t0 < 40 do
@@ -396,7 +418,7 @@ local function mineRock(m)
 		end
 		local hp = m:GetAttribute("Health")
 		if hp == lastHp then stuck += 1 else stuck, lastHp = 0, hp end
-		if F("SkipHard") and stuck >= 6 then badRock[m] = tick() + 120 err("Skipped rock (no damage): " .. m.Name) break end
+		if F("SkipHard") and stuck >= 6 then badRock[m] = tick() + 120 failZone(m, "no damage") err("Skipped rock (no damage): " .. m.Name) break end
 		task.wait(F("SwingDelay") or 0.1)
 	end
 	if not rockAlive(m) and m:GetAttribute("LastHitPlayer") == LP.Name then Hub.Stats.Rocks += 1 end
