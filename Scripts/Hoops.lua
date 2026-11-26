@@ -63,7 +63,7 @@ local function ballCarrier()
 			local r = Root(c)
 			if r and isPlayerChar(c) and (c == MyChar() or Players:FindFirstChild(c.Name) or attr(c, "OnCourt") == true) then
 				local d = ((bp - r.Position) * Vector3.new(1, 0, 1)).Magnitude
-				if d < 3 and bp.Y - r.Position.Y > -1.5 then heldSeen[c] = { t = now, b = b } end
+				if d < 3 and bp.Y - r.Position.Y > -1.5 and not (c == MyChar() and (Hub.noBallUntil or 0) > now) then heldSeen[c] = { t = now, b = b } end
 			end
 		end
 	end
@@ -273,6 +273,14 @@ local function shootTap()
 	task.wait(0.1)
 	fire(Input.Shoot, { Shoot = true, Input = "E", UseSpace = true })
 	if not F("PerfectTiming") then task.delay(F("HoldTime") or 0.29, function() fire(Input.Shoot, { Shoot = false }) end) end
+	task.delay(0.9, function()
+		-- no meter came back: the server says we are not holding a ball
+		if not Timing.meter then
+			Hub.noBallUntil = os.clock() + 4
+			heldSeen[MyChar()] = nil
+			if Timing.pending then Timing.pending = false fire(Input.Shoot, { Shoot = false }) end
+		end
+	end)
 	return true
 end
 
