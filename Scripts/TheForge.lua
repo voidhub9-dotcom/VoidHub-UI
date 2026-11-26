@@ -1317,6 +1317,7 @@ PotStat:CreateStatusList({ Name = "Active potions", MaxRows = 8, EmptyText = "No
 	return rows
 end })
 
+do
 -- Visuals tab ---------------------------------------------------------
 local Visuals = Window:CreateTab({ Name = "Visuals", Desc = "ESP and rendering", Icon = "eye" })
 local EspPage = Visuals:CreateSubTab({ Name = "ESP", Icon = "scan" })
@@ -1356,6 +1357,8 @@ RBox:CreateToggle({ Name = "Low graphics / FPS boost", Flag = "LowGfx", CurrentV
 RBox:CreateToggle({ Name = "Streamer mode", Desc = "Hides your name and avatar in the hub.", Flag = "Streamer", CurrentValue = false, Callback = function(on)
 	pcall(function() Window:SetHideName(on) Window:SetHideAvatar(on) end)
 end })
+
+end
 
 -- Misc tab ------------------------------------------------------------
 local Misc = Window:CreateTab({ Name = "Misc", Desc = "Player, travel, staff, webhook, settings", Icon = "settings" })
@@ -1421,6 +1424,7 @@ HBox:CreateButton({ Name = "Test webhook", Callback = function()
 	notify("Webhook", ok and "Sent" or "Failed (check the URL)", ok and "Success" or "Error")
 end })
 
+do
 -- Runes ----------------------------------------------------------------
 local RunePage = Farm:CreateSubTab({ Name = "Runes", Icon = "sparkles" })
 local EquipData = require(DataFolder.Equipments)
@@ -1558,6 +1562,8 @@ task.spawn(function()
 		for _ = 1, 300 do if not Hub.Running then break end task.wait(1) end
 	end
 end)
+
+end
 
 local DiagBox = SetPage:CreateGroupbox({ Name = "Runtime", Side = "Left", Icon = "activity" })
 DiagBox:CreateStatus({ Name = "State", Style = "Row", Pin = true, Update = function() return Hub.State end })
