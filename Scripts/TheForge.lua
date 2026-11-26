@@ -309,6 +309,7 @@ local function pickRock()
 	local r = Root() if not r then return end
 	local folder = workspace:FindFirstChild("Rocks") if not folder then return end
 	local zoneSet, typeSet, neverSet, oreSet = set(list("MineZones")), set(list("RockTypes")), set(list("NeverMine")), set(list("OreFilter"))
+	if Hub.QuestRocks then zoneSet, typeSet, neverSet, oreSet = {}, Hub.QuestRocks, {}, {} end
 	local prio = {}
 	for i, n in ipairs(F("RockPriority") or {}) do prio[n] = i end
 	local range = F("SearchRange") or 2000
@@ -353,7 +354,7 @@ local function mineRock(m)
 	if not travel(cf) then return end
 	hold(cf)
 	local t0, lastHp, stuck = tick(), m:GetAttribute("Health"), 0
-	while Hub.Running and F("AutoMine") and rockAlive(m) and alive() and tick() - t0 < 40 do
+	while Hub.Running and (F("AutoMine") or Hub.QuestRocks) and rockAlive(m) and alive() and tick() - t0 < 40 do
 		if Hub.Paused or F("RetreatEnabled") and hpPct() < (F("RetreatAt") or 35) then break end
 		if F("FightBack") then
 			local mobs = mobsNear(Root().Position, F("FightRange") or 15)
@@ -770,7 +771,7 @@ end
 
 local function mobFarmStep()
 	local r = Root() if not r then return false end
-	local types = set(list("MobTypes"))
+	local types = Hub.QuestMob and { [Hub.QuestMob] = true } or set(list("MobTypes"))
 	local best, bd
 	for _, m in ipairs(workspace.Living:GetChildren()) do
 		if isMob(m) and (not next(types) or types[mobType(m)]) then
@@ -784,6 +785,166 @@ local function mobFarmStep()
 	fightMob(best, 60)
 	return true
 end
+
+-- ============================================================ Quests
+local CaveData = require(DataFolder.Cave)
+local EnemyData = require(DataFolder.Enemies)
+local IslandByIndex = {}
+pcall(function() for i, v in pairs(require(DataFolder.Islands).Data) do IslandByIndex[i] = v.Name end end)
+local function currentIsland() return Data() and Data().CurrentIsland end
+local function rockIsland(rockName)
+	for zone, v in pairs(CaveData) do
+		if type(v) == "table" and v.Rocks then
+			for _, r in pairs(v.Rocks) do
+				if r.Name == rockName then local n = tonumber(tostring(zone):match("^Island(%d+)")) return n and IslandByIndex[n] end
+			end
+		end
+	end
+end
+local function rocksDropping(ore)
+	local t = {}
+	for name, d in pairs(RockData) do for _, o in ipairs(possibleOres(name)) do if o == ore then t[name] = true end end end
+	return t
+end
+local function questDone(q)
+	for _, p in pairs(q.Progress or {}) do if (p.currentProgress or 0) < (p.requiredAmount or 1) then return false end end
+	return true
+end
+local function compact(s) return tostring(s):lower():gsub("[%s%p]", "") end
+
+-- quest name -> dialogue folder, tree, NPC and its Finish commands (scanned from the dialogue modules)
+local turnInCache = {}
+local function turnInInfo(questName)
+	if turnInCache[questName] ~= nil then return turnInCache[questName] end
+	local prefix = questName:match("^(.-)Quest") or questName
+	local folder = RS.Dialogues:FindFirstChild(prefix)
+	local info = false
+	if folder then
+		local tree
+		for _, c in ipairs(folder:GetChildren()) do if c:GetAttribute("NodeTree") or c:IsA("Configuration") then tree = c.Name break end end
+		local cmds = {}
+		for _, m in ipairs(folder:GetDescendants()) do
+			if m:IsA("ModuleScript") then
+				local ok, src = pcall(decompile, m)
+				if ok and type(src) == "string" then for c in src:gmatch('RunCommand%("([%w_]+)"') do if c:find("Finish") then cmds[c] = true end end end
+			end
+		end
+		local npc
+		local want = compact(prefix)
+		for _, p in ipairs(workspace.Proximity:GetChildren()) do if compact(p.Name) == want then npc = p end end
+		if not npc then for _, p in ipairs(workspace.Proximity:GetChildren()) do if compact(p.Name):gsub("%d", "") == want:gsub("%d", "") then npc = p end end end
+		local list_ = {}
+		local suffix = questName:match("Quest(%w*)$") or ""
+		for c in pairs(cmds) do if suffix ~= "" and c:sub(-#suffix) == suffix then table.insert(list_, 1, c) else table.insert(list_, c) end end
+		info = { folder = folder.Name, tree = tree, npc = npc, cmds = list_ }
+	end
+	turnInCache[questName] = info
+	return info
+end
+
+local function talkTo(npc, tree)
+	if not npc then return false end
+	if not travel(npc:GetPivot() * CFrame.new(0, 0, -5)) then return false end
+	task.wait(0.3)
+	if tree then invoke("ProximityService", "ForceDialogue", npc, tree) else invoke("ProximityService", "Dialogue", npc) end
+	task.wait(0.5)
+	return true
+end
+
+local function turnIn(name)
+	local info = turnInInfo(name)
+	if not info or not info.npc then return false, "No turn-in NPC found for " .. name end
+	setState("Turning in", name)
+	if not talkTo(info.npc, info.tree) then return false, "Travel interrupted" end
+	for _, c in ipairs(info.cmds) do
+		invoke("DialogueService", "RunCommand", c)
+		task.wait(0.4)
+		if not (Data().Quests or {})[name] then break end
+	end
+	closeDialogue()
+	return not (Data().Quests or {})[name], name
+end
+
+Hub.QuestLog = {}
+local function qlog(t) table.insert(Hub.QuestLog, 1, os.date("%H:%M ") .. t) if #Hub.QuestLog > 30 then table.remove(Hub.QuestLog) end end
+
+local function goIsland(name)
+	if not name or name == currentIsland() then return false end
+	if not F("QuestTravel") then return false end
+	qlog("Travelling to " .. name)
+	if queue_on_teleport and F("QuestReload") ~= false then
+		pcall(queue_on_teleport, 'task.wait(8) loadstring(game:HttpGet("https://raw.githubusercontent.com/voidhub9-dotcom/VoidHub-UI/claude/admiring-brown-dzzpni/Scripts/TheForge.lua"))()')
+	end
+	invoke("PortalService", "TeleportToIsland", name)
+	task.wait(20)
+	return true
+end
+
+local function questStep()
+	Hub.QuestMob, Hub.QuestRocks = nil, nil
+	local d = Data()
+	if not d then return false end
+	local only = set(list("QuestFilter"))
+	-- turn in finished quests first
+	if F("QuestTurnIn") then
+		for name, q in pairs(d.Quests or {}) do
+			if (not next(only) or only[name]) and questDone(q) and not (Hub.QuestSkip[name] and Hub.QuestSkip[name] > tick()) then
+				local ok, msg = turnIn(name)
+				qlog((ok and "Turned in " or "Couldn't turn in ") .. name .. (ok and "" or (": " .. tostring(msg))))
+				if not ok then Hub.QuestSkip[name] = tick() + 300 end
+				return true
+			end
+		end
+	end
+	if not F("QuestObjectives") then return false end
+	for name, q in pairs(d.Quests or {}) do
+		if (not next(only) or only[name]) and not (Hub.QuestSkip[name] and Hub.QuestSkip[name] > tick()) then
+			for _, p in pairs(q.Progress or {}) do
+				if (p.currentProgress or 0) < (p.requiredAmount or 1) then
+					local kind, target = p.questType, p.target
+					Hub.QuestNow = ("%s: %s %s (%d/%d)"):format(name, tostring(kind), tostring(target), p.currentProgress or 0, p.requiredAmount or 1)
+					if kind == "Kill" then
+						local isl = EnemyData[target] and EnemyData[target].Island
+						if isl and isl ~= currentIsland() then if goIsland(isl) then return true end Hub.QuestSkip[name] = tick() + 120 break end
+						Hub.QuestMob = target
+						if mobFarmStep() then return true end
+					elseif kind == "Mine" then
+						local isl = rockIsland(target)
+						if isl and isl ~= currentIsland() then if goIsland(isl) then return true end Hub.QuestSkip[name] = tick() + 120 break end
+						Hub.QuestRocks = { [target] = true }
+						local rock = pickRock()
+						if rock then mineRock(rock) Hub.QuestRocks = nil return true end
+					elseif kind == "Collect" and OreInfo[target] then
+						Hub.QuestRocks = rocksDropping(target)
+						local rock = pickRock()
+						if rock then mineRock(rock) Hub.QuestRocks = nil return true end
+					elseif kind == "Talk" then
+						local want = compact(target)
+						for _, npc in ipairs(workspace.Proximity:GetChildren()) do
+							if compact(npc.Name) == want then talkTo(npc) task.wait(1) closeDialogue() qlog("Talked to " .. target) return true end
+						end
+					elseif kind == "Forge" and F("QuestForge") then
+						local best, bn = nil, 0
+						for k, v in pairs(d.Inventory) do if type(v) == "number" and itemKind(k) == "Ore" and v > bn then best, bn = k, v end end
+						if best and bn >= 3 then
+							Flags.ForgeType:Set(target == "Armor" and "Armor" or "Weapon")
+							Flags.ForgeOre1:Set(best) Flags.ForgeQty1:Set(3)
+							for i = 2, 4 do Flags["ForgeOre" .. i]:Set("None") end
+							local ok, msg = forgeOnce()
+							qlog("Quest forge: " .. tostring(msg))
+							return true
+						end
+					end
+					Hub.QuestSkip[name] = tick() + 60
+					break
+				end
+			end
+		end
+	end
+	Hub.QuestNow = "Nothing doable right now"
+	return false
+end
+Hub.QuestSkip = {}
 
 local function brain()
 	while Hub.Running do
@@ -799,6 +960,7 @@ local function brain()
 				if n >= (F("GearSellAt") or 3) then local _, msg = sellGear() Hub.LastGear = msg return end
 			end
 			if F("AutoForge") and recipeReady() then local _, msg = forgeOnce() Hub.LastForge = msg return end
+			if F("AutoQuest") then if questStep() then return end end
 			if F("MobFarm") then if mobFarmStep() then return end end
 			if F("AutoMine") then
 				local rock = pickRock()
@@ -1142,7 +1304,7 @@ Flags = Window.Flags
 Hub.Window = Window
 local function notify(title, content, kind) Window:Notify({ Title = title, Content = content, Type = kind, Duration = 4 }) end
 
-local AutoToggles = { "AutoSellGear", "AutoClaim", "AutoMine", "MobFarm", "AutoForge", "AutoSell", "AutoBuy", "AutoPotions", "AutoHealthPotion", "Fly", "Noclip", "WalkSpeedOn", "JumpPowerOn", "InfJump" }
+local AutoToggles = { "AutoQuest", "AutoSellGear", "AutoClaim", "AutoMine", "MobFarm", "AutoForge", "AutoSell", "AutoBuy", "AutoPotions", "AutoHealthPotion", "Fly", "Noclip", "WalkSpeedOn", "JumpPowerOn", "InfJump" }
 
 -- Farm tab ------------------------------------------------------------
 local Farm = Window:CreateTab({ Name = "Farm", Desc = "Mining, combat, forge, selling, potions", Icon = "pickaxe" })
@@ -1513,6 +1675,41 @@ RS2:CreateButton({ Name = "Roll", Style = "Primary", Callback = function()
 		if F("SmithApply") then local _, res = SmithSvc:Apply(r.GUID):await() smithLog:Push("Apply: " .. tostring(type(res) == "table" and (res.Message or res.Ok) or res)) end
 	end)
 end })
+
+do
+	local QPage = Farm:CreateSubTab({ Name = "Quests", Icon = "scroll" })
+	local QB = QPage:CreateGroupbox({ Name = "Auto quest", Side = "Left", Icon = "scroll" })
+	QB:CreateToggle({ Name = "Auto quest", Desc = "Kill, mine, collect, talk and forge objectives, then turns in.", Flag = "AutoQuest", CurrentValue = false })
+	QB:CreateToggle({ Name = "Do objectives", Flag = "QuestObjectives", CurrentValue = true })
+	QB:CreateToggle({ Name = "Turn in finished quests", Flag = "QuestTurnIn", CurrentValue = true })
+	QB:CreateToggle({ Name = "Forge for forge quests", Desc = "Uses your biggest ore stack.", Flag = "QuestForge", CurrentValue = false })
+	QB:CreateToggle({ Name = "Travel to the quest's island", Flag = "QuestTravel", CurrentValue = false })
+	QB:CreateToggle({ Name = "Reload hub after travel", Desc = "Uses queue_on_teleport; enable autoload in Settings.", Flag = "QuestReload", CurrentValue = true })
+	local names = {}
+	for k in pairs(Data() and Data().Quests or {}) do names[#names + 1] = k end
+	table.sort(names)
+	local qf = QB:CreateDropdown({ Name = "Only these quests", Options = names, MultipleOptions = true, AllowNone = true, Searchable = true, NoneText = "All quests", Flag = "QuestFilter" })
+	QB:CreateButton({ Name = "Refresh quests", Callback = function()
+		local t = {} for k in pairs(Data().Quests or {}) do t[#t + 1] = k end table.sort(t) qf:SetOptions(t)
+	end })
+	QB:CreateButton({ Name = "Turn in all finished now", Callback = function()
+		task.spawn(function() for n, q in pairs(Data().Quests or {}) do if questDone(q) then local ok = turnIn(n) qlog((ok and "Turned in " or "Couldn't turn in ") .. n) end end end)
+	end })
+	QB:CreateStatus({ Name = "Now", Style = "Row", Update = function() return tostring(Hub.QuestNow or "-") end })
+	local QL = QPage:CreateGroupbox({ Name = "Quest list", Side = "Right", Icon = "list" })
+	QL:CreateStatusList({ Name = "Progress", MaxRows = 10, EmptyText = "No quests", Update = function()
+		local rows = {}
+		for n, q in pairs(Data() and Data().Quests or {}) do
+			local parts = {}
+			for _, p in pairs(q.Progress or {}) do parts[#parts + 1] = ("%s %s %d/%d"):format(tostring(p.questType), tostring(p.target), p.currentProgress or 0, p.requiredAmount or 1) end
+			rows[#rows + 1] = { Text = n .. ": " .. table.concat(parts, ", "), Value = questDone(q) and "Done" or "", Tone = questDone(q) and "Success" or nil }
+		end
+		return rows
+	end })
+	QL:CreateStatusList({ Name = "Quest log", MaxRows = 8, EmptyText = "Nothing yet", Update = function()
+		local rows = {} for _, l in ipairs(Hub.QuestLog) do rows[#rows + 1] = l end return rows
+	end })
+end
 
 local ClaimPage = Misc:CreateSubTab({ Name = "Claims", Icon = "gift" })
 local function claimAll()
