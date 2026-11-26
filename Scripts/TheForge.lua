@@ -1015,6 +1015,20 @@ conn(RunService.RenderStepped:Connect(function()
 		flyBG.CFrame = cam.CFrame
 	end
 end))
+-- the game rewrites WalkSpeed every frame, so re-apply it whenever it changes
+local wsConn
+local function hookWalkSpeed()
+	if wsConn then wsConn:Disconnect() end
+	local h = Hum()
+	if not h then return end
+	wsConn = h:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
+		local want = F("WalkSpeedOn") and (F("WalkSpeed") or 30)
+		if want and h.WalkSpeed ~= want then h.WalkSpeed = want end
+	end)
+	table.insert(Hub.Conns, wsConn)
+end
+hookWalkSpeed()
+conn(LP.CharacterAdded:Connect(function() task.wait(0.5) hookWalkSpeed() end))
 conn(UIS.JumpRequest:Connect(function()
 	if F("InfJump") and Hum() then Hum():ChangeState(Enum.HumanoidStateType.Jumping) end
 end))
