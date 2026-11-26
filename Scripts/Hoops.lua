@@ -1,5 +1,3 @@
--- VoidHub: basketball (Practical's Games, GameId 7529591378).
--- Remotes, payloads and the shot grade scale were read live from the game's client code (PlaceVersion 138).
 
 if getgenv().HoopHub and getgenv().HoopHub.Unload then pcall(getgenv().HoopHub.Unload) end
 if getgenv().__oldnc then pcall(hookmetamethod, game, "__namecall", getgenv().__oldnc) getgenv().__oldnc = nil end
@@ -30,7 +28,6 @@ local function F(n)
 	return f.Value
 end
 
--- ===================================================================== character / court helpers
 local function MyChar() return workspace.Characters:FindFirstChild(LP.Name) end
 local function Root(c) c = c or MyChar() return c and c:FindFirstChild("HumanoidRootPart") end
 local function attr(c, k) return c and c:GetAttribute(k) end
@@ -54,8 +51,6 @@ local function opponents() local t = {} for _, c in ipairs(others()) do if isOpp
 local function balls() return workspace.Basketballs:GetChildren() end
 local heldSeen = {}
 local function ballCarrier()
-	-- held ball: within 3 studs at hand height; a loose ball rests ~2-3 studs below the root.
-	-- dribbling bounces it to the floor, so a recent hand-height sample still counts (0.7 s)
 	local now = os.clock()
 	for _, b in ipairs(balls()) do
 		local bp = b:GetPivot().Position
@@ -96,7 +91,6 @@ local function nearestRim(pos)
 	return best, bd
 end
 
--- movement: the game reads the mobile thumbstick vector (camera-relative); we steer by writing it
 local steering = false
 local function steer(worldTarget)
 	local r = Root() if not r then return end
@@ -111,7 +105,6 @@ local function steer(worldTarget)
 	return false
 end
 local function stopSteer() if steering then Mobile.MoveVector = Vector3.zero steering = false end end
--- walk onto a loose ball, then stand still so the server (which sees us ping-late) registers the pickup
 local function chaseBall(b)
 	local r = Root() if not r then return end
 	local bp = b:GetPivot().Position
@@ -124,7 +117,6 @@ local function chaseBall(b)
 	end
 end
 
--- ===================================================================== ping + server position prediction
 local function pingMs()
 	local ms
 	pcall(function()
@@ -152,7 +144,6 @@ conn(RunService.Heartbeat:Connect(function()
 	end
 	for c in pairs(cfHistory) do if not c.Parent then cfHistory[c] = nil end end
 end))
--- where the server most likely has this character right now (client view is ping * 1.2 ahead for us)
 local function serverPos(c)
 	local r = Root(c) if not r then return nil end
 	if not F("Prediction") then return r.Position end
@@ -163,7 +154,6 @@ local function serverPos(c)
 	return r.Position
 end
 
--- ===================================================================== contest / coverage
 local function contestInfo()
 	local r = Root() if not r then return 0, nil, math.huge end
 	local rim = nearestRim(r.Position)
@@ -173,7 +163,6 @@ local function contestInfo()
 		if cr then local d = (cr.Position - r.Position).Magnitude if d < bd then best, bd = c, d end end
 	end
 	if not best then return 0, nil, math.huge end
-	-- coverage: closer and more between you and the rim means more contest
 	local closeness = math.clamp(1 - (bd - 3) / ((F("ContestRange") or 10) - 3), 0, 1)
 	local facing = 1
 	if rim then
@@ -191,8 +180,6 @@ local function contestLabel(p)
 	else return "SMOTHERED", Color3.fromRGB(255, 50, 50) end
 end
 
--- ===================================================================== perfect timing
--- ShowFeedback(player, contest, timing): 1 VeryEarly 2 Early 3 SlightlyEarly 4 Good 5 Perfect 6 SlightlyLate 7 Late 8 VeryLate
 local GRADES = { "Very Early", "Early", "Slightly Early", "Good", "PERFECT", "Slightly Late", "Late", "Very Late" }
 local Timing = { offsets = {}, pending = false, ours = false, lastPress = 0, rtt = 0.12, cur = nil }
 Hub.Timing = Timing
@@ -226,7 +213,6 @@ oldNC = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
 			if a.Shoot == true then
 				Timing.pending, Timing.lastPress, Timing.meter, Timing.bucket = true, os.clock(), nil, rangeBucket()
 				local r = oldNC(self, ...)
-				-- release starts counting from the press; meter type arrives in RegisterPacket and refines it
 				task.spawn(function()
 					local t0 = os.clock()
 					while Timing.pending and not Timing.meter and os.clock() - t0 < 0.5 do task.wait() end
@@ -262,7 +248,6 @@ conn(Remote.InterfaceService.ShowFeedback.OnClientEvent:Connect(function(pl, con
 	Hub.LastGrade = (GRADES[g] or "?") .. (cur and (" @ %.3fs [%s]"):format(cur.hold, cur.key) or "") .. " " .. tostring(Hub.LastShotType or "") .. " contest " .. tostring(contest)
 	log("Shot: " .. Hub.LastGrade)
 	if F("AutoCalibrate") and cur and g then
-		-- early grades mean hold longer, late grades shorter; step shrinks near perfect
 		local step = ({ 0.05, 0.03, 0.012, 0.006, 0, -0.012, -0.03, -0.05 })[g] or 0
 		local k = cur.key or calKey(cur.meter)
 		Timing.offsets[k] = math.clamp((Timing.offsets[k] or 0) + step, -0.2, 0.3)
@@ -270,7 +255,6 @@ conn(Remote.InterfaceService.ShowFeedback.OnClientEvent:Connect(function(pl, con
 	Timing.cur = nil
 end))
 
--- ===================================================================== actions
 local function fire(remote, ...) local a = table.pack(...) pcall(function() remote:FireServer(table.unpack(a, 1, a.n)) end) end
 local function jump() fire(Input.Jump) end
 local lastTap = 0
@@ -286,7 +270,6 @@ local function shootTap()
 	fire(Input.Shoot, { Shoot = true, Input = "E", UseSpace = true })
 	if not F("PerfectTiming") then task.delay(F("HoldTime") or 0.29, function() fire(Input.Shoot, { Shoot = false }) end) end
 	task.delay(0.9, function()
-		-- no meter came back: the server says we are not holding a ball
 		if not Timing.meter then
 			Hub.noBallUntil = os.clock() + 4
 			heldSeen[MyChar()] = nil
@@ -321,7 +304,6 @@ end
 
 local function pass(name, ptype) fire(Input.Pass, { Player = name, PassType = ptype or 1 }) end
 
--- ===================================================================== loops
 local lastBlock, lastSteal, lastShot, lastJump = 0, 0, 0, 0
 conn(RunService.Heartbeat:Connect(function()
 	if not Hub.Running then return end
@@ -341,14 +323,12 @@ task.spawn(function()
 			if not r then return end
 			local carrier, ball = ballCarrier()
 
-			-- auto shoot when open and in range
 			if F("AutoShoot") and carrier == me and os.clock() - lastShot > 1.5 then
 				local p = contestInfo()
 				local _, rimD = nearestRim(r.Position)
 				if p <= (F("MaxContest") or 35) and rimD and rimD <= (F("ShootRange") or 30) then lastShot = os.clock() shootTap() log(("Auto shot (contest %d%%, %.0f st)"):format(p, rimD)) end
 			end
 
-			-- auto block: an opponent starts a shot near you
 			if F("AutoBlock") and os.clock() - lastBlock > 1 then
 				for _, c in ipairs(opponents()) do
 					local cr = Root(c)
@@ -364,7 +344,6 @@ task.spawn(function()
 				end
 			end
 
-			-- auto steal near the ball handler
 			if F("AutoSteal") and carrier and carrier ~= me and isOpponent(carrier) and os.clock() - lastSteal > (F("StealCooldown") or 1.2) then
 				local cr = Root(carrier)
 				if cr and (cr.Position - (serverPos(me) or r.Position)).Magnitude <= (F("StealRange") or 6) and not attr(me, "Fouled") then
@@ -372,7 +351,6 @@ task.spawn(function()
 				end
 			end
 
-			-- defense: stay between handler and rim, hold G
 			local moving = false
 			if F("AutoGuard") and carrier and carrier ~= me and isOpponent(carrier) then
 				local cr = Root(carrier)
@@ -387,7 +365,6 @@ task.spawn(function()
 				end
 			end
 
-			-- ball magnet / rebound: go to a loose ball
 			if not moving and (F("BallMagnet") or F("AutoRebound")) and not carrier then
 				local best, bd
 				for _, b in ipairs(balls()) do local d = (b:GetPivot().Position - r.Position).Magnitude if not bd or d < bd then best, bd = b, d end end
@@ -403,8 +380,6 @@ task.spawn(function()
 	end
 end)
 
-
--- ===================================================================== auto play
 local function openTeammate()
 	local me = MyChar() local r = Root(me) if not r then return end
 	local best, bs
@@ -444,7 +419,6 @@ local function autoPlayStep()
 			if F("APSteal") and cr and (cr.Position - r.Position).Magnitude < (F("StealRange") or 6) and os.clock() - lastPlay > (F("StealCooldown") or 1.2) then lastPlay = os.clock() fire(Input.Steal) end
 		end
 	elseif carrier then
-		-- teammate has it: find open space toward a shooting spot
 		if rim and F("APSpots") then
 			local ang = (os.clock() * 0.2) % (math.pi * 2)
 			steer(rim.Position + Vector3.new(math.cos(ang), 0, math.sin(ang)) * 20)
@@ -459,7 +433,6 @@ task.spawn(function()
 	while Hub.Running do
 		if F("AutoPlay") then
 			local ok, e = pcall(autoPlayStep) if not ok then log("autoplay: " .. tostring(e)) end
-			-- jump ball: the court status label says JUMP BALL
 			if F("AutoJumpBall") then
 				for _, d in ipairs(LP.PlayerGui:GetDescendants()) do if d:IsA("TextLabel") and d.Name == "Status" and d.Visible and d.Text:upper():find("JUMP") then jump() break end end
 			end
@@ -468,7 +441,6 @@ task.spawn(function()
 	end
 end)
 
--- ===================================================================== matches
 local function webhook(title, fields)
 	local url = F("WebhookURL") if not url or url == "" then return end
 	local req = request or http_request if not req then return end
@@ -503,7 +475,6 @@ task.spawn(function()
 		task.wait(15)
 	end
 end)
--- ===================================================================== overhead contest + range + ESP
 local gui = Instance.new("BillboardGui")
 gui.Name = "HoopHubContest" gui.Size = UDim2.fromOffset(160, 44) gui.StudsOffset = Vector3.new(0, 3.6, 0) gui.AlwaysOnTop = true
 gui.Parent = (gethui and gethui()) or game:GetService("CoreGui")
@@ -528,14 +499,12 @@ end
 local rangeRing
 conn(RunService.RenderStepped:Connect(function()
 	local me = MyChar() local r = Root(me)
-	-- contest overlay
 	if F("ShowContest") and r then
 		local p, def, d = contestInfo()
 		local txt, col = contestLabel(p)
 		gui.Adornee = r gui.Enabled = true
 		glabel.Text = ("%s  %d%%"):format(txt, p) glabel.TextColor3 = col
 	else gui.Enabled = false end
-	-- shooting range ring
 	if F("ShowRange") and r then
 		if not rangeRing then
 			rangeRing = Instance.new("CylinderHandleAdornment") rangeRing.Transparency = 0.75 rangeRing.Height = 0.2 rangeRing.InnerRadius = 0 rangeRing.AlwaysOnTop = false rangeRing.Parent = espFolder
@@ -550,7 +519,6 @@ conn(RunService.RenderStepped:Connect(function()
 			rangeRing.Visible = true
 		end
 	elseif rangeRing then rangeRing.Visible = false end
-	-- ESP
 	for _, o in pairs(esp) do o.alive = false end
 	if F("PlayerESP") then
 		for _, c in ipairs(others()) do
@@ -561,7 +529,6 @@ conn(RunService.RenderStepped:Connect(function()
 	end
 	if F("BallESP") then for _, b in ipairs(balls()) do setEsp(b, F("BallColor") or Color3.fromRGB(255, 170, 40), "BALL") end end
 	for m, o in pairs(esp) do if not o.alive or not m.Parent then o.hl:Destroy() o.bb:Destroy() esp[m] = nil end end
-	-- world
 	if F("Fullbright") then Lighting.Brightness, Lighting.ClockTime, Lighting.GlobalShadows = 2, 14, false Lighting.Ambient = Color3.new(1, 1, 1) end
 	if F("CustomFOV") then workspace.CurrentCamera.FieldOfView = F("FOV") or 80 end
 end))
@@ -574,7 +541,6 @@ end
 
 conn(LP.Idled:Connect(function() if F("AntiAFK") ~= false then VirtualUser:CaptureController() VirtualUser:ClickButton2(Vector2.zero) end end))
 
--- ===================================================================== UI
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/voidhub9-dotcom/VoidHub-UI/main/Source.lua"))()
 local Window = Library:CreateVoidHubWindow({
 	Name = "VoidHub", Title = "VoidHub", LoadingTitle = "VoidHub",
@@ -587,7 +553,7 @@ Flags = Window.Flags
 Hub.Window = Window
 local function notify(t, c, k) Window:Notify({ Title = t, Content = c, Type = k, Duration = 3 }) end
 
-do -- Offense
+do
 	local Off = Window:CreateTab({ Name = "Offense", Desc = "Timing, shooting, dribbling, passing", Icon = "target" })
 	local PT = Off:CreateSubTab({ Name = "Perfect Timing", Icon = "timer" })
 	local AS = Off:CreateSubTab({ Name = "Auto Shoot", Icon = "crosshair" })
@@ -644,8 +610,7 @@ do -- Offense
 	p:CreateKeybind({ Name = "Pass to linked", CurrentKeybind = "Q", Flag = "PassKey", Callback = function() if F("PassTarget") then pass(F("PassTarget"), F("PassType")) end end })
 end
 
-
-do -- Auto Play
+do
 	local AP = Window:CreateTab({ Name = "Auto Play", Desc = "Plays both ends, Rec and badge farm", Icon = "bot" })
 	local P = AP:CreateSubTab({ Name = "Auto Play", Icon = "bot" })
 	local R = AP:CreateSubTab({ Name = "Rec", Icon = "users" })
@@ -681,7 +646,7 @@ do -- Auto Play
 	f:CreateStepper({ Name = "Leave after games (0 = never)", Range = { 0, 100 }, Increment = 1, CurrentValue = 0, Flag = "LeaveAfter" })
 end
 
-do -- Defense
+do
 	local Def = Window:CreateTab({ Name = "Defense", Desc = "Block, rebound, guard, steal", Icon = "shield" })
 	local B = Def:CreateSubTab({ Name = "Block", Icon = "hand" })
 	local G = Def:CreateSubTab({ Name = "Guard", Icon = "shield" })
@@ -710,7 +675,7 @@ do -- Defense
 	h:CreateSlider({ Name = "Mistakes", Range = { 0, 50 }, Increment = 1, CurrentValue = 0, Suffix = "%", Flag = "Mistakes" })
 end
 
-do -- Player
+do
 	local Pl = Window:CreateTab({ Name = "Player", Desc = "Character tweaks", Icon = "user" })
 	local C = Pl:CreateSubTab({ Name = "Character", Icon = "user" })
 	local c = C:CreateGroupbox({ Name = "Character", Side = "Left", Icon = "user" })
@@ -723,7 +688,7 @@ do -- Player
 	c:CreateStatus({ Name = "Overall", Style = "Row", Update = function() return tostring(attr(MyChar(), "Overall") or "-") end })
 end
 
-do -- Visuals
+do
 	local V = Window:CreateTab({ Name = "Visuals", Desc = "ESP and world", Icon = "eye" })
 	local W = V:CreateSubTab({ Name = "World", Icon = "sun" })
 	local e = W:CreateGroupbox({ Name = "ESP", Side = "Left", Icon = "eye" })
@@ -746,7 +711,7 @@ do -- Visuals
 	w:CreateButton({ Name = "Refresh players", Callback = function() sp:SetOptions(pnames()) end })
 end
 
-do -- Misc
+do
 	local M = Window:CreateTab({ Name = "Misc", Desc = "Tasks, log, settings", Icon = "settings" })
 	local T = M:CreateSubTab({ Name = "Tasks & Log", Icon = "list" })
 	local St = M:CreateSubTab({ Name = "Settings", Icon = "sliders-horizontal" })
