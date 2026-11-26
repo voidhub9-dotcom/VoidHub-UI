@@ -967,6 +967,11 @@ local function brain()
 				if n >= (F("GearSellAt") or 3) then local _, msg = sellGear() Hub.LastGear = msg return end
 			end
 			if F("AutoForge") and recipeReady() then local _, msg = forgeOnce() Hub.LastForge = msg return end
+			if F("HuntGoblin") and workspace:FindFirstChild("Living") then
+				for _, m in ipairs(workspace.Living:GetChildren()) do
+					if isMob(m) and m.Name:find("Treasure Goblin") then fightMob(m, 60) return end
+				end
+			end
 			if F("AutoQuest") then if questStep() then return end end
 			if F("MobFarm") then if mobFarmStep() then return end end
 			if F("AutoMine") then
@@ -1311,7 +1316,7 @@ Flags = Window.Flags
 Hub.Window = Window
 local function notify(title, content, kind) Window:Notify({ Title = title, Content = content, Type = kind, Duration = 4 }) end
 
-local AutoToggles = { "AutoQuest", "AutoSellGear", "AutoClaim", "AutoMine", "MobFarm", "AutoForge", "AutoSell", "AutoBuy", "AutoPotions", "AutoHealthPotion", "Fly", "Noclip", "WalkSpeedOn", "JumpPowerOn", "InfJump" }
+local AutoToggles = { "AbyssFarm", "RaidFarm", "AbyssPick", "RaidRetry", "AutoChests", "HuntGoblin", "AutoQuest", "AutoSellGear", "AutoClaim", "AutoMine", "MobFarm", "AutoForge", "AutoSell", "AutoBuy", "AutoPotions", "AutoHealthPotion", "Fly", "Noclip", "WalkSpeedOn", "JumpPowerOn", "InfJump" }
 
 -- Farm tab ------------------------------------------------------------
 local Farm = Window:CreateTab({ Name = "Farm", Desc = "Mining, combat, forge, selling, potions", Icon = "pickaxe" })
@@ -1721,6 +1726,131 @@ do
 	end })
 	QL:CreateStatusList({ Name = "Quest log", MaxRows = 8, EmptyText = "Nothing yet", Update = function()
 		local rows = {} for _, l in ipairs(Hub.QuestLog) do rows[#rows + 1] = l end return rows
+	end })
+end
+
+-- Events tab ------------------------------------------------------------
+do
+	local Events = Window:CreateTab({ Name = "Events", Desc = "Abyss, raids, world events, chests, bosses", Icon = "swords" })
+	local AbyssPage = Events:CreateSubTab({ Name = "Abyss", Icon = "flame" })
+	local RaidPage = Events:CreateSubTab({ Name = "Raids", Icon = "castle" })
+	local WorldPage = Events:CreateSubTab({ Name = "World", Icon = "globe" })
+	local AbyssSvc = Knit.GetService("AbyssService")
+	local RaidSvc = Knit.GetService("RaidService")
+	local evLog
+	local function elog(t) if evLog then evLog:Push(t) end end
+
+	-- Abyss
+	local AB = AbyssPage:CreateGroupbox({ Name = "Abyss", Side = "Left", Icon = "flame" })
+	AB:CreateStatus({ Name = "Abyss", Style = "Row", UpdateRate = 15, Update = function()
+		local ok, _, info = pcall(function() return AbyssSvc:GetInfo():await() end)
+		if not ok or type(info) ~= "table" then return "<Muted>Unknown</Muted>" end
+		return ("%s, cleared %s"):format(info.Unlocked and "<Success>Unlocked</Success>" or "<Error>Locked</Error>", tostring(info.Cleared or 0))
+	end })
+	AB:CreateButton({ Name = "Enter Abyss", Style = "Primary", Callback = function()
+		task.spawn(function() local ok, _, r = pcall(function() return AbyssSvc:Enter():await() end) elog("Enter: " .. tostring(ok and (type(r) == "table" and (r.Message or r.Ok) or r))) end)
+	end })
+	AB:CreateButton({ Name = "Leave Abyss", Style = "Danger", Callback = function() pcall(function() AbyssSvc:Leave() end) end })
+	AB:CreateToggle({ Name = "Auto farm inside", Desc = "Fights every enemy in the run (uses Combat settings).", Flag = "AbyssFarm", CurrentValue = false, Callback = function(on)
+		if on then Flags.MobTypes:Set({}) Flags.MobFarm:Set(true) end
+	end })
+	AB:CreateToggle({ Name = "Auto pick buff cards", Flag = "AbyssPick", CurrentValue = false })
+	AB:CreateInput({ Name = "Card priority", PlaceholderText = "words, best first: damage, health, luck", Flag = "AbyssCardPrio" })
+	AB:CreateToggle({ Name = "Skip cards instead", Flag = "AbyssSkip", CurrentValue = false })
+	AB:CreateToggle({ Name = "Re-enter after a run", Flag = "AbyssRepeat", CurrentValue = false })
+
+	local function cardText(c)
+		if type(c) ~= "table" then return tostring(c):lower() end
+		local t = {}
+		for k, v in pairs(c) do if type(v) ~= "table" then t[#t + 1] = tostring(k) .. " " .. tostring(v) end end
+		return table.concat(t, " "):lower()
+	end
+	pcall(function()
+		conn(Svc.AbyssService.RE.CardOffer.OnClientEvent:Connect(function(offer)
+			if not (F("AbyssPick") or F("AbyssSkip")) then return end
+			task.wait(1)
+			if F("AbyssSkip") then pcall(function() AbyssSvc:SkipCards() end) elog("Skipped cards") return end
+			local cards = type(offer) == "table" and (offer.Cards or offer) or {}
+			local best, bestRank
+			local words = {}
+			for w in tostring(F("AbyssCardPrio") or ""):gmatch("[^,]+") do words[#words + 1] = w:gsub("^%s+", ""):gsub("%s+$", ""):lower() end
+			for _, c in pairs(cards) do
+				local txt, rank = cardText(c), 999
+				for i, w in ipairs(words) do if w ~= "" and txt:find(w, 1, true) then rank = i break end end
+				if not bestRank or rank < bestRank then best, bestRank = c, rank end
+			end
+			if best then pcall(function() AbyssSvc:PickCard(best) end) elog("Picked card: " .. cardText(best):sub(1, 60)) end
+		end))
+		conn(Svc.AbyssService.RE.Progress.OnClientEvent:Connect(function(...) elog("Abyss progress: " .. table.concat((function(...) local t = {} for _, v in ipairs({ ... }) do t[#t + 1] = type(v) == "table" and "{..}" or tostring(v) end return t end)(...), " ")) end))
+	end)
+
+	local AS = AbyssPage:CreateGroupbox({ Name = "Abyss shop", Side = "Right", Icon = "store" })
+	AS:CreateInput({ Name = "Supply id", PlaceholderText = "id from the shop", Flag = "AbyssSupplyId" })
+	AS:CreateButton({ Name = "Buy supply", Callback = function()
+		task.spawn(function() local _, ok, r = pcall(function() return Knit.GetService("AbyssShopService"):BuySupply(F("AbyssSupplyId")):await() end) elog("Supply: " .. tostring(r or ok)) end)
+	end })
+	evLog = AS:CreateLog({ Name = "Event log", MaxRows = 10, Timestamps = true })
+
+	-- Raids
+	local RB = RaidPage:CreateGroupbox({ Name = "Raid", Side = "Left", Icon = "castle" })
+	RB:CreateToggle({ Name = "Auto farm raid waves", Flag = "RaidFarm", CurrentValue = false, Callback = function(on)
+		if on then Flags.MobTypes:Set({}) Flags.MobFarm:Set(true) end
+	end })
+	RB:CreateToggle({ Name = "Auto retry", Desc = "Retries when the raid ends (leader only in a party).", Flag = "RaidRetry", CurrentValue = false })
+	RB:CreateToggle({ Name = "Auto revive", Flag = "RaidRevive", CurrentValue = false })
+	RB:CreateButton({ Name = "Retry now", Callback = function() task.spawn(function() local _, r = pcall(function() return RaidSvc:Retry():await() end) elog("Retry: " .. tostring(r)) end) end })
+	RB:CreateButton({ Name = "Back to island", Callback = function() pcall(function() RaidSvc:GoToIsland() end) end })
+	RB:CreateStatus({ Name = "Wave", Style = "Row", Value = "-", Flag = nil, Update = function() return tostring(Hub.RaidWave or "-") end })
+	pcall(function()
+		local RE = Svc.RaidService.RE
+		conn(RE.CurrentWave.OnClientEvent:Connect(function(w) Hub.RaidWave = type(w) == "table" and (w.Wave or w[1]) or w end))
+		conn(RE.RaidEnded.OnClientEvent:Connect(function(...)
+			elog("Raid ended")
+			if F("WebhookRaid") then webhook("Raid ended", { { name = "Wave", value = tostring(Hub.RaidWave or "?") } }) end
+			if F("RaidRetry") then task.wait(4) pcall(function() RaidSvc:Retry():await() end) elog("Retried raid") end
+		end))
+		conn(RE.ReviveOffer.OnClientEvent:Connect(function()
+			if F("RaidRevive") then task.wait(0.5) pcall(function() RaidSvc:Revive():await() end) elog("Revived") end
+		end))
+	end)
+	RB:CreateToggle({ Name = "Webhook on raid end", Flag = "WebhookRaid", CurrentValue = false })
+
+	-- World events, chests, goblin
+	local WB = WorldPage:CreateGroupbox({ Name = "World events", Side = "Left", Icon = "globe" })
+	WB:CreateToggle({ Name = "Notify on world events", Flag = "WorldNotify", CurrentValue = true })
+	WB:CreateToggle({ Name = "Webhook on world events", Flag = "WorldWebhook", CurrentValue = false })
+	WB:CreateToggle({ Name = "Hunt Treasure Goblin", Desc = "Drops everything to kill one when it spawns.", Flag = "HuntGoblin", CurrentValue = false })
+	pcall(function()
+		conn(Svc.WorldEventService.RE.StartEvent.OnClientEvent:Connect(function(name, ...)
+			local n = type(name) == "table" and (name.Name or name.Id) or name
+			elog("World event: " .. tostring(n))
+			if F("WorldNotify") then notify("World event", tostring(n), "Warning") end
+			if F("WorldWebhook") then webhook("World event started", { { name = "Event", value = tostring(n) }, { name = "Island", value = tostring(Data() and Data().CurrentIsland) } }) end
+		end))
+	end)
+	local CB = WorldPage:CreateGroupbox({ Name = "Event chests", Side = "Right", Icon = "package" })
+	CB:CreateToggle({ Name = "Auto collect signature chests", Flag = "AutoChests", CurrentValue = false })
+	local SigSvc = Knit.GetService("SignatureEventService")
+	local function claimChest(c)
+		if not F("AutoChests") then return end
+		local ok, _, r = pcall(function() return SigSvc:ClaimChest(c):await() end)
+		elog("Chest: " .. tostring(ok and (type(r) == "table" and (r.Message or r.Ok) or r)))
+	end
+	pcall(function() conn(Svc.SignatureEventService.RE.ChestSpawned.OnClientEvent:Connect(function(c) task.wait(0.5) claimChest(c) end)) end)
+	CB:CreateButton({ Name = "Collect open chests now", Callback = function()
+		task.spawn(function()
+			local ok, _, list_ = pcall(function() return SigSvc:GetChests():await() end)
+			if not ok or type(list_) ~= "table" or not next(list_) then elog("No chests open") return end
+			local was = F("AutoChests") Flags.AutoChests:Set(true)
+			for k, c in pairs(list_) do claimChest(type(c) == "table" and c or k) end
+			Flags.AutoChests:Set(was)
+		end)
+	end })
+	local WC = WorldPage:CreateGroupbox({ Name = "Witch cauldron", Side = "Right", Icon = "flask-round" })
+	WC:CreateParagraph({ Name = "Seasonal", Content = "Uses the event candy and needs you within 25 studs of the cauldron." })
+	WC:CreateStepper({ Name = "Throws", Range = { 1, 100 }, Increment = 1, CurrentValue = 1, Flag = "WitchThrows" })
+	WC:CreateButton({ Name = "Throw", Callback = function()
+		task.spawn(function() local ok, _, r = pcall(function() return Knit.GetService("WitchCauldronService"):Throw(F("WitchThrows") or 1):await() end) elog("Cauldron: " .. tostring(ok and r)) end)
 	end })
 end
 
