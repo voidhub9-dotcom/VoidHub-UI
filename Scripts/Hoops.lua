@@ -91,6 +91,24 @@ local function attackRim()
 	attackMemo = rim
 	return rim
 end
+local function defendRim(cpos)
+	local a = attackRim()
+	for _, rr in ipairs(rims()) do if a and rr ~= a then return rr end end
+	return nearestRim(cpos)
+end
+local function guardSpot(cpos, mypos, rimPos, gap)
+	local dir = (rimPos - cpos) * Vector3.new(1, 0, 1)
+	if dir.Magnitude < 0.1 then return cpos end
+	dir = dir.Unit
+	local spot = cpos + dir * gap
+	local rel = (mypos - cpos) * Vector3.new(1, 0, 1)
+	if rel:Dot(dir) < 1 then
+		local side = Vector3.new(-dir.Z, 0, dir.X)
+		if rel:Dot(side) < 0 then side = -side end
+		return cpos + side * 4.5 + dir * (gap + 2)
+	end
+	return spot
+end
 local steering = false
 local MovementClass = require(Aero.Modules.Components.Character.Movement)
 local rawMoveOrig = MovementClass.calculateRawMoveVector
@@ -383,13 +401,10 @@ task.spawn(function()
 			local moving = false
 			if F("AutoGuard") and carrier and carrier ~= me and isOpponent(carrier) then
 				local cr = Root(carrier)
-				local rim = nearestRim(cr.Position)
+				local rim = cr and defendRim(cr.Position)
 				if cr and rim and (cr.Position - r.Position).Magnitude < (F("GuardRange") or 40) then
-					local dir = ((rim.Position - cr.Position) * Vector3.new(1, 0, 1))
-					if dir.Magnitude > 0 then
-						local spot = cr.Position + dir.Unit * (F("GuardDistance") or 4)
-						if math.random() > (F("Mistakes") or 0) / 100 then steer(spot) moving = true end
-					end
+					local spot = guardSpot(cr.Position, r.Position, rim.Position, F("GuardDistance") or 4)
+					if math.random() > (F("Mistakes") or 0) / 100 then steer(spot) moving = true end
 					if F("AutoHoldG") and not attr(me, "HoldingG") then fire(Input.HoldG, { HoldingG = true }) end
 				end
 			end
@@ -471,15 +486,10 @@ local function autoPlayStep()
 		if F("APDefense") then
 			local cr = Root(carrier)
 			if cr then
-				-- lead the handler by his velocity plus our ping so we are where he will be
 				local vel = cr.AssemblyLinearVelocity * Vector3.new(1, 0, 1)
 				local lead = cr.Position + vel * math.clamp(pingMs() / 1000 + 0.12, 0, 0.6)
-				local theirRim
-				for _, rr in ipairs(rims()) do if rr ~= rim then theirRim = rr end end
-				theirRim = theirRim or nearestRim(cr.Position)
-				local dir = ((theirRim.Position - lead) * Vector3.new(1, 0, 1))
-				dir = dir.Magnitude > 0 and dir.Unit or Vector3.zero
-				local spot = lead + dir * (F("GuardDistance") or 3.5)
+				local theirRim = defendRim(cr.Position)
+				local spot = guardSpot(lead, serverPos(me) or r.Position, theirRim.Position, F("GuardDistance") or 3.5)
 				Hub.stopRadius = 0.8 steer(spot) Hub.stopRadius = nil
 				local d = (cr.Position - (serverPos(me) or r.Position)).Magnitude
 				if d < 12 and not attr(me, "HoldingG") then fire(Input.HoldG, { HoldingG = true }) end
