@@ -77,6 +77,15 @@ local function nearestRim(pos)
 	return best, bd
 end
 
+local attackMemo
+local function attackRim()
+	local sum, n = Vector3.zero, 0
+	for _, c in ipairs(opponents()) do local cr = Root(c) if cr then sum += cr.Position n += 1 end end
+	if n == 0 then return attackMemo end
+	local rim = nearestRim(sum / n)
+	attackMemo = rim
+	return rim
+end
 local steering = false
 local function steer(worldTarget)
 	local r = Root() if not r then return end
@@ -336,7 +345,8 @@ task.spawn(function()
 
 			if F("AutoShoot") and carrier == me and os.clock() - lastShot > 1.5 then
 				local p = contestInfo()
-				local _, rimD = nearestRim(r.Position)
+				local ar = attackRim() or nearestRim(r.Position)
+				local rimD = ar and (ar.Position - r.Position).Magnitude
 				if p <= (F("MaxContest") or 35) and rimD and rimD <= (F("ShootRange") or 30) then lastShot = os.clock() shootTap() log(("Auto shot (contest %d%%, %.0f st)"):format(p, rimD)) end
 			end
 
@@ -408,7 +418,8 @@ local lastPlay, lastMove = 0, 0
 local function autoPlayStep()
 	local me = MyChar() local r = Root(me) if not r then return end
 	local carrier = ballCarrier()
-	local rim, rimD = nearestRim(r.Position)
+	local rim = attackRim() or nearestRim(r.Position)
+	local rimD = rim and (rim.Position - r.Position).Magnitude
 	if carrier == me then
 		local p = contestInfo()
 		if rim and rimD <= 9 and (F("APDunks") or F("APRimRun")) then if shootTap() then log("AutoPlay: finish at rim") end return end
