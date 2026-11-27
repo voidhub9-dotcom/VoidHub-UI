@@ -284,12 +284,31 @@ local function shootTap()
 	local me = MyChar()
 	if os.clock() - lastTap < 1.6 or Timing.pending or attr(me, "Action") == "Shooting" then return false end
 	lastTap = os.clock()
-	stopSteer()
+	Hub.shooting = os.clock()
 	local r = Root(me)
+	local rim = attackRim()
+	local close = rim and r and (rim.Position - r.Position).Magnitude <= 12
 	local t0 = os.clock()
-	while r and (r.AssemblyLinearVelocity * Vector3.new(1, 0, 1)).Magnitude > 2.5 and os.clock() - t0 < 0.35 do task.wait() end
-	fire(Input.Shoot, { Shoot = true, Input = "E" })
-	if not F("PerfectTiming") then task.delay(F("HoldTime") or 0.29, function() fire(Input.Shoot, { Shoot = false }) end) end
+	while os.clock() - t0 < 1.2 do
+		local a = attr(me, "Action")
+		if a ~= "Dribbling" and a ~= "PassTransition" and a ~= "CatchingPass" and attr(me, "CanMove") ~= false then break end
+		task.wait()
+	end
+	if not close then
+		stopSteer()
+		t0 = os.clock()
+		while r and (r.AssemblyLinearVelocity * Vector3.new(1, 0, 1)).Magnitude > 2.5 and os.clock() - t0 < 0.3 do task.wait() end
+	end
+	for _ = 1, 3 do
+		if close then fire(Input.Shoot, { Shoot = true, Sprint = true, Input = "EE" }) else fire(Input.Shoot, { Shoot = true, Input = "E" }) end
+		local t1 = os.clock()
+		while os.clock() - t1 < 0.3 and attr(me, "Action") ~= "Shooting" and not Timing.meter do task.wait() end
+		if attr(me, "Action") == "Shooting" or Timing.meter or not attr(me, "Basketball") then break end
+		Timing.pending = false
+		fire(Input.Shoot, { Shoot = false, Input = "E" })
+		task.wait(0.08)
+	end
+	if not F("PerfectTiming") then task.delay(F("HoldTime") or 0.29, function() fire(Input.Shoot, { Shoot = false, Input = "E" }) end) end
 	task.delay(0.9, function()
 		if not Timing.meter then
 			Hub.noBallUntil = os.clock() + 4
@@ -452,7 +471,7 @@ local function autoPlayStep()
 	local rimD = rim and (rim.Position - r.Position).Magnitude
 	if carrier == me then
 		local p, def, defD = contestInfo()
-		if rim and rimD <= 9 and (F("APDunks") or F("APRimRun")) then if shootTap() then log("AutoPlay: finish at rim") end return end
+		if rim and rimD <= 12 then steer(rim.Position) if shootTap() then log("AutoPlay: finish at rim") end return end
 		local three = rimD and rimD > 22
 		-- just created space with an escape move: let it fly
 		local afterEscape = os.clock() - (Hub.lastEscape or 0) < 0.9 and p <= 60
@@ -464,7 +483,7 @@ local function autoPlayStep()
 		end
 		local close = def and defD and defD < 7
 		local gap = close and 0.55 or (p >= 40 and 0.9 or (F("APDribbleGap") or 1.6))
-		if (F("APDribble") or (F("APBreakAnkles") and p >= 40)) and os.clock() - lastMove > gap then
+		if (F("APDribble") or (F("APBreakAnkles") and p >= 40)) and os.clock() - lastMove > gap and os.clock() - (Hub.shooting or 0) > 2 then
 			lastMove = os.clock()
 			local pool = F("APUseCombo") and (F("ComboMoves") or {}) or (F("APMoves") or {})
 			if #pool == 0 then pool = close and { "StepBack", "Crossover", "BehindBack", "SnatchBack", "DoubleCrossover" } or { "Crossover", "BehindBack", "Hesitation", "DoubleCrossover" } end
