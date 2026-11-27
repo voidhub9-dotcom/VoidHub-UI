@@ -304,6 +304,31 @@ end
 
 local function pass(name, ptype) fire(Input.Pass, { Player = name, PassType = ptype or 1 }) end
 
+local glide = { base = nil, set = nil }
+local function proxyVelocity()
+	local pc = workspace:FindFirstChild("ProxyCharacter")
+	return pc and pc:FindFirstChild("MovementVelocity")
+end
+pcall(function() RunService:UnbindFromRenderStep("HoopHubGlide") end)
+RunService:BindToRenderStep("HoopHubGlide", Enum.RenderPriority.Last.Value, function()
+	if not Hub.Running then return end
+	local me = MyChar() local bv = proxyVelocity()
+	if not me or not bv then return end
+	local act = me:GetAttribute("Action")
+	local mult
+	if act == "Dribbling" and F("DribbleGlide") then mult = F("DribbleGlideAmount") or 1.6
+	elseif act == "Shooting" and F("ShotGlide") then mult = F("ShotGlideAmount") or 1.4
+	elseif act == "Gathering" and F("GatherGlide") then mult = F("GatherGlideAmount") or 1.4 end
+	if not mult then glide.base, glide.set = nil, nil return end
+	local v = bv.Velocity
+	local base = v
+	if glide.set and (v - glide.set).Magnitude < 0.01 then base = glide.base end
+	local out = base * mult
+	if out.Magnitude > (F("GlideCap") or 45) then out = out.Unit * (F("GlideCap") or 45) end
+	glide.base = base
+	bv.Velocity = out
+	glide.set = out
+end)
 local lastBlock, lastSteal, lastShot, lastJump = 0, 0, 0, 0
 conn(RunService.Heartbeat:Connect(function()
 	if not Hub.Running then return end
@@ -587,6 +612,14 @@ do
 
 	local d = DR:CreateGroupbox({ Name = "Dribble moves", Side = "Left", Icon = "repeat" })
 	for _, m in ipairs(MoveNames) do d:CreateButton({ Name = m, Callback = function() dribble(m) end }) end
+	local gl = DR:CreateGroupbox({ Name = "Glide", Side = "Right", Icon = "wind" })
+	gl:CreateToggle({ Name = "Dribble glide", Flag = "DribbleGlide", CurrentValue = false })
+	gl:CreateSlider({ Name = "Dribble glide amount", Range = { 1, 3 }, Increment = 0.05, CurrentValue = 1.6, Suffix = "x", Flag = "DribbleGlideAmount" })
+	gl:CreateToggle({ Name = "Shot glide", Flag = "ShotGlide", CurrentValue = false })
+	gl:CreateSlider({ Name = "Shot glide amount", Range = { 1, 3 }, Increment = 0.05, CurrentValue = 1.4, Suffix = "x", Flag = "ShotGlideAmount" })
+	gl:CreateToggle({ Name = "Gather glide", Flag = "GatherGlide", CurrentValue = false })
+	gl:CreateSlider({ Name = "Gather glide amount", Range = { 1, 3 }, Increment = 0.05, CurrentValue = 1.4, Suffix = "x", Flag = "GatherGlideAmount" })
+	gl:CreateSlider({ Name = "Speed cap", Range = { 15, 80 }, Increment = 1, CurrentValue = 45, Flag = "GlideCap" })
 	local d2 = DR:CreateGroupbox({ Name = "Info", Side = "Right", Icon = "info" })
 	d2:CreateParagraph({ Name = "Hand aware", Content = "Each move sends the combo that matches your current dribble hand. Euro step, hop step, side steps, spin gather and halo are gather moves with no combo input; not included." })
 
@@ -733,6 +766,7 @@ function Hub.Unload()
 	Hub.Running = false
 	stopSteer()
 	pcall(hookmetamethod, game, "__namecall", oldNC)
+	pcall(function() RunService:UnbindFromRenderStep("HoopHubGlide") end)
 	for _, c in ipairs(Hub.Conns) do pcall(function() c:Disconnect() end) end
 	postEffects(false)
 	pcall(function() gui:Destroy() espFolder:Destroy() end)
