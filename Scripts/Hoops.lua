@@ -260,8 +260,7 @@ local function shootTap()
 	stopSteer()
 	local r = Root(me)
 	local t0 = os.clock()
-	while r and (r.AssemblyLinearVelocity * Vector3.new(1, 0, 1)).Magnitude > 1.5 and os.clock() - t0 < 0.8 do task.wait() end
-	task.wait(0.1)
+	while r and (r.AssemblyLinearVelocity * Vector3.new(1, 0, 1)).Magnitude > 2.5 and os.clock() - t0 < 0.35 do task.wait() end
 	fire(Input.Shoot, { Shoot = true, Input = "E", UseSpace = true })
 	if not F("PerfectTiming") then task.delay(F("HoldTime") or 0.29, function() fire(Input.Shoot, { Shoot = false }) end) end
 	task.delay(0.9, function()
@@ -427,9 +426,11 @@ local function autoPlayStep()
 		local wantShoot = (F("APShootOpen") and p <= (F("MaxContest") or 35)) and rimD and rimD <= (F("ShootRange") or 30)
 		if wantShoot and (not three or math.random(100) <= (F("AP3Chance") or 40)) and (F("APMidrange") or three) then if shootTap() then log("AutoPlay: shot") end return end
 		if F("APPass") and p >= 60 then local t = openTeammate() if t then pass(t.Name, 1) log("AutoPlay: pass to " .. t.Name) return end end
-		if F("APBreakAnkles") and p >= 40 and os.clock() - lastMove > 1.2 then
+		local dribbleGap = p >= 40 and 0.9 or (F("APDribbleGap") or 1.6)
+		if (F("APDribble") or (F("APBreakAnkles") and p >= 40)) and os.clock() - lastMove > dribbleGap then
 			lastMove = os.clock()
 			local pool = F("APUseCombo") and (F("ComboMoves") or {}) or (F("APMoves") or {})
+			if #pool == 0 then pool = { "Crossover", "BehindBack", "StepBack", "Spin", "Hesitation" } end
 			if #pool > 0 then dribble(pool[math.random(#pool)]) end
 		end
 		if rim and (F("APRimRun") or F("APDunks")) then steer(rim.Position) end
@@ -454,12 +455,14 @@ end
 task.spawn(function()
 	while Hub.Running do
 		if F("AutoPlay") then
+			local me = MyChar()
+			if me and F("APSprint") ~= false and not attr(me, "Sprinting") and (Mobile.MoveVector.Magnitude > 0.1) then fire(Input.Sprint, true) end
 			local ok, e = pcall(autoPlayStep) if not ok then log("autoplay: " .. tostring(e)) end
 			if F("AutoJumpBall") then
 				for _, d in ipairs(LP.PlayerGui:GetDescendants()) do if d:IsA("TextLabel") and d.Name == "Status" and d.Visible and d.Text:upper():find("JUMP") then jump() break end end
 			end
 		end
-		task.wait(0.1)
+		task.wait(F("AutoPlay") and 0.03 or 0.1)
 	end
 end)
 
@@ -558,6 +561,12 @@ local function postEffects(off)
 	else for _, e in ipairs(savedFx) do pcall(function() e.Enabled = true end) end savedFx = {} end
 end
 
+conn(game:GetService("GuiService").ErrorMessageChanged:Connect(function(msg)
+	if F("AutoRejoin") and msg and msg ~= "" then
+		task.wait(2)
+		pcall(function() game:GetService("TeleportService"):Teleport(game.PlaceId, LP) end)
+	end
+end))
 conn(LP.Idled:Connect(function() if F("AntiAFK") ~= false then VirtualUser:CaptureController() VirtualUser:ClickButton2(Vector2.zero) end end))
 
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/voidhub9-dotcom/VoidHub-UI/main/Source.lua"))()
@@ -644,6 +653,7 @@ do
 	local BF = AP:CreateSubTab({ Name = "Badge Farm", Icon = "award" })
 	local a = P:CreateGroupbox({ Name = "Auto Play", Side = "Left", Icon = "bot" })
 	a:CreateToggle({ Name = "Auto Play", Flag = "AutoPlay", CurrentValue = false })
+	a:CreateToggle({ Name = "Sprint while playing", Flag = "APSprint", CurrentValue = true })
 	a:CreateToggle({ Name = "Rim run", Flag = "APRimRun", CurrentValue = true })
 	a:CreateToggle({ Name = "Go for dunks", Flag = "APDunks", CurrentValue = true })
 	a:CreateToggle({ Name = "Midranges", Flag = "APMidrange", CurrentValue = true })
@@ -653,6 +663,8 @@ do
 	a:CreateToggle({ Name = "Shooting spots", Flag = "APSpots", CurrentValue = true })
 	local b = P:CreateGroupbox({ Name = "Handles & defense", Side = "Right", Icon = "repeat" })
 	b:CreateToggle({ Name = "Break ankles", Flag = "APBreakAnkles", CurrentValue = true })
+	b:CreateToggle({ Name = "Dribble while driving", Flag = "APDribble", CurrentValue = true })
+	b:CreateSlider({ Name = "Dribble every", Range = { 0.6, 4 }, Increment = 0.1, CurrentValue = 1.6, Suffix = " s", Flag = "APDribbleGap" })
 	b:CreateDropdown({ Name = "Move pool", Options = MoveNames, MultipleOptions = true, AllowNone = true, Flag = "APMoves", NoneText = "Pick moves" })
 	b:CreateToggle({ Name = "Use my combo instead", Flag = "APUseCombo", CurrentValue = false })
 	b:CreateToggle({ Name = "Auto defense", Flag = "APDefense", CurrentValue = true })
@@ -712,6 +724,7 @@ do
 	c:CreateSlider({ Name = "Speed boost value", Range = { 1, 6 }, Increment = 0.1, CurrentValue = 3, Flag = "SpeedValue" })
 	c:CreateToggle({ Name = "No stun", Flag = "NoStun", CurrentValue = false })
 	c:CreateToggle({ Name = "Anti AFK", Flag = "AntiAFK", CurrentValue = true })
+	c:CreateToggle({ Name = "Auto rejoin on kick", Flag = "AutoRejoin", CurrentValue = true })
 	c:CreateStatus({ Name = "Overall", Style = "Row", Update = function() return tostring(attr(MyChar(), "Overall") or "-") end })
 end
 
