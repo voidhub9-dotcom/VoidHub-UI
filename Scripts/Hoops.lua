@@ -285,6 +285,7 @@ local function shootTap()
 	if os.clock() - lastTap < 1.6 or Timing.pending or attr(me, "Action") == "Shooting" then return false end
 	lastTap = os.clock()
 	Hub.shooting = os.clock()
+	if attr(me, "HoldingG") then fire(Input.HoldG, { HoldingG = false }) task.wait(0.12) end
 	local r = Root(me)
 	local rim = attackRim()
 	local close = rim and r and (rim.Position - r.Position).Magnitude <= 12
@@ -470,6 +471,7 @@ local function autoPlayStep()
 	local rim = attackRim() or nearestRim(r.Position)
 	local rimD = rim and (rim.Position - r.Position).Magnitude
 	if carrier == me then
+		if attr(me, "HoldingG") then fire(Input.HoldG, { HoldingG = false }) end
 		local p, def, defD = contestInfo()
 		if rim and rimD <= 12 then steer(rim.Position) if shootTap() then log("AutoPlay: finish at rim") end return end
 		local three = rimD and rimD > 22
