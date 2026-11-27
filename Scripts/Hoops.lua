@@ -441,7 +441,10 @@ local function autoPlayStep()
 		local three = rimD and rimD > 22
 		local wantShoot = (F("APShootOpen") and p <= (F("MaxContest") or 35)) and rimD and rimD <= (F("ShootRange") or 30)
 		if wantShoot and (not three or math.random(100) <= (F("AP3Chance") or 40)) and (F("APMidrange") or three) then if shootTap() then log("AutoPlay: shot") end return end
-		if F("APPass") and p >= 60 then local t = openTeammate() if t then pass(t.Name, 1) log("AutoPlay: pass to " .. t.Name) return end end
+		if F("APPass") and p >= (F("APPassContest") or 85) and os.clock() - (Hub.lastPass or 0) > 3 then
+			local t, space = openTeammate()
+			if t and (space or 0) >= (F("APPassSpace") or 10) then Hub.lastPass = os.clock() pass(t.Name, 1) log(("AutoPlay: pass to %s (%.0f st open)"):format(t.Name, space)) return end
+		end
 		local dribbleGap = p >= 40 and 0.9 or (F("APDribbleGap") or 1.6)
 		if (F("APDribble") or (F("APBreakAnkles") and p >= 40)) and os.clock() - lastMove > dribbleGap then
 			lastMove = os.clock()
@@ -676,6 +679,8 @@ do
 	a:CreateSlider({ Name = "3PT chance", Range = { 0, 100 }, Increment = 5, CurrentValue = 40, Suffix = "%", Flag = "AP3Chance" })
 	a:CreateToggle({ Name = "Shoot when open", Flag = "APShootOpen", CurrentValue = true })
 	a:CreateToggle({ Name = "Pass to teammates", Flag = "APPass", CurrentValue = true })
+	a:CreateSlider({ Name = "Pass when contest above", Range = { 40, 100 }, Increment = 5, CurrentValue = 85, Suffix = "%", Flag = "APPassContest" })
+	a:CreateSlider({ Name = "Teammate open by", Range = { 3, 25 }, Increment = 1, CurrentValue = 10, Suffix = " st", Flag = "APPassSpace" })
 	a:CreateToggle({ Name = "Shooting spots", Flag = "APSpots", CurrentValue = true })
 	local b = P:CreateGroupbox({ Name = "Handles & defense", Side = "Right", Icon = "repeat" })
 	b:CreateToggle({ Name = "Break ankles", Flag = "APBreakAnkles", CurrentValue = true })
