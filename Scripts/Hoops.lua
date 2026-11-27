@@ -51,27 +51,13 @@ local function opponents() local t = {} for _, c in ipairs(others()) do if isOpp
 local function balls() return workspace.Basketballs:GetChildren() end
 local heldSeen = {}
 local function ballCarrier()
-	local now = os.clock()
 	for _, b in ipairs(balls()) do
-		local bp = b:GetPivot().Position
-		for _, c in ipairs(workspace.Characters:GetChildren()) do
-			local r = Root(c)
-			if r and isPlayerChar(c) and (c == MyChar() or Players:FindFirstChild(c.Name) or attr(c, "OnCourt") == true) then
-				local d = ((bp - r.Position) * Vector3.new(1, 0, 1)).Magnitude
-				if d < 3 and bp.Y - r.Position.Y > -1.5 and not (c == MyChar() and (Hub.noBallUntil or 0) > now) then heldSeen[c] = { t = now, b = b } end
-			end
-		end
-	end
-	for c, h in pairs(heldSeen) do
-		if not c.Parent or now - h.t > 0.7 then heldSeen[c] = nil
-		else local r = Root(c) if r and (h.b:GetPivot().Position - r.Position).Magnitude < 4 then return c, h.b end end
-	end
-	do return nil end
-	for _, b in ipairs(balls()) do
-		local bp = b:GetPivot().Position
-		for _, c in ipairs(workspace.Characters:GetChildren()) do
-			local r = Root(c)
-			if r and isPlayerChar(c) and (c == MyChar() or Players:FindFirstChild(c.Name) or attr(c, "OnCourt") == true) and (r.Position - bp).Magnitude < 4 then return c, b end
+		local a = b:FindFirstChild("Attributes")
+		local holder = a and a:FindFirstChild("Character")
+		local name = holder and holder.Value
+		if type(name) == "string" and name ~= "" then
+			local c = workspace.Characters:FindFirstChild(name)
+			if c then return c, b end
 		end
 	end
 end
