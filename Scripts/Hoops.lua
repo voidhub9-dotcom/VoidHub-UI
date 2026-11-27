@@ -270,7 +270,7 @@ local function shootTap()
 	local r = Root(me)
 	local t0 = os.clock()
 	while r and (r.AssemblyLinearVelocity * Vector3.new(1, 0, 1)).Magnitude > 2.5 and os.clock() - t0 < 0.35 do task.wait() end
-	fire(Input.Shoot, { Shoot = true, Input = "E", UseSpace = true })
+	fire(Input.Shoot, { Shoot = true, Input = "E" })
 	if not F("PerfectTiming") then task.delay(F("HoldTime") or 0.29, function() fire(Input.Shoot, { Shoot = false }) end) end
 	task.delay(0.9, function()
 		if not Timing.meter then
