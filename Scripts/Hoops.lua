@@ -54,9 +54,10 @@ local function ballCarrier()
 	for _, b in ipairs(balls()) do
 		local a = b:FindFirstChild("Attributes")
 		local holder = a and a:FindFirstChild("Character")
-		local name = holder and holder.Value
-		if type(name) == "string" and name ~= "" then
-			local c = workspace.Characters:FindFirstChild(name)
+		local v = holder and holder.Value
+		if typeof(v) == "Instance" and v.Parent then return v, b end
+		if type(v) == "string" and v ~= "" then
+			local c = workspace.Characters:FindFirstChild(v)
 			if c then return c, b end
 		end
 	end
@@ -414,8 +415,15 @@ local function openTeammate()
 	return best, bs
 end
 local lastPlay, lastMove = 0, 0
+local lastInbound = 0
 local function autoPlayStep()
 	local me = MyChar() local r = Root(me) if not r then return end
+	if attr(me, "Action") == "Inbounding" and os.clock() - lastInbound > 1.5 then
+		lastInbound = os.clock()
+		local t = openTeammate()
+		if t then pass(t.Name, 1) log("AutoPlay: inbound to " .. t.Name) end
+		return
+	end
 	local carrier = ballCarrier()
 	local rim = attackRim() or nearestRim(r.Position)
 	local rimD = rim and (rim.Position - r.Position).Magnitude
