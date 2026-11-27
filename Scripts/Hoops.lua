@@ -345,30 +345,41 @@ end
 
 local function pass(name, ptype) fire(Input.Pass, { Player = name, PassType = ptype or 1 }) end
 
-local glide = { base = nil, set = nil }
-local function proxyVelocity()
+local function glideTargets(me)
+	local t = {}
 	local pc = workspace:FindFirstChild("ProxyCharacter")
-	return pc and pc:FindFirstChild("MovementVelocity")
+	local a = pc and pc:FindFirstChild("MovementVelocity", true)
+	if a and a:IsA("BodyVelocity") then t[#t + 1] = a end
+	local r = me and me:FindFirstChild("HumanoidRootPart")
+	local b = r and r:FindFirstChild("MovementVelocity")
+	if b and b:IsA("BodyVelocity") and b ~= a then t[#t + 1] = b end
+	return t
 end
+local glideState = setmetatable({}, { __mode = "k" })
 pcall(function() RunService:UnbindFromRenderStep("HoopHubGlide") end)
 RunService:BindToRenderStep("HoopHubGlide", Enum.RenderPriority.Last.Value, function()
 	if not Hub.Running then return end
-	local me = MyChar() local bv = proxyVelocity()
-	if not me or not bv then return end
+	local me = MyChar()
+	if not me then return end
 	local act = me:GetAttribute("Action")
 	local mult
 	if act == "Dribbling" and F("DribbleGlide") then mult = F("DribbleGlideAmount") or 1.6
 	elseif act == "Shooting" and F("ShotGlide") then mult = F("ShotGlideAmount") or 1.4
 	elseif act == "Gathering" and F("GatherGlide") then mult = F("GatherGlideAmount") or 1.4 end
-	if not mult then glide.base, glide.set = nil, nil return end
-	local v = bv.Velocity
-	local base = v
-	if glide.set and (v - glide.set).Magnitude < 0.01 then base = glide.base end
-	local out = base * mult
-	if out.Magnitude > (F("GlideCap") or 45) then out = out.Unit * (F("GlideCap") or 45) end
-	glide.base = base
-	bv.Velocity = out
-	glide.set = out
+	for _, bv in ipairs(glideTargets(me)) do
+		local st = glideState[bv]
+		if not st then st = {} glideState[bv] = st end
+		if not mult then st.base, st.set = nil, nil
+		else
+			local v = bv.Velocity
+			local base = (st.set and (v - st.set).Magnitude < 0.01) and st.base or v
+			local out = base * mult
+			local cap = F("GlideCap") or 45
+			if out.Magnitude > cap then out = out.Unit * cap end
+			st.base, st.set = base, out
+			bv.Velocity = out
+		end
+	end
 end)
 local lastBlock, lastSteal, lastShot, lastJump = 0, 0, 0, 0
 conn(RunService.Heartbeat:Connect(function()
