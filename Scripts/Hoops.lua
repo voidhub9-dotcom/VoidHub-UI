@@ -51,6 +51,8 @@ local function opponents() local t = {} for _, c in ipairs(others()) do if isOpp
 local function balls() return workspace.Basketballs:GetChildren() end
 local heldSeen = {}
 local function ballCarrier()
+	local me = MyChar()
+	if me and me:GetAttribute("Basketball") then return me, balls()[1] end
 	for _, b in ipairs(balls()) do
 		local a = b:FindFirstChild("Attributes")
 		local holder = a and a:FindFirstChild("Character")
@@ -80,6 +82,8 @@ end
 
 local attackMemo
 local function attackRim()
+	local g = attr(MyChar(), "Goal")
+	if typeof(g) == "CFrame" then local rim = nearestRim(g.Position) if rim then attackMemo = rim return rim end end
 	local sum, n = Vector3.zero, 0
 	for _, c in ipairs(opponents()) do local cr = Root(c) if cr then sum += cr.Position n += 1 end end
 	if n == 0 then return attackMemo end
@@ -88,19 +92,23 @@ local function attackRim()
 	return rim
 end
 local steering = false
+local MovementClass = require(Aero.Modules.Components.Character.Movement)
+local rawMoveOrig = MovementClass.calculateRawMoveVector
+MovementClass.calculateRawMoveVector = function(self, v, ...)
+	if Hub.Running and Hub.worldMove then return Hub.worldMove end
+	return rawMoveOrig(self, v, ...)
+end
 local function steer(worldTarget)
 	local r = Root() if not r then return end
 	local w = (worldTarget - r.Position) * Vector3.new(1, 0, 1)
-	if w.Magnitude < (Hub.stopRadius or 0.5) then Mobile.MoveVector = Vector3.zero return true end
+	if w.Magnitude < (Hub.stopRadius or 0.5) then Hub.worldMove = nil Mobile.MoveVector = Vector3.zero return true end
 	w = w.Unit
-	local cam = workspace.CurrentCamera
-	local look = Vector3.new(cam.CFrame.LookVector.X, 0, cam.CFrame.LookVector.Z).Unit
-	local right = Vector3.new(cam.CFrame.RightVector.X, 0, cam.CFrame.RightVector.Z).Unit
-	Mobile.MoveVector = Vector3.new(w:Dot(right), 0, -w:Dot(look))
+	Hub.worldMove = w
+	Mobile.MoveVector = Vector3.new(0, 0, -1)
 	steering = true
 	return false
 end
-local function stopSteer() if steering then Mobile.MoveVector = Vector3.zero steering = false end end
+local function stopSteer() if steering then Hub.worldMove = nil Mobile.MoveVector = Vector3.zero steering = false end end
 local function chaseBall(b)
 	local r = Root() if not r then return end
 	local bp = b:GetPivot().Position
@@ -438,7 +446,7 @@ local function autoPlayStep()
 		if (F("APDribble") or (F("APBreakAnkles") and p >= 40)) and os.clock() - lastMove > dribbleGap then
 			lastMove = os.clock()
 			local pool = F("APUseCombo") and (F("ComboMoves") or {}) or (F("APMoves") or {})
-			if #pool == 0 then pool = { "Crossover", "BehindBack", "StepBack", "Spin", "Hesitation" } end
+			if #pool == 0 then pool = { "Crossover", "BehindBack", "Hesitation", "DoubleCrossover" } end
 			if #pool > 0 then dribble(pool[math.random(#pool)]) end
 		end
 		if rim and (F("APRimRun") or F("APDunks")) then steer(rim.Position) end
@@ -785,6 +793,8 @@ function Hub.Unload()
 	stopSteer()
 	pcall(hookmetamethod, game, "__namecall", oldNC)
 	pcall(function() RunService:UnbindFromRenderStep("HoopHubGlide") end)
+	MovementClass.calculateRawMoveVector = rawMoveOrig
+	Hub.worldMove = nil
 	for _, c in ipairs(Hub.Conns) do pcall(function() c:Disconnect() end) end
 	postEffects(false)
 	pcall(function() gui:Destroy() espFolder:Destroy() end)
