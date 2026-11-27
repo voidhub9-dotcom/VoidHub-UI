@@ -405,7 +405,7 @@ local function openTeammate()
 	local me = MyChar() local r = Root(me) if not r then return end
 	local best, bs
 	for _, c in ipairs(others()) do
-		if not isOpponent(c) and Players:FindFirstChild(c.Name) then
+		if not isOpponent(c) and attr(c, "TeamIndex") == attr(me, "TeamIndex") then
 			local cr = Root(c)
 			local near = math.huge
 			for _, o in ipairs(opponents()) do local orr = Root(o) if orr and cr then near = math.min(near, (orr.Position - cr.Position).Magnitude) end end
