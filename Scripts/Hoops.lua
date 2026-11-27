@@ -436,30 +436,59 @@ local function autoPlayStep()
 	local rim = attackRim() or nearestRim(r.Position)
 	local rimD = rim and (rim.Position - r.Position).Magnitude
 	if carrier == me then
-		local p = contestInfo()
+		local p, def, defD = contestInfo()
 		if rim and rimD <= 9 and (F("APDunks") or F("APRimRun")) then if shootTap() then log("AutoPlay: finish at rim") end return end
 		local three = rimD and rimD > 22
-		local wantShoot = (F("APShootOpen") and p <= (F("MaxContest") or 35)) and rimD and rimD <= (F("ShootRange") or 30)
-		if wantShoot and (not three or math.random(100) <= (F("AP3Chance") or 40)) and (F("APMidrange") or three) then if shootTap() then log("AutoPlay: shot") end return end
+		-- just created space with an escape move: let it fly
+		local afterEscape = os.clock() - (Hub.lastEscape or 0) < 0.9 and p <= 60
+		local wantShoot = ((F("APShootOpen") and p <= (F("MaxContest") or 35)) or afterEscape) and rimD and rimD <= (F("ShootRange") or 42)
+		if wantShoot and (not three or afterEscape or math.random(100) <= (F("AP3Chance") or 70)) and (F("APMidrange") or three) then if shootTap() then log(("AutoPlay: shot %.0f st, contest %d%%"):format(rimD, p)) end return end
 		if F("APPass") and p >= (F("APPassContest") or 85) and os.clock() - (Hub.lastPass or 0) > 3 then
 			local t, space = openTeammate()
 			if t and (space or 0) >= (F("APPassSpace") or 10) then Hub.lastPass = os.clock() pass(t.Name, 1) log(("AutoPlay: pass to %s (%.0f st open)"):format(t.Name, space)) return end
 		end
-		local dribbleGap = p >= 40 and 0.9 or (F("APDribbleGap") or 1.6)
-		if (F("APDribble") or (F("APBreakAnkles") and p >= 40)) and os.clock() - lastMove > dribbleGap then
+		local close = def and defD and defD < 7
+		local gap = close and 0.55 or (p >= 40 and 0.9 or (F("APDribbleGap") or 1.6))
+		if (F("APDribble") or (F("APBreakAnkles") and p >= 40)) and os.clock() - lastMove > gap then
 			lastMove = os.clock()
 			local pool = F("APUseCombo") and (F("ComboMoves") or {}) or (F("APMoves") or {})
-			if #pool == 0 then pool = { "Crossover", "BehindBack", "Hesitation", "DoubleCrossover" } end
-			if #pool > 0 then dribble(pool[math.random(#pool)]) end
+			if #pool == 0 then pool = close and { "StepBack", "Crossover", "BehindBack", "SnatchBack", "DoubleCrossover" } or { "Crossover", "BehindBack", "Hesitation", "DoubleCrossover" } end
+			local mv = pool[math.random(#pool)]
+			if dribble(mv) and (mv == "StepBack" or mv == "SnatchBack" or mv == "Crossover" or mv == "BehindBack") then Hub.lastEscape = os.clock() end
 		end
-		if rim and (F("APRimRun") or F("APDunks")) then steer(rim.Position) end
+		if rim and (F("APRimRun") or F("APDunks")) then
+			local target = rim.Position
+			if close then
+				-- attack the side away from the defender instead of running into him
+				local toRim = ((rim.Position - r.Position) * Vector3.new(1, 0, 1)).Unit
+				local away = ((r.Position - Root(def).Position) * Vector3.new(1, 0, 1))
+				away = away.Magnitude > 0 and away.Unit or Vector3.zero
+				target = r.Position + (toRim * 0.65 + away * 0.35).Unit * 12
+			end
+			steer(target)
+		end
 	elseif carrier and isOpponent(carrier) then
 		if F("APDefense") then
 			local cr = Root(carrier)
-			local orim = cr and nearestRim(cr.Position)
-			if cr and orim then steer(cr.Position + ((orim.Position - cr.Position) * Vector3.new(1, 0, 1)).Unit * (F("GuardDistance") or 4)) end
-			if F("APSteal") and cr and (cr.Position - r.Position).Magnitude < (F("StealRange") or 6) and os.clock() - lastPlay > (F("StealCooldown") or 1.2) then lastPlay = os.clock() fire(Input.Steal) end
+			if cr then
+				-- lead the handler by his velocity plus our ping so we are where he will be
+				local vel = cr.AssemblyLinearVelocity * Vector3.new(1, 0, 1)
+				local lead = cr.Position + vel * math.clamp(pingMs() / 1000 + 0.12, 0, 0.6)
+				local theirRim
+				for _, rr in ipairs(rims()) do if rr ~= rim then theirRim = rr end end
+				theirRim = theirRim or nearestRim(cr.Position)
+				local dir = ((theirRim.Position - lead) * Vector3.new(1, 0, 1))
+				dir = dir.Magnitude > 0 and dir.Unit or Vector3.zero
+				local spot = lead + dir * (F("GuardDistance") or 3.5)
+				Hub.stopRadius = 0.8 steer(spot) Hub.stopRadius = nil
+				local d = (cr.Position - (serverPos(me) or r.Position)).Magnitude
+				if d < 12 and not attr(me, "HoldingG") then fire(Input.HoldG, { HoldingG = true }) end
+				if attr(carrier, "Action") == "Shooting" and d < 9 and os.clock() - (Hub.lastContest or 0) > 1.2 then Hub.lastContest = os.clock() task.delay(0.1, jump) log("AutoPlay: contest shot") end
+				if F("APSteal") and d < (F("StealRange") or 6) and attr(carrier, "Action") ~= "Shooting" and os.clock() - lastPlay > (F("StealCooldown") or 1.2) then lastPlay = os.clock() fire(Input.Steal) end
+			end
 		end
+	elseif attr(me, "HoldingG") then
+		fire(Input.HoldG, { HoldingG = false })
 	elseif carrier then
 		if rim and F("APSpots") then
 			local ang = (os.clock() * 0.2) % (math.pi * 2)
@@ -629,7 +658,7 @@ do
 	local a = AS:CreateGroupbox({ Name = "Auto Shoot", Side = "Left", Icon = "crosshair" })
 	a:CreateToggle({ Name = "Auto shoot when open", Flag = "AutoShoot", CurrentValue = false })
 	a:CreateSlider({ Name = "Max contest", Range = { 0, 100 }, Increment = 1, CurrentValue = 35, Suffix = "%", Flag = "MaxContest" })
-	a:CreateSlider({ Name = "Shoot range", Range = { 5, 60 }, Increment = 1, CurrentValue = 30, Suffix = " st", Flag = "ShootRange" })
+	a:CreateSlider({ Name = "Shoot range", Range = { 5, 60 }, Increment = 1, CurrentValue = 42, Suffix = " st", Flag = "ShootRange" })
 	a:CreateToggle({ Name = "Show range", Flag = "ShowRange", CurrentValue = false })
 	a:CreateToggle({ Name = "Show contest overhead", Desc = "WIDE OPEN to SMOTHERED with a coverage percent.", Flag = "ShowContest", CurrentValue = true })
 	a:CreateSlider({ Name = "Contest radius", Range = { 4, 20 }, Increment = 1, CurrentValue = 10, Flag = "ContestRange" })
@@ -676,7 +705,7 @@ do
 	a:CreateToggle({ Name = "Rim run", Flag = "APRimRun", CurrentValue = true })
 	a:CreateToggle({ Name = "Go for dunks", Flag = "APDunks", CurrentValue = true })
 	a:CreateToggle({ Name = "Midranges", Flag = "APMidrange", CurrentValue = true })
-	a:CreateSlider({ Name = "3PT chance", Range = { 0, 100 }, Increment = 5, CurrentValue = 40, Suffix = "%", Flag = "AP3Chance" })
+	a:CreateSlider({ Name = "3PT chance", Range = { 0, 100 }, Increment = 5, CurrentValue = 70, Suffix = "%", Flag = "AP3Chance" })
 	a:CreateToggle({ Name = "Shoot when open", Flag = "APShootOpen", CurrentValue = true })
 	a:CreateToggle({ Name = "Pass to teammates", Flag = "APPass", CurrentValue = true })
 	a:CreateSlider({ Name = "Pass when contest above", Range = { 40, 100 }, Increment = 5, CurrentValue = 85, Suffix = "%", Flag = "APPassContest" })
