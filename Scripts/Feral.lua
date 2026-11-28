@@ -279,7 +279,19 @@ local function findWaterNear(center)
 		end
 	end
 end
+local function waitCan(kind, t)
+	local t0 = os.clock()
+	while os.clock() - t0 < (t or 3) do
+		local c = char()
+		if c and c:GetAttribute("FeedCan") == kind then return true end
+		task.wait(0.1)
+	end
+	return false
+end
 local function feed(kind)
+	local r = root()
+	if r then r.AssemblyLinearVelocity = Vector3.zero end
+	waitCan(kind, 2)
 	fire(R.Actions, "Feed", kind)
 	local c = char()
 	local stat = kind == "drink" and "Thirst" or "Hunger"
@@ -301,9 +313,17 @@ local function goWater()
 		local back = (r.Position - w) * Vector3.new(1, 0, 1)
 		local edge = w + (back.Magnitude > 0 and back.Unit * 3 or Vector3.zero)
 		travelTo(edge)
-		local rr = root()
-		if rr then rr.CFrame = CFrame.lookAt(rr.Position, Vector3.new(w.X, rr.Position.Y, w.Z)) end
+		for _ = 1, 10 do
+			local rr = root()
+			if not rr then break end
+			rr.CFrame = CFrame.lookAt(rr.Position, Vector3.new(w.X, rr.Position.Y, w.Z))
+			if waitCan("drink", 0.6) then break end
+			local dir = (w - rr.Position) * Vector3.new(1, 0, 1)
+			if dir.Magnitude < 0.5 then break end
+			rr.CFrame = rr.CFrame + dir.Unit * 1.5
+		end
 	end
+	if not waitCan("drink", 1) then return false, "reached " .. name .. " but no drinkable water in front" end
 	local v = feed("drink")
 	return true, ("drank at %s, thirst %s"):format(name, tostring(v))
 end
@@ -324,6 +344,11 @@ local function goFood()
 	local r = root() if not r then return false, "no character" end
 	local best, bd
 	for _, p in ipairs(foodList()) do local d = (p - r.Position).Magnitude if not bd or d < bd then best, bd = p, d end end
+	local c0 = char()
+	if c0 and c0:GetAttribute("FeedCan") == "eat" then
+		local v = feed("eat")
+		return true, "grazed here, hunger " .. tostring(v)
+	end
 	if not best then
 		local v = feed("eat")
 		return v ~= nil, "no tagged food; tried grazing here, hunger " .. tostring(v)
