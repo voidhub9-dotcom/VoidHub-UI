@@ -1,0 +1,507 @@
+if getgenv().LethalHub then pcall(getgenv().LethalHub.Unload) end
+local Hub = { Running = true, Conns = {}, Log = {} }
+getgenv().LethalHub = Hub
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local PathfindingService = game:GetService("PathfindingService")
+local PPS = game:GetService("ProximityPromptService")
+local CollectionService = game:GetService("CollectionService")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
+local GuiService = game:GetService("GuiService")
+local Lighting = game:GetService("Lighting")
+local VirtualUser = game:GetService("VirtualUser")
+local RS = game:GetService("ReplicatedStorage")
+local LP = Players.LocalPlayer
+
+local function conn(c) table.insert(Hub.Conns, c) return c end
+local function log(s) table.insert(Hub.Log, 1, os.date("%X ") .. tostring(s)) if #Hub.Log > 60 then table.remove(Hub.Log) end end
+local function char() return LP.Character end
+local function root() local c = char() return c and c:FindFirstChild("HumanoidRootPart") end
+local function hum() local c = char() return c and c:FindFirstChildOfClass("Humanoid") end
+local function coins() local l = LP:FindFirstChild("leaderstats") local c = l and l:FindFirstChild("Coins") return c and c.Value or 0 end
+local function posOf(o)
+	if not o then return nil end
+	if o:IsA("BasePart") then return o.Position end
+	if o:IsA("Attachment") then return o.WorldPosition end
+	if o:IsA("Model") then return o:GetPivot().Position end
+	return nil
+end
+
+local Places = {
+	Locker = Vector3.new(-431, 83, 245),
+	Lobby = Vector3.new(-336.5, 82, 269.3),
+	Machine = Vector3.new(-101, 215, 765),
+	Shop = Vector3.new(-332, 83, 179),
+	Cameras = Vector3.new(-83, 155, 306),
+	ElevatorF1 = Vector3.new(-228.4, 95.2, 170),
+	ElevatorF2 = Vector3.new(-229.6, 148.3, 168.4),
+	Colors = Vector3.new(-362.8, 82.6, 261),
+}
+local ShopKeys = { "EnergyDrink", "SpeedPotion", "NoiseMaker", "Molotov", "Radar", "Flashlight" }
+local ColorNames = { "Blue", "Cyan", "Yellow", "White", "Black", "Green", "Red", "Orange", "Rainbow", "Vip", "Purple", "Pink" }
+
+local Opt = { Speed = 45, SellAt = 6, FlySpeed = 50, ScrapMin = "Copper" }
+local ScrapValue = { Copper = 1, Silver = 2, Gold = 3, Emerald = 6, Ruby = 8, Diamond = 10 }
+
+conn(LP.Idled:Connect(function()
+	pcall(function() VirtualUser:CaptureController() VirtualUser:ClickButton2(Vector2.new()) end)
+end))
+
+local oldNC
+pcall(function()
+	oldNC = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+		if Hub.Running and self == LP and getnamecallmethod() == "Kick" then return nil end
+		return oldNC(self, ...)
+	end))
+end)
+
+local busy = false
+local stopMove = false
+
+local function seq()
+	local c = char()
+	return c and c:GetAttribute("AntinoclipTeleportSequence")
+end
+
+local function glideTo(r, target, speed)
+	local t0 = os.clock()
+	local dist = (target - r.Position).Magnitude
+	local limit = dist / speed + 2
+	while Hub.Running and not stopMove and (r.Position - target).Magnitude > 0.6 and os.clock() - t0 < limit do
+		local dt = RunService.Heartbeat:Wait()
+		if not r.Parent then return false end
+		local d = target - r.Position
+		r.CFrame = CFrame.new(r.Position + d.Unit * math.min(d.Magnitude, speed * dt)) * r.CFrame.Rotation
+		r.AssemblyLinearVelocity = Vector3.zero
+	end
+	return (r.Position - target).Magnitude <= 1.5
+end
+
+local function travel(target, within)
+	within = within or 3
+	for _ = 1, 3 do
+		local r, h = root(), hum()
+		if not (r and h) or h.Health <= 0 then return false, "no character" end
+		if (r.Position - target).Magnitude <= within then return true end
+		local path = PathfindingService:CreatePath({ AgentRadius = 1.5, AgentHeight = 5, AgentCanJump = true, WaypointSpacing = 4 })
+		local ok = pcall(function() path:ComputeAsync(r.Position, target) end)
+		local wps = ok and path.Status == Enum.PathStatus.Success and path:GetWaypoints() or nil
+		local lift = h.HipHeight + r.Size.Y / 2
+		local start = seq()
+		if wps then
+			for _, w in ipairs(wps) do
+				if stopMove or not Hub.Running then return false, "stopped" end
+				glideTo(r, w.Position + Vector3.new(0, lift, 0), Opt.Speed)
+				if seq() ~= start then break end
+				if (r.Position - target).Magnitude <= within then return true end
+			end
+		elseif (r.Position - target).Magnitude < 25 then
+			glideTo(r, target + Vector3.new(0, 0.5, 0), Opt.Speed * 0.6)
+		else
+			return false, "no path"
+		end
+		if seq() == start and (r.Position - target).Magnitude <= within + 2 then return true end
+		task.wait(0.3)
+	end
+	local r = root()
+	return r and (r.Position - target).Magnitude <= within + 2, "blocked"
+end
+
+local function holdPrompt(p)
+	if not p then return false end
+	local shown = false
+	local c = PPS.PromptShown:Connect(function(pp) if pp == p then shown = true end end)
+	local t0 = os.clock()
+	while not shown and os.clock() - t0 < 1.5 do task.wait() end
+	c:Disconnect()
+	pcall(function() p:InputHoldBegin() end)
+	task.wait(p.HoldDuration + 0.2)
+	pcall(function() p:InputHoldEnd() end)
+	return shown
+end
+
+local function findPrompt(action)
+	for _, d in ipairs(workspace:GetDescendants()) do
+		if d:IsA("ProximityPrompt") and d.ActionText == action then return d end
+	end
+end
+
+local function clickPart(part)
+	local cd = part and (part:FindFirstChildOfClass("ClickDetector") or part:FindFirstChildWhichIsA("ClickDetector", true))
+	if not cd then return false end
+	local ok = pcall(fireclickdetector, cd)
+	return ok
+end
+
+local function scrapTools()
+	local n = 0
+	for _, t in ipairs(LP.Backpack:GetChildren()) do if t:GetAttribute("scrap") then n += (t:GetAttribute("ScrapCount") or 1) end end
+	local c = char()
+	if c then for _, t in ipairs(c:GetChildren()) do if t:IsA("Tool") and t:GetAttribute("scrap") then n += (t:GetAttribute("ScrapCount") or 1) end end end
+	return n
+end
+
+local blacklist = setmetatable({}, { __mode = "k" })
+local function nextScrap()
+	local r = root() if not r then return end
+	local folder = workspace:FindFirstChild("Scraps") if not folder then return end
+	local minV = ScrapValue[Opt.ScrapMin] or 1
+	local best, bd
+	for _, s in ipairs(folder:GetChildren()) do
+		if s:IsA("BasePart") and not blacklist[s] and (ScrapValue[s.Name] or 1) >= minV and s:FindFirstChildWhichIsA("ProximityPrompt", true) then
+			local d = (s.Position - r.Position).Magnitude
+			if not bd or d < bd then best, bd = s, d end
+		end
+	end
+	return best, bd
+end
+
+local function pickScrap(s)
+	local ok = travel(s.Position, 4)
+	if not ok or not s.Parent then blacklist[s] = true return false end
+	local p = s:FindFirstChildWhichIsA("ProximityPrompt", true)
+	holdPrompt(p)
+	task.wait(0.6)
+	if s.Parent then blacklist[s] = true return false end
+	return true
+end
+
+local function sell()
+	local before = coins()
+	if not travel(Places.Machine, 5) then return false, "could not reach the machine" end
+	task.wait(0.4)
+	local p = findPrompt("Sell Scraps")
+	if not p then return false, "machine prompt not loaded" end
+	holdPrompt(p)
+	task.wait(1.2)
+	return coins() > before, ("sold: %d -> %d coins"):format(before, coins())
+end
+
+local function autoFarm()
+	while Hub.Running and Hub.Farm do
+		local ok, err = pcall(function()
+			local h = hum()
+			if not h or h.Health <= 0 then task.wait(1) return end
+			local s = nextScrap()
+			if scrapTools() >= Opt.SellAt or (not s and scrapTools() > 0) then
+				local _, msg = sell()
+				log(msg)
+			elseif s then
+				if pickScrap(s) then log("picked " .. s.Name .. " (" .. scrapTools() .. " held)") end
+			else
+				task.wait(2)
+			end
+		end)
+		if not ok then log("farm: " .. tostring(err)) task.wait(1) end
+		task.wait(0.1)
+	end
+end
+
+local espFolder = Instance.new("Folder")
+espFolder.Name = "LethalESP"
+pcall(function() espFolder.Parent = gethui and gethui() or game.CoreGui end)
+if not espFolder.Parent then espFolder.Parent = LP:WaitForChild("PlayerGui") end
+local Esp = { Monsters = false, Scraps = false, Players = false }
+local espMade = {}
+local function tagFor(obj, color, text)
+	local e = espMade[obj]
+	if not e then
+		local hl = Instance.new("Highlight")
+		hl.FillTransparency = 0.6
+		hl.OutlineTransparency = 0
+		hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+		hl.Adornee = obj
+		hl.Parent = espFolder
+		local bb = Instance.new("BillboardGui")
+		bb.Size = UDim2.fromOffset(160, 30)
+		bb.AlwaysOnTop = true
+		bb.StudsOffset = Vector3.new(0, 3, 0)
+		bb.Adornee = obj:IsA("Model") and (obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart) or obj
+		local tl = Instance.new("TextLabel")
+		tl.BackgroundTransparency = 1
+		tl.Size = UDim2.fromScale(1, 1)
+		tl.TextStrokeTransparency = 0.3
+		tl.Font = Enum.Font.GothamBold
+		tl.TextSize = 13
+		tl.Parent = bb
+		bb.Parent = espFolder
+		e = { hl = hl, bb = bb, tl = tl }
+		espMade[obj] = e
+	end
+	e.hl.FillColor, e.hl.OutlineColor, e.tl.TextColor3 = color, color, color
+	e.tl.Text = text
+	e.seen = true
+end
+local function monsters()
+	local list = {}
+	for _, part in ipairs(CollectionService:GetTagged("dangersource")) do
+		local m = part:FindFirstAncestorOfClass("Model")
+		if m and m.Parent and not Players:GetPlayerFromCharacter(m) then list[#list + 1] = m end
+	end
+	return list
+end
+local function espStep()
+	for _, e in pairs(espMade) do e.seen = false end
+	local r = root()
+	local function dist(o) local p = posOf(o) return (r and p) and math.floor((p - r.Position).Magnitude) or 0 end
+	if Esp.Monsters then for _, m in ipairs(monsters()) do tagFor(m, Color3.fromRGB(255, 60, 60), m.Name .. " [" .. dist(m) .. "]") end end
+	if Esp.Scraps and workspace:FindFirstChild("Scraps") then
+		for _, s in ipairs(workspace.Scraps:GetChildren()) do
+			if s:IsA("BasePart") then tagFor(s, Color3.fromRGB(255, 210, 60), s.Name .. " +" .. (ScrapValue[s.Name] or "?") .. " [" .. dist(s) .. "]") end
+		end
+	end
+	if Esp.Players then
+		for _, p in ipairs(Players:GetPlayers()) do
+			if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then tagFor(p.Character, Color3.fromRGB(80, 170, 255), p.DisplayName .. " [" .. dist(p.Character) .. "]") end
+		end
+	end
+	for obj, e in pairs(espMade) do
+		if not e.seen or not obj.Parent then e.hl:Destroy() e.bb:Destroy() espMade[obj] = nil end
+	end
+end
+task.spawn(function() while Hub.Running do pcall(espStep) task.wait(0.5) end end)
+
+local flyBV, flyBG
+local function setFly(on)
+	Hub.Fly = on
+	if flyBV then flyBV:Destroy() flyBV = nil end
+	if flyBG then flyBG:Destroy() flyBG = nil end
+	local h = hum()
+	if h then h.PlatformStand = false end
+	if not on then return end
+	local r = root() if not r then return end
+	flyBV = Instance.new("BodyVelocity")
+	flyBV.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+	flyBV.Velocity = Vector3.zero
+	flyBV.Parent = r
+	flyBG = Instance.new("BodyGyro")
+	flyBG.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
+	flyBG.P = 9e3
+	flyBG.Parent = r
+end
+conn(RunService.RenderStepped:Connect(function()
+	if not (Hub.Running and Hub.Fly and flyBV and flyBV.Parent) then return end
+	local h, cam = hum(), workspace.CurrentCamera
+	if not h then return end
+	local md = h.MoveDirection
+	local v = Vector3.zero
+	if md.Magnitude > 0 then
+		local look = cam.CFrame.LookVector
+		local flat = Vector3.new(look.X, 0, look.Z)
+		local fwd = flat.Magnitude > 0 and md:Dot(flat.Unit) or 0
+		v = md * Opt.FlySpeed + Vector3.new(0, look.Y * fwd * Opt.FlySpeed, 0)
+	end
+	flyBV.Velocity = v
+	flyBG.CFrame = cam.CFrame
+end))
+conn(LP.CharacterAdded:Connect(function() if Hub.Fly then task.wait(1) setFly(true) end end))
+
+local lightSaved
+local function fullbright(on)
+	if on then
+		lightSaved = lightSaved or { Lighting.Brightness, Lighting.ClockTime, Lighting.FogEnd, Lighting.GlobalShadows, Lighting.Ambient }
+		Lighting.Brightness, Lighting.ClockTime, Lighting.FogEnd, Lighting.GlobalShadows, Lighting.Ambient = 2, 14, 1e5, false, Color3.fromRGB(180, 180, 180)
+	elseif lightSaved then
+		Lighting.Brightness, Lighting.ClockTime, Lighting.FogEnd, Lighting.GlobalShadows, Lighting.Ambient = unpack(lightSaved)
+		lightSaved = nil
+	end
+end
+conn(RunService.Heartbeat:Connect(function() if Hub.Bright then Lighting.FogEnd = 1e5 Lighting.Brightness = 2 end end))
+
+local function serverHop()
+	local ok, body = pcall(function()
+		return game:HttpGet(("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=100"):format(game.PlaceId))
+	end)
+	if not ok then return false, "server list failed" end
+	local data = HttpService:JSONDecode(body)
+	local list = {}
+	for _, s in ipairs(data.data or {}) do
+		if s.id ~= game.JobId and s.playing < s.maxPlayers then list[#list + 1] = s.id end
+	end
+	if #list == 0 then return false, "no other server" end
+	TeleportService:TeleportToPlaceInstance(game.PlaceId, list[math.random(#list)], LP)
+	return true, "hopping"
+end
+
+Hub.AutoRejoin = true
+conn(GuiService.ErrorMessageChanged:Connect(function(msg)
+	if Hub.Running and Hub.AutoRejoin and msg and msg ~= "" then
+		task.wait(2)
+		pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LP) end)
+		task.wait(8)
+		pcall(function() TeleportService:Teleport(game.PlaceId, LP) end)
+	end
+end))
+
+local function runTask(fn, ...)
+	if busy then return false, "busy" end
+	busy = true
+	stopMove = false
+	local res = table.pack(pcall(fn, ...))
+	busy = false
+	if not res[1] then return false, tostring(res[2]) end
+	return res[2], res[3]
+end
+
+local function goPlace(name) return runTask(function() return travel(Places[name], 4) end) end
+
+local function openShop()
+	local ui = LP.PlayerGui:FindFirstChild("ShopUI")
+	if ui then
+		for _, d in ipairs(ui:GetDescendants()) do if d:IsA("GuiObject") and d.Name == "Shop" then d.Visible = true end end
+		ui.Enabled = true
+	end
+	return runTask(function()
+		if not travel(Places.Shop, 6) then return false, "could not reach shop" end
+		local p = workspace:FindFirstChild("ShopPrompt") and workspace.ShopPrompt:FindFirstChild("PromptShop")
+		return holdPrompt(p), "shop opened"
+	end)
+end
+
+local function buy(key)
+	local r = RS:FindFirstChild("shoppurchase")
+	if not r then return false, "no shop remote" end
+	local before = coins()
+	local ok, res = pcall(function() return r:InvokeServer(key) end)
+	return ok and res == true, ("%s: %s (%d -> %d)"):format(key, tostring(res), before, coins())
+end
+
+local function pickColor(name)
+	return runTask(function()
+		local f = workspace:FindFirstChild("ColorCustomizations")
+		local part = f and f:FindFirstChild(name)
+		local target = part and posOf(part) or Places.Colors
+		if not travel(target, 6) then return false, "could not reach colors" end
+		part = f and f:FindFirstChild(name)
+		return clickPart(part), "color " .. name
+	end)
+end
+
+local function pressPad(name)
+	return runTask(function()
+		local f = workspace:FindFirstChild("TPButtons")
+		local part = f and f:FindFirstChild(name)
+		if not part then return false, "pad not found" end
+		if not travel(posOf(part), 6) then return false, "could not reach pad" end
+		return clickPart(part), name .. " pressed"
+	end)
+end
+
+local function elevator(floor)
+	return runTask(function()
+		local e = workspace:FindFirstChild("Elevators")
+		local target = floor == 2 and Places.ElevatorF2 or Places.ElevatorF1
+		if not travel(target, 6) then return false, "could not reach elevator" end
+		local part = e and e:FindFirstChild(floor == 2 and "f2" or "f1", true)
+		return clickPart(part), "elevator called"
+	end)
+end
+
+local function openCameras()
+	return runTask(function()
+		if not travel(Places.Cameras, 6) then return false, "could not reach cameras" end
+		local p = workspace:FindFirstChild("SecCams") and workspace.SecCams:FindFirstChild("SecCamToggle", true)
+		return holdPrompt(p), "cameras"
+	end)
+end
+
+local function notify(window, text)
+	log(text)
+	pcall(function() window:Notify({ Title = "Lethal Ape", Text = text, Duration = 3 }) end)
+end
+
+local lib = loadstring(game:HttpGet("https://raw.githubusercontent.com/0x1s2s/Snowy-Ui-Library/refs/heads/main/SnowyUi"))()
+local Window = lib:Window({ Subtitle = "VoidHub | Lethal Ape", Keybind = Enum.KeyCode.RightControl, Width = 580, Height = 440 })
+Hub.Window = Window
+local function say(t) task.spawn(notify, Window, t) end
+local function act(fn, ...) local a = table.pack(...) task.spawn(function() local _, msg = fn(table.unpack(a, 1, a.n)) say(tostring(msg)) end) end
+
+local farmTab = Window:Tab({ Name = "Farm", Icon = "wallet" })
+local farm = farmTab:Section({ Title = "Auto Farm Coins", Column = 1 })
+farm:Toggle({ Text = "Auto farm coins", Default = false, Callback = function(v)
+	if v == (Hub.Farm or false) then return end
+	Hub.Farm = v
+	if v then
+		if busy then stopMove = true task.wait(0.3) end
+		task.spawn(function() busy = true stopMove = false autoFarm() busy = false end)
+		say("Auto farm on")
+	else
+		stopMove = true
+		say("Auto farm off")
+	end
+end })
+farm:Slider({ Text = "Sell when holding", Min = 1, Max = 30, Default = 6, Callback = function(v) Opt.SellAt = v end })
+farm:Dropdown({ Text = "Minimum scrap", Options = { "Copper", "Silver", "Gold", "Emerald", "Ruby", "Diamond" }, Default = "Copper", Callback = function(v) Opt.ScrapMin = v end })
+farm:Slider({ Text = "Move speed", Min = 20, Max = 60, Default = 45, Callback = function(v) Opt.Speed = v end })
+farm:Button({ Text = "Sell now", Callback = function() act(runTask, sell) end })
+local stats = farmTab:Section({ Title = "Status", Column = 2 })
+local coinLabel = stats:Label({ Text = "Coins: " .. coins() })
+local logLabel = stats:Label({ Text = "" })
+task.spawn(function()
+	while Hub.Running do
+		pcall(function()
+			coinLabel:Set("Coins: " .. coins() .. " | Held scraps: " .. scrapTools())
+			logLabel:Set(Hub.Log[1] or "")
+		end)
+		task.wait(1)
+	end
+end)
+
+local shopTab = Window:Tab({ Name = "Shop", Icon = "shopping-cart" })
+local shop = shopTab:Section({ Title = "Shopping", Column = 1 })
+shop:Button({ Text = "Open shop", Callback = function() act(openShop) end })
+local buyKey = ShopKeys[1]
+shop:Dropdown({ Text = "Item", Options = ShopKeys, Default = buyKey, Callback = function(v) buyKey = v end })
+shop:Button({ Text = "Buy selected item", Callback = function() act(buy, buyKey) end })
+local custom = shopTab:Section({ Title = "Color Custom", Column = 2 })
+local colorName = ColorNames[1]
+custom:Dropdown({ Text = "Select color", Options = ColorNames, Default = colorName, Callback = function(v) colorName = v end })
+custom:Button({ Text = "Apply color", Callback = function() act(pickColor, colorName) end })
+
+local tpTab = Window:Tab({ Name = "Teleport", Icon = "map-pin" })
+local tp = tpTab:Section({ Title = "Facility", Column = 1 })
+tp:Button({ Text = "Teleport to Locker Room", Callback = function() act(goPlace, "Locker") end })
+tp:Button({ Text = "Teleport to Monster Room", Callback = function() act(pressPad, "MonsterRoom") end })
+tp:Button({ Text = "Teleport to Elevator", Callback = function() act(elevator, 1) end })
+tp:Button({ Text = "Quick Play", Callback = function() act(pressPad, "QuickPlay") end })
+tp:Button({ Text = "Scrap Machine", Callback = function() act(goPlace, "Machine") end })
+tp:Button({ Text = "Stop moving", Callback = function() stopMove = true end })
+
+local visTab = Window:Tab({ Name = "Visuals", Icon = "eye" })
+local vis = visTab:Section({ Title = "ESP", Column = 1 })
+vis:Toggle({ Text = "Monster ESP + model", Default = false, Callback = function(v) Esp.Monsters = v end })
+vis:Toggle({ Text = "Scraps ESP", Default = false, Callback = function(v) Esp.Scraps = v end })
+vis:Toggle({ Text = "Player ESP", Default = false, Callback = function(v) Esp.Players = v end })
+local vis2 = visTab:Section({ Title = "World", Column = 2 })
+vis2:Toggle({ Text = "Fullbright", Default = false, Callback = function(v) Hub.Bright = v fullbright(v) end })
+vis2:Button({ Text = "Open cameras", Callback = function() act(openCameras) end })
+
+local moveTab = Window:Tab({ Name = "Movement", Icon = "wind" })
+local mv = moveTab:Section({ Title = "Movement", Column = 1 })
+mv:Toggle({ Text = "Fly", Default = false, Callback = function(v) if v ~= (Hub.Fly or false) then setFly(v) end end })
+mv:Slider({ Text = "Fly speed", Min = 10, Max = 120, Default = 50, Callback = function(v) Opt.FlySpeed = v end })
+local srv = moveTab:Section({ Title = "Server", Column = 2 })
+srv:Button({ Text = "Server hop", Callback = function() act(serverHop) end })
+srv:Button({ Text = "Rejoin", Callback = function() pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LP) end) end })
+srv:Toggle({ Text = "Auto rejoin on kick", Default = true, Callback = function(v) Hub.AutoRejoin = v end })
+srv:Button({ Text = "Unload", Callback = function() Hub.Unload() end })
+
+function Hub.Unload()
+	Hub.Running = false
+	Hub.Farm = false
+	stopMove = true
+	setFly(false)
+	fullbright(false)
+	if oldNC then pcall(hookmetamethod, game, "__namecall", oldNC) end
+	for _, c in ipairs(Hub.Conns) do pcall(function() c:Disconnect() end) end
+	pcall(function() espFolder:Destroy() end)
+	pcall(function() if getgenv().SnowyStudiosUnload then getgenv().SnowyStudiosUnload() end end)
+	for _, g in ipairs((gethui and gethui() or game.CoreGui):GetChildren()) do if g.Name == "SnowyStudios" then pcall(function() g:Destroy() end) end end
+	getgenv().LethalHub = nil
+end
+
+Hub.travel, Hub.sell, Hub.buy, Hub.pick = travel, sell, buy, pickScrap
+say("Loaded")
+return Hub
