@@ -42,7 +42,7 @@ local Places = {
 local ShopKeys = { "EnergyDrink", "SpeedPotion", "NoiseMaker", "Molotov", "Radar", "Flashlight" }
 local ColorNames = { "Blue", "Cyan", "Yellow", "White", "Black", "Green", "Red", "Orange", "Rainbow", "Vip", "Purple", "Pink" }
 
-local Opt = { Speed = 150, SellAt = 6, FlySpeed = 50, ScrapMin = "Copper" }
+local Opt = { Speed = 100, SellAt = 6, FlySpeed = 50, ScrapMin = "Copper" }
 local ScrapValue = { Copper = 1, Silver = 2, Gold = 3, Emerald = 6, Ruby = 8, Diamond = 10 }
 
 conn(LP.Idled:Connect(function()
@@ -150,6 +150,7 @@ local function scrapTools()
 end
 
 local blacklist = setmetatable({}, { __mode = "k" })
+local badRegion = {}
 local function nextScrap()
 	local r = root() if not r then return end
 	local folder = workspace:FindFirstChild("Scraps") if not folder then return end
@@ -157,8 +158,11 @@ local function nextScrap()
 	local best, bd
 	for _, s in ipairs(folder:GetChildren()) do
 		if s:IsA("BasePart") and not blacklist[s] and (ScrapValue[s.Name] or 1) >= minV and s:FindFirstChildWhichIsA("ProximityPrompt", true) then
-			local d = (s.Position - r.Position).Magnitude
-			if not bd or d < bd then best, bd = s, d end
+			local reg = s:GetAttribute("ScrapRegion")
+			if not (reg and (badRegion[reg] or 0) >= 2) then
+				local d = (s.Position - r.Position).Magnitude + math.abs(s.Position.Y - r.Position.Y) * 8
+				if not bd or d < bd then best, bd = s, d end
+			end
 		end
 	end
 	return best, bd
@@ -166,7 +170,20 @@ end
 
 local function pickScrap(s)
 	local ok = travel(s.Position, 4)
-	if not ok or not s.Parent then blacklist[s] = true return false end
+	if not ok or not s.Parent then
+		blacklist[s] = true
+		local reg = s:GetAttribute("ScrapRegion")
+		if reg and s.Parent then badRegion[reg] = (badRegion[reg] or 0) + 1 end
+		return false
+	end
+	task.wait(0.25)
+	local r0 = root()
+	if r0 and (r0.Position - s.Position).Magnitude > 10 then
+		blacklist[s] = true
+		local reg = s:GetAttribute("ScrapRegion")
+		if reg then badRegion[reg] = (badRegion[reg] or 0) + 1 end
+		return false
+	end
 	local p = s:FindFirstChildWhichIsA("ProximityPrompt", true)
 	local r = root()
 	for _ = 1, 3 do
@@ -177,6 +194,8 @@ local function pickScrap(s)
 		if not s.Parent then return true end
 	end
 	blacklist[s] = true
+	local reg = s:GetAttribute("ScrapRegion")
+	if reg then badRegion[reg] = (badRegion[reg] or 0) + 1 end
 	return false
 end
 
@@ -205,7 +224,9 @@ local function sell()
 end
 
 local function autoFarm()
+	local resetAt = os.clock() + 60
 	while Hub.Running and Hub.Farm do
+		if os.clock() > resetAt then badRegion = {} resetAt = os.clock() + 60 end
 		local ok, err = pcall(function()
 			local h = hum()
 			if not h or h.Health <= 0 then task.wait(1) return end
@@ -472,7 +493,7 @@ Hub.UI.Farm = farm:Toggle({ Text = "Auto farm coins", Default = false, Callback 
 end })
 farm:Slider({ Text = "Sell when holding", Min = 1, Max = 30, Default = 6, Callback = function(v) Opt.SellAt = v end })
 farm:Dropdown({ Text = "Minimum scrap", Options = { "Copper", "Silver", "Gold", "Emerald", "Ruby", "Diamond" }, Default = "Copper", Callback = function(v) Opt.ScrapMin = v end })
-farm:Slider({ Text = "Move speed", Min = 20, Max = 200, Default = 150, Callback = function(v) Opt.Speed = v end })
+farm:Slider({ Text = "Move speed", Min = 20, Max = 200, Default = 100, Callback = function(v) Opt.Speed = v end })
 farm:Button({ Text = "Sell now", Callback = function() act(runTask, sell) end })
 local stats = farmTab:Section({ Title = "Status", Column = 2 })
 local coinLabel = stats:Label({ Text = "Coins: " .. coins() })
