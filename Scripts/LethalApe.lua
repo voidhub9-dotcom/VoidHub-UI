@@ -366,7 +366,47 @@ local function fullbright(on)
 		lightSaved = nil
 	end
 end
-conn(RunService.Heartbeat:Connect(function() if Hub.Bright then Lighting.FogEnd = 1e5 Lighting.Brightness = 2 end end))
+local nightLight
+local function enhanced(on)
+	Hub.Enhanced = on
+	if on then
+		fullbright(true)
+		Lighting.FogStart = 1e5
+		local r = root()
+		if r and not (nightLight and nightLight.Parent) then
+			nightLight = Instance.new("PointLight")
+			nightLight.Range, nightLight.Brightness, nightLight.Shadows = 80, 3, false
+			nightLight.Parent = r
+		end
+	else
+		if nightLight then nightLight:Destroy() nightLight = nil end
+		if not Hub.Bright then fullbright(false) end
+	end
+end
+
+local function escapeStep()
+	local r = root() if not r then return end
+	local best, bd
+	for _, m in ipairs(monsters()) do
+		local p = posOf(m)
+		if p then local d = (p - r.Position).Magnitude if not bd or d < bd then best, bd = p, d end end
+	end
+	if not best or bd > (Opt.EscapeRange or 40) then return end
+	local away = (r.Position - best) * Vector3.new(1, 0, 1)
+	if away.Magnitude < 0.1 then away = Vector3.new(1, 0, 0) end
+	local goal = r.Position + away.Unit * 35
+	stopMove = true task.wait(0.05) stopMove = false
+	travel(goal, 6)
+	log(("escaped: monster was %d studs away"):format(math.floor(bd)))
+end
+task.spawn(function()
+	while Hub.Running do
+		if Hub.Escape then pcall(escapeStep) end
+		task.wait(0.25)
+	end
+end)
+
+conn(RunService.Heartbeat:Connect(function() if Hub.Bright or Hub.Enhanced then Lighting.FogEnd = 1e5 Lighting.Brightness = 2 end end))
 
 local function serverHop()
 	local ok, body = pcall(function()
@@ -457,11 +497,20 @@ local function elevator(floor)
 	end)
 end
 
+local function camsOpen()
+	local g = LP.PlayerGui:FindFirstChild("CameraGui")
+	local h = g and g:FindFirstChild("Holder", true)
+	return g and g.Enabled and (not h or h.Visible) or false
+end
 local function openCameras()
 	return runTask(function()
-		if not travel(Places.Cameras, 6) then return false, "could not reach cameras" end
 		local p = workspace:FindFirstChild("SecCams") and workspace.SecCams:FindFirstChild("SecCamToggle", true)
-		return holdPrompt(p), "cameras"
+		if not p then return false, "camera prompt not loaded" end
+		holdPrompt(p) task.wait(0.6)
+		if camsOpen() then return true, "cameras opened" end
+		if not travel(posOf(p.Parent) or Places.Cameras, p.MaxActivationDistance - 1.5) then return false, "could not reach cameras" end
+		holdPrompt(p) task.wait(0.6)
+		return camsOpen(), camsOpen() and "cameras opened" or "camera prompt held, viewer did not open"
 	end)
 end
 
@@ -535,6 +584,7 @@ Hub.UI.ScrapESP = vis:Toggle({ Text = "Scraps ESP", Default = false, Callback = 
 Hub.UI.PlayerESP = vis:Toggle({ Text = "Player ESP", Default = false, Callback = function(v) Esp.Players = v end })
 local vis2 = visTab:Section({ Title = "World", Column = 2 })
 Hub.UI.Fullbright = vis2:Toggle({ Text = "Fullbright", Default = false, Callback = function(v) Hub.Bright = v fullbright(v) end })
+Hub.UI.Enhanced = vis2:Toggle({ Text = "Enhanced visibility", Default = false, Callback = function(v) enhanced(v) end })
 vis2:Button({ Text = "Open cameras", Callback = function() act(openCameras) end })
 
 local moveTab = Window:Tab({ Name = "Movement", Icon = "wind" })
@@ -543,6 +593,9 @@ Hub.UI.Fly = mv:Toggle({ Text = "Fly", Default = false, Callback = function(v) i
 Hub.UI.Speed = mv:Toggle({ Text = "Speed boost (game cap 90)", Default = false, Callback = function(v) Hub.SpeedOn = v end })
 mv:Slider({ Text = "Boost multiplier", Min = 1, Max = 3, Default = 3, Callback = function(v) Opt.Boost = v end })
 mv:Slider({ Text = "Fly speed", Min = 10, Max = 120, Default = 50, Callback = function(v) Opt.FlySpeed = v end })
+local surv = moveTab:Section({ Title = "Survival", Column = 1 })
+Hub.UI.Escape = surv:Toggle({ Text = "Auto escape monsters", Default = false, Callback = function(v) Hub.Escape = v end })
+surv:Slider({ Text = "Escape range", Min = 15, Max = 100, Default = 40, Callback = function(v) Opt.EscapeRange = v end })
 local srv = moveTab:Section({ Title = "Server", Column = 2 })
 srv:Button({ Text = "Server hop", Callback = function() act(serverHop) end })
 srv:Button({ Text = "Rejoin", Callback = function() pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LP) end) end })
@@ -554,6 +607,7 @@ function Hub.Unload()
 	Hub.Farm = false
 	stopMove = true
 	setFly(false)
+	enhanced(false)
 	fullbright(false)
 	if oldNC then pcall(hookmetamethod, game, "__namecall", oldNC) end
 	for _, c in ipairs(Hub.Conns) do pcall(function() c:Disconnect() end) end
