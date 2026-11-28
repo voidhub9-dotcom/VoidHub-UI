@@ -135,28 +135,30 @@ local function applyReach()
 		local want = F("ReachStuds") or 40
 		local box = math.max(0.5, 2 * (want / 1.15 - h.HipHeight * 1.45 - 1.2))
 		r:SetAttribute("FeralBoxFull", box)
-		if F("ShowReach") then
-			if not (reachBall and reachBall.Parent) then
-				reachBall = Instance.new("SelectionSphere")
-				reachBall.Color3 = Color3.fromRGB(255, 255, 255)
-				reachBall.SurfaceTransparency = 1
-				reachBall.Transparency = 0
-				reachBall.Parent = gethui and gethui() or game.CoreGui
-			end
+		if F("ShowReach") ~= false then
 			local rad = F("ReachStuds") or 40
 			local holder = Hub.reachPart
 			if not (holder and holder.Parent) then
 				holder = Instance.new("Part")
 				holder.Name = "VoidReach"
 				holder.Shape = Enum.PartType.Ball
-				holder.Anchored, holder.CanCollide, holder.CanQuery, holder.CanTouch = true, false, false, false
-				holder.Transparency = 1
-				holder.Parent = workspace.CurrentCamera
+				holder.Anchored, holder.CanCollide, holder.CanQuery, holder.CanTouch, holder.CastShadow = true, false, false, false, false
+				holder.Material = Enum.Material.ForceField
+				holder.Color = Color3.fromRGB(255, 255, 255)
+				holder.Transparency = 0.6
+				holder.Parent = workspace
 				Hub.reachPart = holder
+			end
+			if not (reachBall and reachBall.Parent) then
+				reachBall = Instance.new("SelectionSphere")
+				reachBall.Color3 = Color3.fromRGB(255, 255, 255)
+				reachBall.SurfaceTransparency = 1
+				reachBall.Transparency = 0
+				reachBall.Adornee = holder
+				reachBall.Parent = holder
 			end
 			holder.Size = Vector3.new(rad * 2, rad * 2, rad * 2)
 			holder.CFrame = CFrame.new(r.Position)
-			reachBall.Adornee = holder
 		elseif reachBall then reachBall:Destroy() reachBall = nil if Hub.reachPart then Hub.reachPart:Destroy() Hub.reachPart = nil end end
 	else
 		if boxSaved then r:SetAttribute("FeralBoxFull", boxSaved[1] ~= false and boxSaved[1] or nil) boxSaved = nil end
@@ -319,6 +321,10 @@ local function clearSprint()
 	if c then for _, a in pairs(SprintAttr) do c:SetAttribute(a, nil) end end
 end
 
+conn(RunService.RenderStepped:Connect(function()
+	local rp, r0 = Hub.reachPart, root()
+	if rp and rp.Parent and r0 then rp.CFrame = CFrame.new(r0.Position) end
+end))
 conn(RunService.Heartbeat:Connect(function(dt)
 	if not Hub.Running then return end
 	local r, h = root(), hum()
