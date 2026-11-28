@@ -349,6 +349,24 @@ local function goFood()
 		local v = feed("eat")
 		return true, "grazed here, hunger " .. tostring(v)
 	end
+	local sp = c0 and c0:GetAttribute("Species")
+	local grazers = { Deer = true, Elk = true, Bison = true, Elephant = true, Rhino = true, Gorilla = true, RedPanda = true, Hippo = true, Porcupine = true }
+	if grazers[sp] then
+		for _, pl in ipairs({ "Golden Plains", "Elk Crossing", "Juniper Fields", "Golden Waterhole" }) do
+			local xz = Places[pl]
+			local rr = root()
+			if rr and (Vector2.new(rr.Position.X, rr.Position.Z) - xz).Magnitude > 40 then travelPlace(pl) end
+			for _ = 1, 8 do
+				if waitCan("eat", 0.6) then
+					local v = feed("eat")
+					return true, ("grazed at %s, hunger %s"):format(pl, tostring(v))
+				end
+				local r2 = root()
+				if r2 then r2.CFrame = r2.CFrame + Vector3.new(math.random(-6, 6), 0, math.random(-6, 6)) end
+			end
+		end
+		return false, "no grass found to graze"
+	end
 	if not best then
 		local v = feed("eat")
 		return v ~= nil, "no tagged food; tried grazing here, hunger " .. tostring(v)
