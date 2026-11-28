@@ -169,12 +169,13 @@ local function pathOK(a, b)
 end
 local function regionSells(reg, sample)
 	if os.clock() - regionAt > 120 then regionOK = {} regionAt = os.clock() end
-	if regionOK[reg] == nil then
-		local ok = false
-		for _, m in ipairs(sellPoints()) do if pathOK(sample, m) then ok = true break end end
-		regionOK[reg] = ok
-	end
-	return regionOK[reg]
+	local st = regionOK[reg]
+	if st == true then return true end
+	st = st or 0
+	if st >= 3 then return false end
+	for _, m in ipairs(sellPoints()) do if pathOK(sample, m) then regionOK[reg] = true return true end end
+	regionOK[reg] = st + 1
+	return st + 1 < 3
 end
 
 local function nextScrap()
