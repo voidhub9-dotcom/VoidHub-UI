@@ -89,7 +89,7 @@ local function travel(target, within)
 		for i = 0, 8 do
 			local goal = target
 			if i > 0 then local a = i * math.pi / 4 goal = target + Vector3.new(math.cos(a) * 5, 0, math.sin(a) * 5) end
-			local path = PathfindingService:CreatePath({ AgentRadius = 1.5, AgentHeight = 5, AgentCanJump = true, WaypointSpacing = 4 })
+			local path = PathfindingService:CreatePath({ AgentRadius = 1, AgentHeight = 4, AgentCanJump = true, AgentCanClimb = true, WaypointSpacing = 4 })
 			local ok = pcall(function() path:ComputeAsync(r.Position, goal) end)
 			if ok and path.Status == Enum.PathStatus.Success then wps = path:GetWaypoints() break end
 		end
@@ -317,6 +317,18 @@ conn(RunService.RenderStepped:Connect(function()
 end))
 conn(LP.CharacterAdded:Connect(function() if Hub.Fly then task.wait(1) setFly(true) end end))
 
+task.spawn(function()
+	while Hub.Running do
+		if Hub.SpeedOn then
+			pcall(function()
+				local t = getrenv().shared.SpeedBoostTable
+				if t then table.insert(t, { time = time(), duration = 1.2, mult = Opt.Boost or 3 }) end
+			end)
+		end
+		task.wait(1)
+	end
+end)
+
 local lightSaved
 local function fullbright(on)
 	if on then
@@ -501,6 +513,8 @@ vis2:Button({ Text = "Open cameras", Callback = function() act(openCameras) end 
 local moveTab = Window:Tab({ Name = "Movement", Icon = "wind" })
 local mv = moveTab:Section({ Title = "Movement", Column = 1 })
 Hub.UI.Fly = mv:Toggle({ Text = "Fly", Default = false, Callback = function(v) if v ~= (Hub.Fly or false) then setFly(v) end end })
+Hub.UI.Speed = mv:Toggle({ Text = "Speed boost (game cap 90)", Default = false, Callback = function(v) Hub.SpeedOn = v end })
+mv:Slider({ Text = "Boost multiplier", Min = 1, Max = 3, Default = 3, Callback = function(v) Opt.Boost = v end })
 mv:Slider({ Text = "Fly speed", Min = 10, Max = 120, Default = 50, Callback = function(v) Opt.FlySpeed = v end })
 local srv = moveTab:Section({ Title = "Server", Column = 2 })
 srv:Button({ Text = "Server hop", Callback = function() act(serverHop) end })
