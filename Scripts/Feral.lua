@@ -358,6 +358,17 @@ task.spawn(function()
 	end
 end)
 
+task.spawn(function()
+	while Hub.Running do
+		if F("AutoSpawn") and not char() then
+			local slots = RS:FindFirstChild("FeralSlots")
+			if slots then fire(slots, "play", F("SpawnSlot") or 1) log("spawned from slot " .. tostring(F("SpawnSlot") or 1)) end
+			task.wait(4)
+		end
+		task.wait(1)
+	end
+end)
+
 local function act(fn, ...)
 	local a = table.pack(...)
 	task.spawn(function()
@@ -416,6 +427,8 @@ local Misc = Window:CreateTab({ Name = "Misc", Desc = "Anti AFK, status", Icon =
 local mg = Misc:CreateGroupbox({ Name = "Utility", Side = "Left", Icon = "wrench" })
 mg:CreateToggle({ Name = "Anti AFK", Flag = "AntiAfk", CurrentValue = true, Callback = function(v) Hub.AntiAfk = v end })
 Hub.AntiAfk = true
+mg:CreateToggle({ Name = "Auto Spawn (menu)", Flag = "AutoSpawn", CurrentValue = true })
+mg:CreateSlider({ Name = "Spawn Slot", Range = { 1, 8 }, Increment = 1, CurrentValue = 1, Flag = "SpawnSlot" })
 mg:CreateButton({ Name = "Unload", Style = "Danger", Callback = function() Hub.Unload() end })
 local stat = Misc:CreateGroupbox({ Name = "Status", Side = "Right", Icon = "activity" })
 stat:CreateLabel({ Text = "", Update = function()
