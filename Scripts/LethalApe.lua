@@ -331,13 +331,16 @@ conn(RunService.RenderStepped:Connect(function()
 	if not (Hub.Running and Hub.Fly and flyBV and flyBV.Parent) then return end
 	local h, cam = hum(), workspace.CurrentCamera
 	if not h then return end
-	local md = h.MoveDirection
+	local mv = Vector3.zero
+	pcall(function()
+		Hub.Controls = Hub.Controls or require(LP.PlayerScripts:WaitForChild("PlayerModule", 2)):GetControls()
+		mv = Hub.Controls:GetMoveVector()
+	end)
 	local v = Vector3.zero
-	if md.Magnitude > 0 then
-		local look = cam.CFrame.LookVector
-		local flat = Vector3.new(look.X, 0, look.Z)
-		local fwd = flat.Magnitude > 0 and md:Dot(flat.Unit) or 0
-		v = md * Opt.FlySpeed + Vector3.new(0, look.Y * fwd * Opt.FlySpeed, 0)
+	if mv.Magnitude > 0.05 then
+		v = cam.CFrame:VectorToWorldSpace(Vector3.new(mv.X, 0, mv.Z)).Unit * Opt.FlySpeed
+	elseif h.MoveDirection.Magnitude > 0 then
+		v = h.MoveDirection * Opt.FlySpeed
 	end
 	flyBV.Velocity = v
 	flyBG.CFrame = cam.CFrame
