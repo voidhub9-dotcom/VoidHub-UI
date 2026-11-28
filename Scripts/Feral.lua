@@ -110,57 +110,107 @@ local lastBite = 0
 local function bite(m)
 	if os.clock() - lastBite < (F("AuraDelay") or 0.6) then return end
 	lastBite = os.clock()
-	local t = ST()
-	fire(R.Actions, "Bite", t)
-	task.delay(0.28, function() if m and m.Parent then fire(R.Actions, "BiteHit", { t = t, m = m }) end end)
+	local c = char()
+	if (F("BiteMethod") or "Game") == "Game" and c then
+		c:SetAttribute("WolfDbgBite", os.clock())
+	else
+		local t = ST()
+		fire(R.Actions, "Bite", t)
+		task.delay(0.28, function() if m and m.Parent then fire(R.Actions, "BiteHit", { t = t, m = m }) end end)
+	end
 end
 
 local boxSaved
+local reachBall
+local function reachFor(box, hip) return ((box * 0.5) + hip * 1.45 + 1.2) * 1.15 end
 local function applyReach()
-	local r = root() if not r then return end
+	local r, h = root(), hum()
+	if not (r and h) then return end
 	if F("BiteReach") then
 		if not boxSaved then boxSaved = { r:GetAttribute("FeralBoxFull") or false } end
-		local base = (boxSaved[1] ~= false and boxSaved[1]) or r.Size.Z
-		r:SetAttribute("FeralBoxFull", base * (F("ReachScale") or 2))
-	elseif boxSaved then
-		r:SetAttribute("FeralBoxFull", boxSaved[1] ~= false and boxSaved[1] or nil)
-		boxSaved = nil
+		local want = F("ReachStuds") or 15
+		local box = math.max(0.5, 2 * (want / 1.15 - h.HipHeight * 1.45 - 1.2))
+		r:SetAttribute("FeralBoxFull", box)
+		if F("ShowReach") then
+			if not (reachBall and reachBall.Parent) then
+				reachBall = Instance.new("SphereHandleAdornment")
+				reachBall.Color3 = Color3.fromRGB(255, 255, 255)
+				reachBall.Transparency = 0.85
+				reachBall.AlwaysOnTop = true
+				reachBall.ZIndex = 1
+				reachBall.Parent = gethui and gethui() or game.CoreGui
+			end
+			reachBall.Adornee = r
+			reachBall.Radius = reachFor(box, h.HipHeight)
+		elseif reachBall then reachBall:Destroy() reachBall = nil end
+	else
+		if boxSaved then r:SetAttribute("FeralBoxFull", boxSaved[1] ~= false and boxSaved[1] or nil) boxSaved = nil end
+		if reachBall then reachBall:Destroy() reachBall = nil end
 	end
 end
 conn(LP.CharacterAdded:Connect(function() boxSaved = nil end))
 
-local hitboxSaved = setmetatable({}, { __mode = "k" })
-local hbVis = {}
-local function hitboxStep()
-	local on = F("Hitbox")
-	local size = F("HitboxSize") or 10
-	for _, m in ipairs(candidates("Both")) do
-		local r = m:FindFirstChild("HumanoidRootPart")
-		if r then
-			if on and isTarget(m) then
-				if not hitboxSaved[r] then hitboxSaved[r] = { r.Size, r.Transparency, r.CanCollide } end
-				r.Size = Vector3.new(size, size, size)
-				r.CanCollide = false
-				r.Transparency = F("ShowHitbox") and 0.7 or 1
-				if F("ShowHitbox") and not hbVis[r] then
-					local b = Instance.new("SelectionBox")
-					b.Adornee = r b.LineThickness = 0.05 b.Color3 = Color3.fromRGB(255, 255, 255)
-					b.Parent = r
-					hbVis[r] = b
-				elseif not F("ShowHitbox") and hbVis[r] then hbVis[r]:Destroy() hbVis[r] = nil end
-			elseif hitboxSaved[r] then
-				local s = hitboxSaved[r]
-				r.Size, r.Transparency, r.CanCollide = s[1], s[2], s[3]
-				hitboxSaved[r] = nil
-				if hbVis[r] then hbVis[r]:Destroy() hbVis[r] = nil end
-			end
-		end
+local espFolder = Instance.new("Folder")
+espFolder.Name = "VoidFeralESP"
+pcall(function() espFolder.Parent = gethui and gethui() or game.CoreGui end)
+local espMade = {}
+local function espTag(m, color)
+	local hr = m:FindFirstChild("HumanoidRootPart")
+	local hm = m:FindFirstChildOfClass("Humanoid")
+	if not (hr and hm) then return end
+	local e = espMade[m]
+	if not e then
+		local hl = Instance.new("Highlight")
+		hl.FillTransparency, hl.OutlineTransparency = 0.75, 0
+		hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+		hl.Adornee = m
+		hl.Parent = espFolder
+		local bb = Instance.new("BillboardGui")
+		bb.Size = UDim2.fromOffset(140, 36)
+		bb.AlwaysOnTop = true
+		bb.StudsOffset = Vector3.new(0, 4, 0)
+		bb.Adornee = hr
+		bb.Parent = espFolder
+		local tl = Instance.new("TextLabel")
+		tl.BackgroundTransparency = 1
+		tl.Size = UDim2.new(1, 0, 0, 20)
+		tl.Font = Enum.Font.GothamBold
+		tl.TextSize = 12
+		tl.TextStrokeTransparency = 0.3
+		tl.Parent = bb
+		local back = Instance.new("Frame")
+		back.Size = UDim2.new(0.7, 0, 0, 5)
+		back.Position = UDim2.new(0.15, 0, 0, 24)
+		back.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+		back.BorderSizePixel = 0
+		back.Parent = bb
+		local bar = Instance.new("Frame")
+		bar.BorderSizePixel = 0
+		bar.Size = UDim2.fromScale(1, 1)
+		bar.Parent = back
+		e = { hl = hl, bb = bb, tl = tl, back = back, bar = bar }
+		espMade[m] = e
 	end
+	local r = root()
+	local d = r and math.floor((hr.Position - r.Position).Magnitude) or 0
+	local hp, mx = hm.Health, math.max(hm.MaxHealth, 1)
+	local p = Players:GetPlayerFromCharacter(m)
+	local name = p and p.DisplayName or (m:GetAttribute("Species") or m.Name)
+	e.hl.FillColor, e.hl.OutlineColor, e.tl.TextColor3 = color, color, color
+	e.tl.Text = ("%s [%d]%s"):format(name, d, F("EspHealth") and (" %d/%d"):format(hp, mx) or "")
+	e.back.Visible = F("EspHealth") and true or false
+	local frac = math.clamp(hp / mx, 0, 1)
+	e.bar.Size = UDim2.fromScale(frac, 1)
+	e.bar.BackgroundColor3 = Color3.fromRGB(255 * (1 - frac), 255 * frac, 60)
+	e.seen = true
 end
-local function restoreHitboxes()
-	for r, s in pairs(hitboxSaved) do pcall(function() r.Size, r.Transparency, r.CanCollide = s[1], s[2], s[3] end) end
-	for _, b in pairs(hbVis) do pcall(function() b:Destroy() end) end
-	hitboxSaved, hbVis = setmetatable({}, { __mode = "k" }), {}
+local function espStep()
+	for _, e in pairs(espMade) do e.seen = false end
+	if F("EspPlayers") then for _, p in ipairs(Players:GetPlayers()) do if p ~= LP and p.Character then espTag(p.Character, Color3.fromRGB(90, 170, 255)) end end end
+	if F("EspNPCs") then local f = workspace:FindFirstChild("FeralNPCs") if f then for _, m in ipairs(f:GetChildren()) do if m:IsA("Model") then espTag(m, Color3.fromRGB(255, 90, 90)) end end end end
+	for m, e in pairs(espMade) do
+		if not e.seen or not m.Parent then e.hl:Destroy() e.bb:Destroy() espMade[m] = nil end
+	end
 end
 
 local function key(k, down) pcall(function() VIM:SendKeyEvent(down, k, false, game) end) end
@@ -214,10 +264,20 @@ conn(RunService.Heartbeat:Connect(function(dt)
 	if F("SpeedBoost") and r and h and not Hub.Traveling then
 		local v = r.AssemblyLinearVelocity * Vector3.new(1, 0, 1)
 		local dir = h.MoveDirection.Magnitude > 0.1 and h.MoveDirection or (v.Magnitude > 3 and v.Unit or nil)
-		if dir then r.CFrame = r.CFrame + dir * (F("BoostSpeed") or 20) * dt end
+		if dir then
+			local step = (F("BoostSpeed") or 20) * dt
+			local rp = RaycastParams.new()
+			rp.FilterType = Enum.RaycastFilterType.Exclude
+			rp.FilterDescendantsInstances = { char() }
+			local ahead = workspace:Raycast(r.Position, dir * (step + 2.5), rp)
+			local nxt = r.Position + dir * step
+			local floor = workspace:Raycast(nxt + Vector3.new(0, 2, 0), Vector3.new(0, -(h.HipHeight + r.Size.Y + 6), 0), rp)
+			if not ahead and floor then r.CFrame = r.CFrame + dir * step end
+		end
 	end
 end))
 
+local SafeSpeed = 32
 local stopTravel = false
 local function groundAt(xz)
 	local rp = RaycastParams.new()
@@ -238,7 +298,7 @@ local function travelTo(pos)
 		r = root() if not r then break end
 		local flat = (pos - r.Position) * Vector3.new(1, 0, 1)
 		if flat.Magnitude < 3 then break end
-		local step = math.min(flat.Magnitude, (F("TweenSpeed") or 60) * dt)
+		local step = math.min(flat.Magnitude, SafeSpeed * dt)
 		local nxt = r.Position + flat.Unit * step
 		local g = groundAt(Vector2.new(nxt.X, nxt.Z))
 		local y = g and (g.Y + lift) or nxt.Y
@@ -402,7 +462,7 @@ task.spawn(function()
 end)
 task.spawn(function()
 	while Hub.Running do
-		pcall(hitboxStep)
+		pcall(espStep)
 		pcall(lungeStep)
 		pcall(sprintStep)
 		task.wait(0.2)
@@ -470,14 +530,15 @@ end
 local playerNames = {}
 for _, p in ipairs(Players:GetPlayers()) do if p ~= LP then playerNames[#playerNames + 1] = p.Name end end
 
-local Combat = Window:CreateTab({ Name = "Combat", Desc = "Aura, lunge, reach, hitboxes", Icon = "swords" })
+local Combat = Window:CreateTab({ Name = "Combat", Desc = "Aura, lunge, reach", Icon = "swords" })
 local AuraSub = Combat:CreateSubTab({ Name = "Aura", Icon = "crosshair" })
-local ReachSub = Combat:CreateSubTab({ Name = "Reach", Icon = "maximize" })
+local ReachSub = Combat:CreateSubTab({ Name = "Reach & ESP", Icon = "maximize" })
 
 local aura = AuraSub:CreateGroupbox({ Name = "Kill Aura", Side = "Left", Icon = "zap" })
 aura:CreateToggle({ Name = "Kill Aura", Flag = "KillAura", CurrentValue = false })
 aura:CreateDropdown({ Name = "Aura Target", Options = { "Both", "Players", "NPCs" }, CurrentOption = "Both", Flag = "AuraTarget" })
 aura:CreateSlider({ Name = "Aura Range", Range = { 4, 40 }, Increment = 1, CurrentValue = 12, Suffix = " st", Flag = "AuraRange" })
+aura:CreateDropdown({ Name = "Bite Method", Options = { "Game", "Remote" }, CurrentOption = "Game", Flag = "BiteMethod" })
 aura:CreateSlider({ Name = "Bite Delay", Range = { 0.6, 2 }, Increment = 0.05, CurrentValue = 0.6, Suffix = " s", Flag = "AuraDelay" })
 aura:CreateToggle({ Name = "Face Target", Flag = "FaceTarget", CurrentValue = true })
 aura:CreateToggle({ Name = "Stick To Target", Desc = "Server only accepts bites inside real reach", Flag = "StickTarget", CurrentValue = true })
@@ -493,11 +554,12 @@ esc:CreateToggle({ Name = "Auto Grab Escape", Flag = "AutoEscape", CurrentValue 
 
 local reach = ReachSub:CreateGroupbox({ Name = "Bite Reach", Side = "Left", Icon = "ruler" })
 reach:CreateToggle({ Name = "Bite Reach", Flag = "BiteReach", CurrentValue = false })
-reach:CreateSlider({ Name = "Reach Scale", Range = { 1, 5 }, Increment = 0.1, CurrentValue = 2, Suffix = "x", Flag = "ReachScale" })
-local hb = ReachSub:CreateGroupbox({ Name = "Hitbox Expander", Side = "Right", Icon = "box" })
-hb:CreateToggle({ Name = "Hitbox Expander", Flag = "Hitbox", CurrentValue = false, Callback = function(v) if not v then restoreHitboxes() end end })
-hb:CreateSlider({ Name = "Hitbox Size", Range = { 2, 30 }, Increment = 1, CurrentValue = 10, Suffix = " st", Flag = "HitboxSize" })
-hb:CreateToggle({ Name = "Show Hitbox", Flag = "ShowHitbox", CurrentValue = false })
+reach:CreateSlider({ Name = "Reach", Range = { 2, 15 }, Increment = 0.5, CurrentValue = 15, Suffix = " st", Flag = "ReachStuds" })
+reach:CreateToggle({ Name = "Show Reach Hitbox", Flag = "ShowReach", CurrentValue = true })
+local espG = ReachSub:CreateGroupbox({ Name = "ESP", Side = "Right", Icon = "eye" })
+espG:CreateToggle({ Name = "Player ESP", Flag = "EspPlayers", CurrentValue = false })
+espG:CreateToggle({ Name = "NPC ESP", Flag = "EspNPCs", CurrentValue = false })
+espG:CreateToggle({ Name = "Health ESP", Flag = "EspHealth", CurrentValue = true })
 
 local Move = Window:CreateTab({ Name = "Movement", Desc = "Sprint, speed, travel", Icon = "footprints" })
 local sp = Move:CreateGroupbox({ Name = "Sprint", Side = "Left", Icon = "wind" })
@@ -506,7 +568,6 @@ sp:CreateDropdown({ Name = "Sprint Type", Options = { "Sprint", "Trot", "Gallop"
 sp:CreateToggle({ Name = "Speed Boost", Flag = "SpeedBoost", CurrentValue = false })
 sp:CreateSlider({ Name = "Boost Speed", Range = { 5, 100 }, Increment = 1, CurrentValue = 20, Suffix = " st/s", Flag = "BoostSpeed" })
 local tr = Move:CreateGroupbox({ Name = "Travel", Side = "Right", Icon = "map" })
-tr:CreateSlider({ Name = "Tween Speed", Range = { 20, 200 }, Increment = 5, CurrentValue = 60, Suffix = " st/s", Flag = "TweenSpeed" })
 tr:CreateDropdown({ Name = "Place", Options = PlaceNames, CurrentOption = "Golden Waterhole", Searchable = true, Flag = "TravelPlace" })
 tr:CreateButton({ Name = "Travel To Place", Icon = "navigation", Callback = function() act(travelPlace, F("TravelPlace") or "Golden Waterhole") end })
 tr:CreateButton({ Name = "Travel To Water", Icon = "droplet", Callback = function() act(goWater) end })
@@ -533,7 +594,8 @@ function Hub.Unload()
 	Hub.Running = false
 	stopTravel = true
 	clearSprint()
-	restoreHitboxes()
+	pcall(function() espFolder:Destroy() end)
+	if reachBall then reachBall:Destroy() end
 	local r = root()
 	if r and boxSaved then r:SetAttribute("FeralBoxFull", boxSaved[1] ~= false and boxSaved[1] or nil) end
 	if oldNC then pcall(hookmetamethod, game, "__namecall", oldNC) end
