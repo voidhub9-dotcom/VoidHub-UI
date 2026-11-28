@@ -132,11 +132,11 @@ local function applyReach()
 	if not (r and h) then return end
 	if F("BiteReach") then
 		if not boxSaved then boxSaved = { r:GetAttribute("FeralBoxFull") or false } end
-		local want = F("ReachStuds") or 40
+		local want = F("ReachStuds") or 15
 		local box = math.max(0.5, 2 * (want / 1.15 - h.HipHeight * 1.45 - 1.2))
 		r:SetAttribute("FeralBoxFull", box)
 		if F("ShowReach") ~= false then
-			local rad = F("ReachStuds") or 40
+			local rad = F("ReachStuds") or 15
 			local holder = Hub.reachPart
 			if not (holder and holder.Parent) then
 				holder = Instance.new("Part")
@@ -210,7 +210,7 @@ function Hub.onBite(t)
 	if not (F("BiteReach") or F("Hitbox")) then return end
 	local r = root() if not r then return end
 	local best, bd
-	local range = F("BiteReach") and (F("ReachStuds") or 40) or 6
+	local range = F("BiteReach") and (F("ReachStuds") or 15) or 6
 	for _, m in ipairs(candidates(F("AuraTarget") or "Both")) do
 		if isTarget(m) then
 			local d = (m.HumanoidRootPart.Position - r.Position).Magnitude
@@ -355,6 +355,20 @@ local function sprintStep()
 		if c:GetAttribute(a) ~= want then c:SetAttribute(a, want) end
 	end
 end
+local speedBase = setmetatable({}, { __mode = "k" })
+local function speedStep()
+	local c = char() if not c then return end
+	if speedBase[c] == nil then speedBase[c] = c:GetAttribute("SpeedScale") or false end
+	local base = speedBase[c] ~= false and speedBase[c] or 1
+	if F("SpeedMult") then
+		local want = base * (F("SpeedMultValue") or 1.5)
+		if math.abs((c:GetAttribute("SpeedScale") or 0) - want) > 0.001 then c:SetAttribute("SpeedScale", want) end
+	elseif c:GetAttribute("SpeedScale") ~= (speedBase[c] ~= false and speedBase[c] or nil) and Hub.speedWasOn then
+		c:SetAttribute("SpeedScale", speedBase[c] ~= false and speedBase[c] or nil)
+	end
+	Hub.speedWasOn = F("SpeedMult")
+end
+Hub.speedStep = speedStep
 local function clearSprint()
 	local c = char()
 	if c then for _, a in pairs(SprintAttr) do c:SetAttribute(a, nil) end end
@@ -554,6 +568,7 @@ task.spawn(function()
 		pcall(hitboxStep)
 		pcall(lungeStep)
 		pcall(sprintStep)
+		pcall(speedStep)
 		task.wait(0.2)
 	end
 end)
@@ -642,7 +657,7 @@ esc:CreateToggle({ Name = "Auto Grab Escape", Flag = "AutoEscape", CurrentValue 
 
 local reach = ReachSub:CreateGroupbox({ Name = "Bite Reach", Side = "Left", Icon = "ruler" })
 reach:CreateToggle({ Name = "Bite Reach", Flag = "BiteReach", CurrentValue = false })
-reach:CreateSlider({ Name = "Reach", Range = { 2, 60 }, Increment = 0.5, CurrentValue = 40, Suffix = " st", Flag = "ReachStuds" })
+reach:CreateSlider({ Name = "Reach", Range = { 2, 15 }, Increment = 0.5, CurrentValue = 15, Suffix = " st", Flag = "ReachStuds" })
 reach:CreateToggle({ Name = "Show Reach Hitbox", Flag = "ShowReach", CurrentValue = true })
 local hbG = ReachSub:CreateGroupbox({ Name = "Hitbox Expander", Side = "Left", Icon = "box" })
 hbG:CreateToggle({ Name = "Hitbox Expander", Flag = "Hitbox", CurrentValue = false, Callback = function(v) if not v then restoreHitboxes() end end })
@@ -656,6 +671,8 @@ espG:CreateToggle({ Name = "Health ESP", Flag = "EspHealth", CurrentValue = true
 local Move = Window:CreateTab({ Name = "Movement", Desc = "Sprint, speed, survival", Icon = "footprints" })
 local sp = Move:CreateGroupbox({ Name = "Sprint", Side = "Left", Icon = "wind" })
 sp:CreateToggle({ Name = "Auto Sprint", Flag = "AutoSprint", CurrentValue = false })
+sp:CreateToggle({ Name = "Speed Multiplier", Desc = "Scales the game's own movement speed", Flag = "SpeedMult", CurrentValue = false })
+sp:CreateSlider({ Name = "Multiplier", Range = { 1, 3 }, Increment = 0.05, CurrentValue = 1.5, Suffix = "x", Flag = "SpeedMultValue" })
 sp:CreateDropdown({ Name = "Sprint Type", Options = { "Sprint", "Trot", "Gallop" }, CurrentOption = "Sprint", Flag = "SprintType" })
 local tr = Move:CreateGroupbox({ Name = "Survival", Side = "Right", Icon = "droplet" })
 tr:CreateButton({ Name = "Travel To Food", Icon = "drumstick", Callback = function() act(goFood) end })
@@ -681,6 +698,7 @@ function Hub.Unload()
 	Hub.Running = false
 	stopTravel = true
 	clearSprint()
+	pcall(function() local c = char() if c and speedBase[c] ~= nil then c:SetAttribute("SpeedScale", speedBase[c] ~= false and speedBase[c] or nil) end end)
 	pcall(function() espFolder:Destroy() end)
 	restoreHitboxes()
 	if reachBall then reachBall:Destroy() end
