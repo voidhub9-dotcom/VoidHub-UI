@@ -102,8 +102,9 @@ local function travel(target, within)
 				if seq() ~= start then break end
 				if (r.Position - target).Magnitude <= within then return true end
 			end
-		elseif (r.Position - target).Magnitude < 25 then
-			glideTo(r, target + Vector3.new(0, 0.5, 0), Opt.Speed * 0.6)
+		elseif (r.Position - target).Magnitude < 160 then
+			glideTo(r, target + Vector3.new(0, lift * 0.5, 0), Opt.Speed)
+			if seq() ~= start then return false, "reverted" end
 		else
 			return false, "no path"
 		end
