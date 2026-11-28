@@ -211,8 +211,30 @@ local function sell()
 	end
 	if #list == 0 then return false, "no scrap machine found" end
 	table.sort(list, function(a, b) return a[3] < b[3] end)
+	local function canPath(a, b)
+		local path = PathfindingService:CreatePath({ AgentRadius = 1, AgentHeight = 4, AgentCanJump = true, AgentCanClimb = true })
+		local ok = pcall(function() path:ComputeAsync(a, b) end)
+		return ok and path.Status == Enum.PathStatus.Success
+	end
 	for _, m in ipairs(list) do
-		if travel(m[2], m[1].MaxActivationDistance - 1.5) then
+		local reach = m[1].MaxActivationDistance - 1.5
+		local arrived = travel(m[2], reach)
+		if not arrived and workspace:FindFirstChild("Scraps") then
+			local me = root() and root().Position
+			local hops = {}
+			for _, sc in ipairs(workspace.Scraps:GetChildren()) do
+				if sc:IsA("BasePart") then hops[#hops + 1] = { sc.Position, (sc.Position - m[2]).Magnitude } end
+			end
+			table.sort(hops, function(a, b) return a[2] < b[2] end)
+			for i = 1, math.min(12, #hops) do
+				local h = hops[i][1]
+				if me and canPath(h, m[2]) and canPath(me, h) then
+					if travel(h, 4) then arrived = travel(m[2], reach) end
+					break
+				end
+			end
+		end
+		if arrived then
 			task.wait(0.3)
 			holdPrompt(m[1])
 			task.wait(1.2)
