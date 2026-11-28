@@ -168,10 +168,16 @@ local function pickScrap(s)
 	local ok = travel(s.Position, 4)
 	if not ok or not s.Parent then blacklist[s] = true return false end
 	local p = s:FindFirstChildWhichIsA("ProximityPrompt", true)
-	holdPrompt(p)
-	task.wait(0.6)
-	if s.Parent then blacklist[s] = true return false end
-	return true
+	local r = root()
+	for _ = 1, 3 do
+		if r then r.AssemblyLinearVelocity = Vector3.zero end
+		task.wait(0.35)
+		holdPrompt(p)
+		task.wait(0.5)
+		if not s.Parent then return true end
+	end
+	blacklist[s] = true
+	return false
 end
 
 local function sell()
