@@ -168,14 +168,53 @@ local function applyReach()
 end
 conn(LP.CharacterAdded:Connect(function() boxSaved = nil end))
 
+local hbSaved = setmetatable({}, { __mode = "k" })
+local hbBox = {}
+local function hitboxStep()
+	local on = F("Hitbox")
+	local size = F("HitboxSize") or 12
+	for _, m in ipairs(candidates("Both")) do
+		local hr = m:FindFirstChild("HumanoidRootPart")
+		if hr then
+			if on and isTarget(m) then
+				if not hbSaved[hr] then hbSaved[hr] = { hr.Size, hr.Transparency, hr.CanCollide, hr.Massless } end
+				hr.Size = Vector3.new(size, size, size)
+				hr.CanCollide = false
+				hr.Massless = true
+				hr.Transparency = F("ShowHitbox") and 0.8 or 1
+				if F("ShowHitbox") then
+					if not (hbBox[hr] and hbBox[hr].Parent) then
+						local b = Instance.new("SelectionBox")
+						b.Adornee = hr b.LineThickness = 0.06 b.Color3 = Color3.fromRGB(255, 255, 255)
+						b.Parent = hr
+						hbBox[hr] = b
+					end
+				elseif hbBox[hr] then hbBox[hr]:Destroy() hbBox[hr] = nil end
+			elseif hbSaved[hr] then
+				local sv = hbSaved[hr]
+				pcall(function() hr.Size, hr.Transparency, hr.CanCollide, hr.Massless = sv[1], sv[2], sv[3], sv[4] end)
+				hbSaved[hr] = nil
+				if hbBox[hr] then hbBox[hr]:Destroy() hbBox[hr] = nil end
+			end
+		end
+	end
+end
+local function restoreHitboxes()
+	for hr, sv in pairs(hbSaved) do pcall(function() hr.Size, hr.Transparency, hr.CanCollide, hr.Massless = sv[1], sv[2], sv[3], sv[4] end) end
+	for _, b in pairs(hbBox) do pcall(function() b:Destroy() end) end
+	hbSaved, hbBox = setmetatable({}, { __mode = "k" }), {}
+end
+Hub.restoreHitboxes = restoreHitboxes
+
 function Hub.onBite(t)
-	if not F("BiteReach") then return end
+	if not (F("BiteReach") or F("Hitbox")) then return end
 	local r = root() if not r then return end
 	local best, bd
-	local range = F("ReachStuds") or 40
+	local range = F("BiteReach") and (F("ReachStuds") or 40) or 6
 	for _, m in ipairs(candidates(F("AuraTarget") or "Both")) do
 		if isTarget(m) then
 			local d = (m.HumanoidRootPart.Position - r.Position).Magnitude
+			if F("Hitbox") then d = d - (F("HitboxSize") or 12) / 2 end
 			if d <= range and (not bd or d < bd) then best, bd = m, d end
 		end
 	end
@@ -512,6 +551,7 @@ end)
 task.spawn(function()
 	while Hub.Running do
 		pcall(espStep)
+		pcall(hitboxStep)
 		pcall(lungeStep)
 		pcall(sprintStep)
 		task.wait(0.2)
@@ -604,6 +644,10 @@ local reach = ReachSub:CreateGroupbox({ Name = "Bite Reach", Side = "Left", Icon
 reach:CreateToggle({ Name = "Bite Reach", Flag = "BiteReach", CurrentValue = false })
 reach:CreateSlider({ Name = "Reach", Range = { 2, 60 }, Increment = 0.5, CurrentValue = 40, Suffix = " st", Flag = "ReachStuds" })
 reach:CreateToggle({ Name = "Show Reach Hitbox", Flag = "ShowReach", CurrentValue = true })
+local hbG = ReachSub:CreateGroupbox({ Name = "Hitbox Expander", Side = "Left", Icon = "box" })
+hbG:CreateToggle({ Name = "Hitbox Expander", Flag = "Hitbox", CurrentValue = false, Callback = function(v) if not v then restoreHitboxes() end end })
+hbG:CreateSlider({ Name = "Hitbox Size", Range = { 2, 30 }, Increment = 1, CurrentValue = 12, Suffix = " st", Flag = "HitboxSize" })
+hbG:CreateToggle({ Name = "Show Hitbox", Flag = "ShowHitbox", CurrentValue = true })
 local espG = ReachSub:CreateGroupbox({ Name = "ESP", Side = "Right", Icon = "eye" })
 espG:CreateToggle({ Name = "Player ESP", Flag = "EspPlayers", CurrentValue = false })
 espG:CreateToggle({ Name = "NPC ESP", Flag = "EspNPCs", CurrentValue = false })
@@ -638,6 +682,7 @@ function Hub.Unload()
 	stopTravel = true
 	clearSprint()
 	pcall(function() espFolder:Destroy() end)
+	restoreHitboxes()
 	if reachBall then reachBall:Destroy() end
 	if Hub.reachPart then Hub.reachPart:Destroy() end
 	local r = root()
