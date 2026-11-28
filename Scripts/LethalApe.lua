@@ -42,7 +42,7 @@ local Places = {
 local ShopKeys = { "EnergyDrink", "SpeedPotion", "NoiseMaker", "Molotov", "Radar", "Flashlight" }
 local ColorNames = { "Blue", "Cyan", "Yellow", "White", "Black", "Green", "Red", "Orange", "Rainbow", "Vip", "Purple", "Pink" }
 
-local Opt = { Speed = 100, SellAt = 6, FlySpeed = 50, ScrapMin = "Copper" }
+local Opt = { Speed = 100, SellAt = 3, FlySpeed = 50, ScrapMin = "Copper" }
 local ScrapValue = { Copper = 1, Silver = 2, Gold = 3, Emerald = 6, Ruby = 8, Diamond = 10 }
 
 conn(LP.Idled:Connect(function()
@@ -577,7 +577,7 @@ Hub.UI.Farm = farm:Toggle({ Text = "Auto farm coins", Default = false, Callback 
 		say("Auto farm off")
 	end
 end })
-farm:Slider({ Text = "Sell when holding", Min = 1, Max = 30, Default = 6, Callback = function(v) Opt.SellAt = v end })
+farm:Slider({ Text = "Sell when holding", Min = 1, Max = 30, Default = 3, Callback = function(v) Opt.SellAt = v end })
 farm:Dropdown({ Text = "Minimum scrap", Options = { "Copper", "Silver", "Gold", "Emerald", "Ruby", "Diamond" }, Default = "Copper", Callback = function(v) Opt.ScrapMin = v end })
 farm:Slider({ Text = "Move speed", Min = 20, Max = 200, Default = 100, Callback = function(v) Opt.Speed = v end })
 farm:Button({ Text = "Sell now", Callback = function() act(runTask, sell) end })
