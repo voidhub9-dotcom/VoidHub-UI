@@ -55,12 +55,15 @@ pcall(function()
 	end))
 end)
 
-local OkloSrc
-pcall(function() OkloSrc = request({ Url = "https://raw.githubusercontent.com/okdude42/main-scripts/main/oklo-uilib/OkloUI.luau", Method = "GET" }).Body end)
-if not OkloSrc or #OkloSrc < 1000 then OkloSrc = game:HttpGet("https://raw.githubusercontent.com/okdude42/main-scripts/main/oklo-uilib/OkloUI.luau") end
-local OkloUI = loadstring(OkloSrc)()
-local ui
-local function F(flag) if not ui then return nil end local ok, v = pcall(ui.get, ui, flag) return ok and v or nil end
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/voidhub9-dotcom/VoidHub-UI/main/Source.lua"))()
+local Window = Library:CreateVoidHubWindow({
+	Name = "VoidHub", Title = "VoidHub", LoadingTitle = "VoidHub",
+	ToggleUIKeybind = "RightControl",
+	ConfigurationSaving = { Enabled = true, FolderName = "VoidHub_Feral" },
+	Home = { Welcome = "FERAL" },
+})
+Hub.Window = Window
+local function F(flag) local f = Window.Flags[flag] return f and f.Value end
 
 local function isTarget(m)
 	if not m or not m.Parent or m == char() then return false end
@@ -559,73 +562,67 @@ local function act(fn, ...)
 	end)
 end
 
-ui = OkloUI.new({
-	Title = "VoidHub",
-	Subtitle = "FERAL",
-	Version = "2.0",
-	Folder = "VoidHub/Feral",
-	Footer = "VoidHub | FERAL",
-	Logo = { Emblem = true },
-	Status = function() return Hub.Log[1] and Hub.Log[1]:sub(10) or nil end,
-	OnUnload = function() Hub.Unload() end,
-})
-Hub.Window = ui
+local Combat = Window:CreateTab({ Name = "Combat", Desc = "Aura, lunge, reach", Icon = "swords" })
+local AuraSub = Combat:CreateSubTab({ Name = "Aura", Icon = "crosshair" })
+local ReachSub = Combat:CreateSubTab({ Name = "Reach & ESP", Icon = "maximize" })
 
-local combat = ui:tab("Combat", { Group = "Combat" })
-local aura = combat:section("KILL AURA")
-aura:toggle({ Name = "Kill Aura", Flag = "KillAura", Default = false })
-aura:dropdown({ Name = "Aura Target", Flag = "AuraTarget", Values = { "Both", "Players", "NPCs" }, Default = "Both" })
-aura:slider({ Name = "Aura Range", Flag = "AuraRange", Min = 4, Max = 40, Default = 12, Format = function(v) return v .. " st" end })
-aura:dropdown({ Name = "Bite Method", Flag = "BiteMethod", Values = { "Game", "Remote" }, Default = "Game" })
-aura:slider({ Name = "Bite Delay", Flag = "AuraDelay", Min = 0.6, Max = 2, Default = 0.6, Step = 0.05, Format = function(v) return ("%.2f s"):format(v) end })
-aura:toggle({ Name = "Face Target", Flag = "FaceTarget", Default = true })
-aura:toggle({ Name = "Stick To Target", Flag = "StickTarget", Default = true, Info = { Title = "Stick To Target", Lines = { "The server only accepts bites inside your real reach.", "This keeps you right in front of the target." } } })
-aura:slider({ Name = "Stick Distance", Flag = "StickDistance", Min = 0.5, Max = 6, Default = 1.8, Step = 0.1, Format = function(v) return ("%.1f st"):format(v) end })
-aura:input({ Name = "Whitelist (names, comma)", Flag = "AuraWhitelistText", Default = "" })
+local aura = AuraSub:CreateGroupbox({ Name = "Kill Aura", Side = "Left", Icon = "zap" })
+aura:CreateToggle({ Name = "Kill Aura", Flag = "KillAura", CurrentValue = false })
+aura:CreateDropdown({ Name = "Aura Target", Options = { "Both", "Players", "NPCs" }, CurrentOption = "Both", Flag = "AuraTarget" })
+aura:CreateSlider({ Name = "Aura Range", Range = { 4, 40 }, Increment = 1, CurrentValue = 12, Suffix = " st", Flag = "AuraRange" })
+aura:CreateDropdown({ Name = "Bite Method", Options = { "Game", "Remote" }, CurrentOption = "Game", Flag = "BiteMethod" })
+aura:CreateSlider({ Name = "Bite Delay", Range = { 0.6, 2 }, Increment = 0.05, CurrentValue = 0.6, Suffix = " s", Flag = "AuraDelay" })
+aura:CreateToggle({ Name = "Face Target", Flag = "FaceTarget", CurrentValue = true })
+aura:CreateToggle({ Name = "Stick To Target", Desc = "Server only accepts bites inside real reach", Flag = "StickTarget", CurrentValue = true })
+aura:CreateSlider({ Name = "Stick Distance", Range = { 0.5, 6 }, Increment = 0.1, CurrentValue = 1.8, Suffix = " st", Flag = "StickDistance" })
+aura:CreateInput({ Name = "Whitelist", Desc = "Names, comma separated", PlaceholderText = "name1, name2", Flag = "AuraWhitelistText" })
 
-local lungeS = combat:section("LUNGE")
-lungeS:toggle({ Name = "Auto Lunge", Flag = "AutoLunge", Default = false })
-lungeS:dropdown({ Name = "Lunge Target", Flag = "LungeTarget", Values = { "Both", "Players", "NPCs" }, Default = "Both" })
-lungeS:slider({ Name = "Lunge Range", Flag = "LungeRange", Min = 8, Max = 60, Default = 30, Format = function(v) return v .. " st" end })
-lungeS:slider({ Name = "Min Lunge Range", Flag = "LungeMin", Min = 0, Max = 20, Default = 6, Format = function(v) return v .. " st" end })
-lungeS:toggle({ Name = "Predict Target", Flag = "LungePredict", Default = true })
-lungeS:button({ Name = "Lunge Now", Bind = "LungeNow", Callback = function() Hub.lungeNow() end })
-lungeS:toggle({ Name = "Auto Grab Escape", Flag = "AutoEscape", Default = false })
+local lungeG = AuraSub:CreateGroupbox({ Name = "Lunge", Side = "Right", Icon = "move-up-right" })
+lungeG:CreateToggle({ Name = "Auto Lunge", Flag = "AutoLunge", CurrentValue = false })
+lungeG:CreateDropdown({ Name = "Lunge Target", Options = { "Both", "Players", "NPCs" }, CurrentOption = "Both", Flag = "LungeTarget" })
+lungeG:CreateSlider({ Name = "Lunge Range", Range = { 8, 60 }, Increment = 1, CurrentValue = 30, Suffix = " st", Flag = "LungeRange" })
+lungeG:CreateSlider({ Name = "Min Lunge Range", Range = { 0, 20 }, Increment = 1, CurrentValue = 6, Suffix = " st", Flag = "LungeMin" })
+lungeG:CreateToggle({ Name = "Predict Target", Flag = "LungePredict", CurrentValue = true })
+lungeG:CreateButton({ Name = "Lunge Now", Icon = "zap", Callback = function() Hub.lungeNow() end })
+lungeG:CreateKeybind({ Name = "Lunge Key", CurrentKeybind = "Q", Flag = "LungeKey", Callback = function() Hub.lungeNow() end })
+local esc = AuraSub:CreateGroupbox({ Name = "Defense", Side = "Right", Icon = "shield" })
+esc:CreateToggle({ Name = "Auto Grab Escape", Flag = "AutoEscape", CurrentValue = false })
 
-local reachS = combat:section("REACH")
-reachS:toggle({ Name = "Bite Reach", Flag = "BiteReach", Default = false })
-reachS:slider({ Name = "Reach", Flag = "ReachStuds", Min = 2, Max = 60, Default = 40, Step = 0.5, Format = function(v) return v .. " st" end })
-reachS:toggle({ Name = "Show Reach Hitbox", Flag = "ShowReach", Default = true })
+local reach = ReachSub:CreateGroupbox({ Name = "Bite Reach", Side = "Left", Icon = "ruler" })
+reach:CreateToggle({ Name = "Bite Reach", Flag = "BiteReach", CurrentValue = false })
+reach:CreateSlider({ Name = "Reach", Range = { 2, 60 }, Increment = 0.5, CurrentValue = 40, Suffix = " st", Flag = "ReachStuds" })
+reach:CreateToggle({ Name = "Show Reach Hitbox", Flag = "ShowReach", CurrentValue = true })
+local espG = ReachSub:CreateGroupbox({ Name = "ESP", Side = "Right", Icon = "eye" })
+espG:CreateToggle({ Name = "Player ESP", Flag = "EspPlayers", CurrentValue = false })
+espG:CreateToggle({ Name = "NPC ESP", Flag = "EspNPCs", CurrentValue = false })
+espG:CreateToggle({ Name = "Health ESP", Flag = "EspHealth", CurrentValue = true })
 
-local visuals = ui:tab("Visuals", { Group = "Visuals" })
-local espS = visuals:section("ESP")
-espS:toggle({ Name = "Player ESP", Flag = "EspPlayers", Default = false })
-espS:toggle({ Name = "NPC ESP", Flag = "EspNPCs", Default = false })
-espS:toggle({ Name = "Health ESP", Flag = "EspHealth", Default = true })
+local Move = Window:CreateTab({ Name = "Movement", Desc = "Sprint, speed, survival", Icon = "footprints" })
+local sp = Move:CreateGroupbox({ Name = "Sprint", Side = "Left", Icon = "wind" })
+sp:CreateToggle({ Name = "Auto Sprint", Flag = "AutoSprint", CurrentValue = false })
+sp:CreateDropdown({ Name = "Sprint Type", Options = { "Sprint", "Trot", "Gallop" }, CurrentOption = "Sprint", Flag = "SprintType" })
+sp:CreateToggle({ Name = "Speed Boost", Flag = "SpeedBoost", CurrentValue = false })
+sp:CreateSlider({ Name = "Boost Speed", Range = { 5, 100 }, Increment = 1, CurrentValue = 20, Suffix = " st/s", Flag = "BoostSpeed" })
+local tr = Move:CreateGroupbox({ Name = "Survival", Side = "Right", Icon = "droplet" })
+tr:CreateButton({ Name = "Travel To Water", Icon = "droplet", Callback = function() act(goWater) end })
+tr:CreateButton({ Name = "Travel To Food", Icon = "drumstick", Callback = function() act(goFood) end })
+tr:CreateButton({ Name = "Stop Travel", Style = "Danger", Callback = function() stopTravel = true fire(R.Actions, "Feed", false) end })
 
-local move = ui:tab("Movement", { Group = "Movement" })
-local spS = move:section("SPRINT")
-spS:toggle({ Name = "Auto Sprint", Flag = "AutoSprint", Default = false })
-spS:dropdown({ Name = "Sprint Type", Flag = "SprintType", Values = { "Sprint", "Trot", "Gallop" }, Default = "Sprint" })
-spS:toggle({ Name = "Speed Boost", Flag = "SpeedBoost", Default = false })
-spS:slider({ Name = "Boost Speed", Flag = "BoostSpeed", Min = 5, Max = 100, Default = 20, Format = function(v) return v .. " st/s" end })
-local trS = move:section("SURVIVAL")
-trS:button({ Name = "Travel To Water", Callback = function() act(goWater) end })
-trS:button({ Name = "Travel To Food", Callback = function() act(goFood) end })
-trS:button({ Name = "Stop Travel", Callback = function() stopTravel = true fire(R.Actions, "Feed", false) end })
-
-local misc = ui:tab("Misc", { Group = "Misc" })
-local mg = misc:section("UTILITY")
-mg:toggle({ Name = "Anti AFK", Flag = "AntiAfk", Default = true, Callback = function(v) Hub.AntiAfk = v end })
+local Misc = Window:CreateTab({ Name = "Misc", Desc = "Anti AFK, farm, status", Icon = "settings" })
+local mg = Misc:CreateGroupbox({ Name = "Utility", Side = "Left", Icon = "wrench" })
+mg:CreateToggle({ Name = "Anti AFK", Flag = "AntiAfk", CurrentValue = true, Callback = function(v) Hub.AntiAfk = v end })
 Hub.AntiAfk = true
-mg:toggle({ Name = "Auto Amber Farm", Flag = "AutoAmber", Default = false })
-mg:button({ Name = "Claim Rewards", Callback = function() claimRewards() end })
-mg:toggle({ Name = "Auto Spawn (menu)", Flag = "AutoSpawn", Default = true })
-mg:slider({ Name = "Spawn Slot", Flag = "SpawnSlot", Min = 1, Max = 10, Default = 1 })
-mg:label({ Label = function()
+mg:CreateToggle({ Name = "Auto Amber Farm", Desc = "Collects amber chunks and claims rewards", Flag = "AutoAmber", CurrentValue = false })
+mg:CreateButton({ Name = "Claim Rewards", Callback = function() claimRewards() end })
+mg:CreateToggle({ Name = "Auto Spawn (menu)", Flag = "AutoSpawn", CurrentValue = true })
+mg:CreateSlider({ Name = "Spawn Slot", Range = { 1, 10 }, Increment = 1, CurrentValue = 1, Flag = "SpawnSlot" })
+mg:CreateButton({ Name = "Unload", Style = "Danger", Callback = function() Hub.Unload() end })
+local stat = Misc:CreateGroupbox({ Name = "Status", Side = "Right", Icon = "activity" })
+stat:CreateLabel({ Text = "", Update = function()
 	local c = char()
 	return ("Hunger %d | Thirst %d | Stamina %d | Amber %d"):format(c and c:GetAttribute("Hunger") or 0, c and c:GetAttribute("Thirst") or 0, c and c:GetAttribute("Stamina") or 0, LP:GetAttribute("Amber") or 0)
-end, Height = 26, Boxed = true })
+end })
+stat:CreateLabel({ Text = "", Update = function() return Hub.Log[1] or "" end })
 
 function Hub.Unload()
 	Hub.Running = false
@@ -638,8 +635,10 @@ function Hub.Unload()
 	if r and boxSaved then r:SetAttribute("FeralBoxFull", boxSaved[1] ~= false and boxSaved[1] or nil) end
 	if oldNC then pcall(hookmetamethod, game, "__namecall", oldNC) end
 	for _, c in ipairs(Hub.Conns) do pcall(function() c:Disconnect() end) end
+	pcall(function() Window:Destroy() end)
 	getgenv().VoidHubFeral = nil
 end
 
 Hub.travelPlace, Hub.goWater, Hub.goFood, Hub.nearestTarget, Hub.bite, Hub.travelTo = travelPlace, goWater, goFood, nearestTarget, bite, travelTo
+Window:LoadAutoload()
 return Hub
