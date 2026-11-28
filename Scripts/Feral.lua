@@ -325,24 +325,6 @@ conn(RunService.RenderStepped:Connect(function()
 	local rp, r0 = Hub.reachPart, root()
 	if rp and rp.Parent and r0 then rp.CFrame = CFrame.new(r0.Position) end
 end))
-conn(RunService.Heartbeat:Connect(function(dt)
-	if not Hub.Running then return end
-	local r, h = root(), hum()
-	if F("SpeedBoost") and r and h and not Hub.Traveling then
-		local v = r.AssemblyLinearVelocity * Vector3.new(1, 0, 1)
-		local dir = h.MoveDirection.Magnitude > 0.1 and h.MoveDirection or (v.Magnitude > 3 and v.Unit or nil)
-		if dir then
-			local step = (F("BoostSpeed") or 20) * dt
-			local rp = RaycastParams.new()
-			rp.FilterType = Enum.RaycastFilterType.Exclude
-			rp.FilterDescendantsInstances = { char() }
-			local ahead = workspace:Raycast(r.Position, dir * (step + 2.5), rp)
-			local nxt = r.Position + dir * step
-			local floor = workspace:Raycast(nxt + Vector3.new(0, 2, 0), Vector3.new(0, -(h.HipHeight + r.Size.Y + 6), 0), rp)
-			if not ahead and floor then r.CFrame = r.CFrame + dir * step end
-		end
-	end
-end))
 
 local SafeSpeed = 32
 local stopTravel = false
@@ -631,10 +613,7 @@ local Move = Window:CreateTab({ Name = "Movement", Desc = "Sprint, speed, surviv
 local sp = Move:CreateGroupbox({ Name = "Sprint", Side = "Left", Icon = "wind" })
 sp:CreateToggle({ Name = "Auto Sprint", Flag = "AutoSprint", CurrentValue = false })
 sp:CreateDropdown({ Name = "Sprint Type", Options = { "Sprint", "Trot", "Gallop" }, CurrentOption = "Sprint", Flag = "SprintType" })
-sp:CreateToggle({ Name = "Speed Boost", Flag = "SpeedBoost", CurrentValue = false })
-sp:CreateSlider({ Name = "Boost Speed", Range = { 5, 100 }, Increment = 1, CurrentValue = 20, Suffix = " st/s", Flag = "BoostSpeed" })
 local tr = Move:CreateGroupbox({ Name = "Survival", Side = "Right", Icon = "droplet" })
-tr:CreateButton({ Name = "Travel To Water", Icon = "droplet", Callback = function() act(goWater) end })
 tr:CreateButton({ Name = "Travel To Food", Icon = "drumstick", Callback = function() act(goFood) end })
 tr:CreateButton({ Name = "Stop Travel", Style = "Danger", Callback = function() stopTravel = true fire(R.Actions, "Feed", false) end })
 
