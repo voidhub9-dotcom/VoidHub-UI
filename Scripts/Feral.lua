@@ -167,12 +167,12 @@ local function key(k, down) pcall(function() VIM:SendKeyEvent(down, k, false, ga
 local lastLunge = 0
 local function lungeStep()
 	if not F("AutoLunge") or os.clock() - lastLunge < 1 then return end
-	if LP:GetAttribute("HudLungeReady") == false then return end
 	local m = nearestTarget(F("LungeTarget") or "Both", F("LungeRange") or 35)
 	if not m then return end
 	lastLunge = os.clock()
 	face(m)
-	key(Enum.KeyCode.F, true) task.wait(0.05) key(Enum.KeyCode.F, false)
+	local c = char()
+	if c then c:SetAttribute("WolfDbgLunge", os.clock()) end
 	log("lunge at " .. m.Name)
 end
 
@@ -193,28 +193,28 @@ if R.Grab then
 end
 
 local sprintHeld
+local SprintAttr = { Sprint = "WolfDbgSprint", Trot = "WolfDbgTrot", Gallop = "WolfDbgBurst" }
 local function sprintStep()
-	local want = F("AutoSprint") and (hum() and hum().MoveDirection.Magnitude > 0.1)
+	local c = char() if not c then return end
+	local on = F("AutoSprint")
 	local typ = F("SprintType") or "Sprint"
-	local k = typ == "Trot" and Enum.KeyCode.Z or typ == "Gallop" and Enum.KeyCode.X or Enum.KeyCode.LeftShift
-	if typ == "Sprint" then
-		if want and sprintHeld ~= k then if sprintHeld then key(sprintHeld, false) end key(k, true) sprintHeld = k
-		elseif not want and sprintHeld then key(sprintHeld, false) sprintHeld = nil end
-	else
-		if sprintHeld then key(sprintHeld, false) sprintHeld = nil end
-		local attr = typ == "Trot" and "HudTrot" or "HudBurst"
-		local on = LP:GetAttribute(attr)
-		if F("AutoSprint") and not on then key(k, true) task.wait(0.05) key(k, false) task.wait(0.3)
-		elseif not F("AutoSprint") and on and Hub.SprintTapped then key(k, true) task.wait(0.05) key(k, false) end
-		Hub.SprintTapped = F("AutoSprint")
+	for t, a in pairs(SprintAttr) do
+		local want = on and t == typ or nil
+		if c:GetAttribute(a) ~= want then c:SetAttribute(a, want) end
 	end
+end
+local function clearSprint()
+	local c = char()
+	if c then for _, a in pairs(SprintAttr) do c:SetAttribute(a, nil) end end
 end
 
 conn(RunService.Heartbeat:Connect(function(dt)
 	if not Hub.Running then return end
 	local r, h = root(), hum()
-	if F("SpeedBoost") and r and h and h.MoveDirection.Magnitude > 0.1 and not Hub.Traveling then
-		r.CFrame = r.CFrame + h.MoveDirection * (F("BoostSpeed") or 20) * dt
+	if F("SpeedBoost") and r and h and not Hub.Traveling then
+		local v = r.AssemblyLinearVelocity * Vector3.new(1, 0, 1)
+		local dir = h.MoveDirection.Magnitude > 0.1 and h.MoveDirection or (v.Magnitude > 3 and v.Unit or nil)
+		if dir then r.CFrame = r.CFrame + dir * (F("BoostSpeed") or 20) * dt end
 	end
 end))
 
@@ -493,7 +493,7 @@ stat:CreateLabel({ Text = "", Update = function() return Hub.Log[1] or "" end })
 function Hub.Unload()
 	Hub.Running = false
 	stopTravel = true
-	if sprintHeld then key(sprintHeld, false) end
+	clearSprint()
 	restoreHitboxes()
 	local r = root()
 	if r and boxSaved then r:SetAttribute("FeralBoxFull", boxSaved[1] ~= false and boxSaved[1] or nil) end
