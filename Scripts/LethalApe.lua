@@ -85,9 +85,14 @@ local function travel(target, within)
 		local r, h = root(), hum()
 		if not (r and h) or h.Health <= 0 then return false, "no character" end
 		if (r.Position - target).Magnitude <= within then return true end
-		local path = PathfindingService:CreatePath({ AgentRadius = 1.5, AgentHeight = 5, AgentCanJump = true, WaypointSpacing = 4 })
-		local ok = pcall(function() path:ComputeAsync(r.Position, target) end)
-		local wps = ok and path.Status == Enum.PathStatus.Success and path:GetWaypoints() or nil
+		local wps
+		for i = 0, 8 do
+			local goal = target
+			if i > 0 then local a = i * math.pi / 4 goal = target + Vector3.new(math.cos(a) * 5, 0, math.sin(a) * 5) end
+			local path = PathfindingService:CreatePath({ AgentRadius = 1.5, AgentHeight = 5, AgentCanJump = true, WaypointSpacing = 4 })
+			local ok = pcall(function() path:ComputeAsync(r.Position, goal) end)
+			if ok and path.Status == Enum.PathStatus.Success then wps = path:GetWaypoints() break end
+		end
 		local lift = h.HipHeight + r.Size.Y / 2
 		local start = seq()
 		if wps then
@@ -170,13 +175,26 @@ end
 
 local function sell()
 	local before = coins()
-	if not travel(Places.Machine, 5) then return false, "could not reach the machine" end
-	task.wait(0.4)
-	local p = findPrompt("Sell Scraps")
-	if not p then return false, "machine prompt not loaded" end
-	holdPrompt(p)
-	task.wait(1.2)
-	return coins() > before, ("sold: %d -> %d coins"):format(before, coins())
+	local r = root() if not r then return false, "no character" end
+	local list = {}
+	for _, d in ipairs(workspace:GetDescendants()) do
+		if d:IsA("ProximityPrompt") and d.ActionText == "Sell Scraps" then
+			local p = posOf(d.Parent)
+			if p then list[#list + 1] = { d, p, (p - r.Position).Magnitude } end
+		end
+	end
+	if #list == 0 then return false, "no scrap machine found" end
+	table.sort(list, function(a, b) return a[3] < b[3] end)
+	for _, m in ipairs(list) do
+		if travel(m[2], m[1].MaxActivationDistance - 1.5) then
+			task.wait(0.3)
+			holdPrompt(m[1])
+			task.wait(1.2)
+			if coins() > before then return true, ("sold: %d -> %d coins"):format(before, coins()) end
+		end
+	end
+	task.wait(2)
+	return false, "could not sell at any machine"
 end
 
 local function autoFarm()
