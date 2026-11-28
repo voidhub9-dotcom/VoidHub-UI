@@ -453,7 +453,7 @@ Hub.UI.Farm = farm:Toggle({ Text = "Auto farm coins", Default = false, Callback 
 end })
 farm:Slider({ Text = "Sell when holding", Min = 1, Max = 30, Default = 6, Callback = function(v) Opt.SellAt = v end })
 farm:Dropdown({ Text = "Minimum scrap", Options = { "Copper", "Silver", "Gold", "Emerald", "Ruby", "Diamond" }, Default = "Copper", Callback = function(v) Opt.ScrapMin = v end })
-farm:Slider({ Text = "Move speed", Min = 20, Max = 60, Default = 45, Callback = function(v) Opt.Speed = v end })
+farm:Slider({ Text = "Move speed", Min = 20, Max = 300, Default = 45, Callback = function(v) Opt.Speed = v end })
 farm:Button({ Text = "Sell now", Callback = function() act(runTask, sell) end })
 local stats = farmTab:Section({ Title = "Status", Column = 2 })
 local coinLabel = stats:Label({ Text = "Coins: " .. coins() })
@@ -521,6 +521,7 @@ function Hub.Unload()
 	getgenv().SnowyHub = nil
 end
 
+Hub.Opt = Opt
 Hub.travel, Hub.sell, Hub.buy, Hub.pick, Hub.openShop, Hub.pickColor, Hub.pressPad, Hub.elevator, Hub.openCameras, Hub.goPlace, Hub.serverHop, Hub.monsters = travel, sell, buy, pickScrap, openShop, pickColor, pressPad, elevator, openCameras, goPlace, serverHop, monsters
 say("Loaded")
 return Hub
