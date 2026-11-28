@@ -230,6 +230,18 @@ local function autoFarm()
 		local ok, err = pcall(function()
 			local h = hum()
 			if not h or h.Health <= 0 then task.wait(1) return end
+			local r = root()
+			if r and (r.Position - Places.Lobby).Magnitude < 90 and r.Position.Y < 88 then
+				local pads = workspace:FindFirstChild("TPButtons")
+				local q = pads and pads:FindFirstChild("QuickPlay")
+				if q then
+					travel(q.Position, 8)
+					clickPart(q)
+					log("in lobby: pressed QuickPlay")
+					task.wait(4)
+					return
+				end
+			end
 			local s = nextScrap()
 			if scrapTools() >= Opt.SellAt or (not s and scrapTools() > 0) then
 				local _, msg = sell()
