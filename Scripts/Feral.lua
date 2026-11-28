@@ -50,6 +50,10 @@ pcall(function()
 			local a = ...
 			if a == "hop" then return nil end
 		end
+		if Hub.Running and self == R.Actions and getnamecallmethod() == "FireServer" and Hub.onBite then
+			local a, b = ...
+			if a == "Bite" and type(b) == "number" then task.spawn(Hub.onBite, b) end
+		end
 		if Hub.Running and self == LP and getnamecallmethod() == "Kick" then return nil end
 		return oldNC(self, ...)
 	end))
@@ -139,7 +143,7 @@ local function applyReach()
 				reachBall.Transparency = 0
 				reachBall.Parent = gethui and gethui() or game.CoreGui
 			end
-			local rad = reachFor(box, h.HipHeight)
+			local rad = F("ReachStuds") or 40
 			local holder = Hub.reachPart
 			if not (holder and holder.Parent) then
 				holder = Instance.new("Part")
@@ -161,6 +165,26 @@ local function applyReach()
 	end
 end
 conn(LP.CharacterAdded:Connect(function() boxSaved = nil end))
+
+function Hub.onBite(t)
+	if not F("BiteReach") then return end
+	local r = root() if not r then return end
+	local best, bd
+	local range = F("ReachStuds") or 40
+	for _, m in ipairs(candidates(F("AuraTarget") or "Both")) do
+		if isTarget(m) then
+			local d = (m.HumanoidRootPart.Position - r.Position).Magnitude
+			if d <= range and (not bd or d < bd) then best, bd = m, d end
+		end
+	end
+	if not best then return end
+	local saved = r.CFrame
+	local look = (best.HumanoidRootPart.Position - r.Position) * Vector3.new(1, 0, 1)
+	if look.Magnitude > 0.1 then r.CFrame = CFrame.lookAt(r.Position, r.Position + look) end
+	task.wait(0.27)
+	if best.Parent then fire(R.Actions, "BiteHit", { t = t, m = best }) end
+	if not F("FaceTarget") then local rr = root() if rr then rr.CFrame = CFrame.new(rr.Position) * saved.Rotation end end
+end
 
 local espFolder = Instance.new("Folder")
 espFolder.Name = "VoidFeralESP"
