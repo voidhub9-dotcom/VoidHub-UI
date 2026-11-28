@@ -128,24 +128,36 @@ local function applyReach()
 	if not (r and h) then return end
 	if F("BiteReach") then
 		if not boxSaved then boxSaved = { r:GetAttribute("FeralBoxFull") or false } end
-		local want = F("ReachStuds") or 15
+		local want = F("ReachStuds") or 22
 		local box = math.max(0.5, 2 * (want / 1.15 - h.HipHeight * 1.45 - 1.2))
 		r:SetAttribute("FeralBoxFull", box)
 		if F("ShowReach") then
 			if not (reachBall and reachBall.Parent) then
-				reachBall = Instance.new("SphereHandleAdornment")
+				reachBall = Instance.new("SelectionSphere")
 				reachBall.Color3 = Color3.fromRGB(255, 255, 255)
-				reachBall.Transparency = 0.85
-				reachBall.AlwaysOnTop = true
-				reachBall.ZIndex = 1
+				reachBall.SurfaceTransparency = 1
+				reachBall.Transparency = 0
 				reachBall.Parent = gethui and gethui() or game.CoreGui
 			end
-			reachBall.Adornee = r
-			reachBall.Radius = reachFor(box, h.HipHeight)
-		elseif reachBall then reachBall:Destroy() reachBall = nil end
+			local rad = reachFor(box, h.HipHeight)
+			local holder = Hub.reachPart
+			if not (holder and holder.Parent) then
+				holder = Instance.new("Part")
+				holder.Name = "VoidReach"
+				holder.Shape = Enum.PartType.Ball
+				holder.Anchored, holder.CanCollide, holder.CanQuery, holder.CanTouch = true, false, false, false
+				holder.Transparency = 1
+				holder.Parent = workspace.CurrentCamera
+				Hub.reachPart = holder
+			end
+			holder.Size = Vector3.new(rad * 2, rad * 2, rad * 2)
+			holder.CFrame = CFrame.new(r.Position)
+			reachBall.Adornee = holder
+		elseif reachBall then reachBall:Destroy() reachBall = nil if Hub.reachPart then Hub.reachPart:Destroy() Hub.reachPart = nil end end
 	else
 		if boxSaved then r:SetAttribute("FeralBoxFull", boxSaved[1] ~= false and boxSaved[1] or nil) boxSaved = nil end
 		if reachBall then reachBall:Destroy() reachBall = nil end
+		if Hub.reachPart then Hub.reachPart:Destroy() Hub.reachPart = nil end
 	end
 end
 conn(LP.CharacterAdded:Connect(function() boxSaved = nil end))
@@ -554,7 +566,7 @@ esc:CreateToggle({ Name = "Auto Grab Escape", Flag = "AutoEscape", CurrentValue 
 
 local reach = ReachSub:CreateGroupbox({ Name = "Bite Reach", Side = "Left", Icon = "ruler" })
 reach:CreateToggle({ Name = "Bite Reach", Flag = "BiteReach", CurrentValue = false })
-reach:CreateSlider({ Name = "Reach", Range = { 2, 15 }, Increment = 0.5, CurrentValue = 15, Suffix = " st", Flag = "ReachStuds" })
+reach:CreateSlider({ Name = "Reach", Range = { 2, 22 }, Increment = 0.5, CurrentValue = 22, Suffix = " st", Flag = "ReachStuds" })
 reach:CreateToggle({ Name = "Show Reach Hitbox", Flag = "ShowReach", CurrentValue = true })
 local espG = ReachSub:CreateGroupbox({ Name = "ESP", Side = "Right", Icon = "eye" })
 espG:CreateToggle({ Name = "Player ESP", Flag = "EspPlayers", CurrentValue = false })
@@ -596,6 +608,7 @@ function Hub.Unload()
 	clearSprint()
 	pcall(function() espFolder:Destroy() end)
 	if reachBall then reachBall:Destroy() end
+	if Hub.reachPart then Hub.reachPart:Destroy() end
 	local r = root()
 	if r and boxSaved then r:SetAttribute("FeralBoxFull", boxSaved[1] ~= false and boxSaved[1] or nil) end
 	if oldNC then pcall(hookmetamethod, game, "__namecall", oldNC) end
