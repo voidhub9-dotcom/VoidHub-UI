@@ -1,6 +1,6 @@
-if getgenv().LethalHub then pcall(getgenv().LethalHub.Unload) end
+if getgenv().SnotHub then pcall(getgenv().SnotHub.Unload) end
 local Hub = { Running = true, Conns = {}, Log = {} }
-getgenv().LethalHub = Hub
+getgenv().SnotHub = Hub
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -200,7 +200,7 @@ local function autoFarm()
 end
 
 local espFolder = Instance.new("Folder")
-espFolder.Name = "LethalESP"
+espFolder.Name = "SnotESP"
 pcall(function() espFolder.Parent = gethui and gethui() or game.CoreGui end)
 if not espFolder.Parent then espFolder.Parent = LP:WaitForChild("PlayerGui") end
 local Esp = { Monsters = false, Scraps = false, Players = false }
@@ -409,11 +409,11 @@ end
 
 local function notify(window, text)
 	log(text)
-	pcall(function() window:Notify({ Title = "Lethal Ape", Text = text, Duration = 3 }) end)
+	pcall(function() window:Notify({ Title = "Snot Hub", Text = text, Duration = 3 }) end)
 end
 
 local lib = loadstring(game:HttpGet("https://raw.githubusercontent.com/0x1s2s/Snowy-Ui-Library/refs/heads/main/SnowyUi"))()
-local Window = lib:Window({ Subtitle = "VoidHub | Lethal Ape", Keybind = Enum.KeyCode.RightControl, Width = 580, Height = 440 })
+local Window = lib:Window({ Subtitle = "Snot Hub | Lethal Ape", Keybind = Enum.KeyCode.RightControl, Width = 580, Height = 440 })
 Hub.Window = Window
 local function say(t) task.spawn(notify, Window, t) end
 local function act(fn, ...) local a = table.pack(...) task.spawn(function() local _, msg = fn(table.unpack(a, 1, a.n)) say(tostring(msg)) end) end
@@ -500,7 +500,7 @@ function Hub.Unload()
 	pcall(function() espFolder:Destroy() end)
 	pcall(function() if getgenv().SnowyStudiosUnload then getgenv().SnowyStudiosUnload() end end)
 	for _, g in ipairs((gethui and gethui() or game.CoreGui):GetChildren()) do if g.Name == "SnowyStudios" then pcall(function() g:Destroy() end) end end
-	getgenv().LethalHub = nil
+	getgenv().SnotHub = nil
 end
 
 Hub.travel, Hub.sell, Hub.buy, Hub.pick, Hub.openShop, Hub.pickColor, Hub.pressPad, Hub.elevator, Hub.openCameras, Hub.goPlace, Hub.serverHop, Hub.monsters = travel, sell, buy, pickScrap, openShop, pickColor, pressPad, elevator, openCameras, goPlace, serverHop, monsters
