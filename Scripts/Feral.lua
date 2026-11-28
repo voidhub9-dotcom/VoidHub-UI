@@ -301,7 +301,8 @@ local function goWater()
 		local back = (r.Position - w) * Vector3.new(1, 0, 1)
 		local edge = w + (back.Magnitude > 0 and back.Unit * 3 or Vector3.zero)
 		travelTo(edge)
-		face({ HumanoidRootPart = { Position = w } })
+		local rr = root()
+		if rr then rr.CFrame = CFrame.lookAt(rr.Position, Vector3.new(w.X, rr.Position.Y, w.Z)) end
 	end
 	local v = feed("drink")
 	return true, ("drank at %s, thirst %s"):format(name, tostring(v))
