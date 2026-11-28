@@ -125,7 +125,7 @@ local function applyReach()
 	if not (r and h) then return end
 	if F("BiteReach") then
 		if not boxSaved then boxSaved = { r:GetAttribute("FeralBoxFull") or false } end
-		local want = F("ReachStuds") or 22
+		local want = F("ReachStuds") or 40
 		local box = math.max(0.5, 2 * (want / 1.15 - h.HipHeight * 1.45 - 1.2))
 		r:SetAttribute("FeralBoxFull", box)
 		if F("ShowReach") then
@@ -594,7 +594,7 @@ lungeS:toggle({ Name = "Auto Grab Escape", Flag = "AutoEscape", Default = false 
 
 local reachS = combat:section("REACH")
 reachS:toggle({ Name = "Bite Reach", Flag = "BiteReach", Default = false })
-reachS:slider({ Name = "Reach", Flag = "ReachStuds", Min = 2, Max = 22, Default = 22, Step = 0.5, Format = function(v) return v .. " st" end })
+reachS:slider({ Name = "Reach", Flag = "ReachStuds", Min = 2, Max = 60, Default = 40, Step = 0.5, Format = function(v) return v .. " st" end })
 reachS:toggle({ Name = "Show Reach Hitbox", Flag = "ShowReach", Default = true })
 
 local visuals = ui:tab("Visuals", { Group = "Visuals" })
