@@ -340,7 +340,14 @@ task.spawn(function()
 			if F("KillAura") then
 				local m = nearestTarget(F("AuraTarget") or "Both", F("AuraRange") or 12)
 				if m then
-					if F("FaceTarget") then face(m) end
+					if F("StickTarget") then
+						local r, tr = root(), m:FindFirstChild("HumanoidRootPart")
+						if r and tr then
+							local fl = (tr.Position - r.Position) * Vector3.new(1, 0, 1)
+							local want = fl.Magnitude > 0.1 and (tr.Position - fl.Unit * (F("StickDistance") or 1.8)) or r.Position
+							r.CFrame = CFrame.lookAt(Vector3.new(want.X, r.Position.Y, want.Z), Vector3.new(tr.Position.X, r.Position.Y, tr.Position.Z))
+						end
+					elseif F("FaceTarget") then face(m) end
 					bite(m)
 				end
 			end
@@ -392,6 +399,8 @@ aura:CreateDropdown({ Name = "Aura Target", Options = { "Both", "Players", "NPCs
 aura:CreateSlider({ Name = "Aura Range", Range = { 4, 40 }, Increment = 1, CurrentValue = 12, Suffix = " st", Flag = "AuraRange" })
 aura:CreateSlider({ Name = "Bite Delay", Range = { 0.6, 2 }, Increment = 0.05, CurrentValue = 0.6, Suffix = " s", Flag = "AuraDelay" })
 aura:CreateToggle({ Name = "Face Target", Flag = "FaceTarget", CurrentValue = true })
+aura:CreateToggle({ Name = "Stick To Target", Desc = "Server only accepts bites inside real reach", Flag = "StickTarget", CurrentValue = true })
+aura:CreateSlider({ Name = "Stick Distance", Range = { 0.5, 6 }, Increment = 0.1, CurrentValue = 1.8, Suffix = " st", Flag = "StickDistance" })
 local wlDrop = aura:CreateDropdown({ Name = "Aura Whitelist", Options = playerNames, MultipleOptions = true, AllowNone = true, Searchable = true, Flag = "AuraWhitelist" })
 conn(Players.PlayerAdded:Connect(function(p) table.insert(playerNames, p.Name) pcall(function() wlDrop:SetOptions(playerNames, { KeepSelection = true, Silent = true }) end) end))
 local lunge = AuraSub:CreateGroupbox({ Name = "Lunge", Side = "Right", Icon = "move-up-right" })
