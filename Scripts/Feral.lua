@@ -420,6 +420,43 @@ task.spawn(function()
 	end
 end)
 
+local amberVisited = {}
+local lastClaim = 0
+local function claimRewards()
+	local rw = RS:FindFirstChild("FeralRewards")
+	if not rw then return end
+	fire(rw, "claim", "daily", nil)
+	for i = 1, 8 do fire(rw, "claim", "play", i) end
+end
+local function amberStep()
+	if os.clock() - lastClaim > 60 then lastClaim = os.clock() claimRewards() end
+	local f = workspace:FindFirstChild("FeralAmberChunks")
+	local r = root()
+	if not (f and r) then task.wait(1) return end
+	local best, bd
+	for _, c in ipairs(f:GetChildren()) do
+		local t = amberVisited[c]
+		if not t or os.clock() - t > 90 then
+			local d = (c:GetPivot().Position - r.Position).Magnitude
+			if not bd or d < bd then best, bd = c, d end
+		end
+	end
+	if not best then task.wait(2) return end
+	local before = LP:GetAttribute("Amber") or 0
+	travelTo(best:GetPivot().Position)
+	r = root()
+	if r and best.Parent then r.CFrame = CFrame.new(best:GetPivot().Position + Vector3.new(0, 1, 0)) end
+	task.wait(0.8)
+	amberVisited[best] = os.clock()
+	log(("amber %d -> %d"):format(before, LP:GetAttribute("Amber") or 0))
+end
+task.spawn(function()
+	while Hub.Running do
+		if F("AutoAmber") and char() then pcall(amberStep) else task.wait(1) end
+		task.wait(0.1)
+	end
+end)
+
 local function act(fn, ...)
 	local a = table.pack(...)
 	task.spawn(function()
@@ -480,6 +517,8 @@ local Misc = Window:CreateTab({ Name = "Misc", Desc = "Anti AFK, status", Icon =
 local mg = Misc:CreateGroupbox({ Name = "Utility", Side = "Left", Icon = "wrench" })
 mg:CreateToggle({ Name = "Anti AFK", Flag = "AntiAfk", CurrentValue = true, Callback = function(v) Hub.AntiAfk = v end })
 Hub.AntiAfk = true
+mg:CreateToggle({ Name = "Auto Amber Farm", Desc = "Collects amber chunks and claims rewards", Flag = "AutoAmber", CurrentValue = false })
+mg:CreateButton({ Name = "Claim Rewards", Callback = function() claimRewards() end })
 mg:CreateToggle({ Name = "Auto Spawn (menu)", Flag = "AutoSpawn", CurrentValue = true })
 mg:CreateSlider({ Name = "Spawn Slot", Range = { 1, 8 }, Increment = 1, CurrentValue = 1, Flag = "SpawnSlot" })
 mg:CreateButton({ Name = "Unload", Style = "Danger", Callback = function() Hub.Unload() end })
