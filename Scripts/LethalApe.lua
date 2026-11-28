@@ -263,9 +263,19 @@ local function sell()
 			end
 		end
 		if arrived then
-			task.wait(0.3)
+			local off = {}
+			for _, d in ipairs(workspace:GetDescendants()) do
+				if d:IsA("ProximityPrompt") and d ~= m[1] and d.Enabled then
+					local pp = posOf(d.Parent)
+					if pp and (pp - m[2]).Magnitude < 25 then d.Enabled = false off[#off + 1] = d end
+				end
+			end
+			local tool = LP.Backpack:FindFirstChildWhichIsA("Tool")
+			if tool and tool:GetAttribute("scrap") and hum() then pcall(function() hum():EquipTool(tool) end) end
+			task.wait(0.4)
 			holdPrompt(m[1])
 			task.wait(1.2)
+			for _, d in ipairs(off) do pcall(function() d.Enabled = true end) end
 			if coins() > before then return true, ("sold: %d -> %d coins"):format(before, coins()) end
 		end
 	end
