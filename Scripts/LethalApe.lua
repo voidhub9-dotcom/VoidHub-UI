@@ -151,6 +151,32 @@ end
 
 local blacklist = setmetatable({}, { __mode = "k" })
 local badRegion = {}
+local regionOK, regionAt = {}, 0
+local function sellPoints()
+	local pts = {}
+	for _, d in ipairs(workspace:GetDescendants()) do
+		if d:IsA("ProximityPrompt") and d.ActionText == "Sell Scraps" then
+			local c = posOf(d.Parent)
+			if c then for k = 0, 4 do local a = k * math.pi / 2 local o = k > 0 and 6 or 0 pts[#pts + 1] = c + Vector3.new(math.cos(a) * o, 0, math.sin(a) * o) end end
+		end
+	end
+	return pts
+end
+local function pathOK(a, b)
+	local path = PathfindingService:CreatePath({ AgentRadius = 1, AgentHeight = 4, AgentCanJump = true, AgentCanClimb = true })
+	local ok = pcall(function() path:ComputeAsync(a, b) end)
+	return ok and path.Status == Enum.PathStatus.Success
+end
+local function regionSells(reg, sample)
+	if os.clock() - regionAt > 120 then regionOK = {} regionAt = os.clock() end
+	if regionOK[reg] == nil then
+		local ok = false
+		for _, m in ipairs(sellPoints()) do if pathOK(sample, m) then ok = true break end end
+		regionOK[reg] = ok
+	end
+	return regionOK[reg]
+end
+
 local function nextScrap()
 	local r = root() if not r then return end
 	local folder = workspace:FindFirstChild("Scraps") if not folder then return end
@@ -159,7 +185,7 @@ local function nextScrap()
 	for _, s in ipairs(folder:GetChildren()) do
 		if s:IsA("BasePart") and not blacklist[s] and (ScrapValue[s.Name] or 1) >= minV and s:FindFirstChildWhichIsA("ProximityPrompt", true) then
 			local reg = s:GetAttribute("ScrapRegion")
-			if not (reg and (badRegion[reg] or 0) >= 2) then
+			if not (reg and (badRegion[reg] or 0) >= 2) and not (reg and not regionSells(reg, s.Position)) then
 				local d = (s.Position - r.Position).Magnitude + math.abs(s.Position.Y - r.Position.Y) * 8
 				if not bd or d < bd then best, bd = s, d end
 			end
