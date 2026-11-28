@@ -349,11 +349,13 @@ local SprintAttr = { Sprint = "WolfDbgSprint", Trot = "WolfDbgTrot", Gallop = "W
 local function sprintStep()
 	local c = char() if not c then return end
 	local on = F("AutoSprint")
+	if not on and not Hub.sprintWasOn then return end
 	local typ = F("SprintType") or "Sprint"
 	for t, a in pairs(SprintAttr) do
 		local want = on and t == typ or nil
 		if c:GetAttribute(a) ~= want then c:SetAttribute(a, want) end
 	end
+	Hub.sprintWasOn = on
 end
 local speedBase = setmetatable({}, { __mode = "k" })
 local function speedStep()
