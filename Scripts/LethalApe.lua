@@ -420,7 +420,8 @@ local function act(fn, ...) local a = table.pack(...) task.spawn(function() loca
 
 local farmTab = Window:Tab({ Name = "Farm", Icon = "wallet" })
 local farm = farmTab:Section({ Title = "Auto Farm Coins", Column = 1 })
-farm:Toggle({ Text = "Auto farm coins", Default = false, Callback = function(v)
+Hub.UI = {}
+Hub.UI.Farm = farm:Toggle({ Text = "Auto farm coins", Default = false, Callback = function(v)
 	if v == (Hub.Farm or false) then return end
 	Hub.Farm = v
 	if v then
@@ -471,16 +472,16 @@ tp:Button({ Text = "Stop moving", Callback = function() stopMove = true end })
 
 local visTab = Window:Tab({ Name = "Visuals", Icon = "eye" })
 local vis = visTab:Section({ Title = "ESP", Column = 1 })
-vis:Toggle({ Text = "Monster ESP + model", Default = false, Callback = function(v) Esp.Monsters = v end })
-vis:Toggle({ Text = "Scraps ESP", Default = false, Callback = function(v) Esp.Scraps = v end })
-vis:Toggle({ Text = "Player ESP", Default = false, Callback = function(v) Esp.Players = v end })
+Hub.UI.MonsterESP = vis:Toggle({ Text = "Monster ESP + model", Default = false, Callback = function(v) Esp.Monsters = v end })
+Hub.UI.ScrapESP = vis:Toggle({ Text = "Scraps ESP", Default = false, Callback = function(v) Esp.Scraps = v end })
+Hub.UI.PlayerESP = vis:Toggle({ Text = "Player ESP", Default = false, Callback = function(v) Esp.Players = v end })
 local vis2 = visTab:Section({ Title = "World", Column = 2 })
-vis2:Toggle({ Text = "Fullbright", Default = false, Callback = function(v) Hub.Bright = v fullbright(v) end })
+Hub.UI.Fullbright = vis2:Toggle({ Text = "Fullbright", Default = false, Callback = function(v) Hub.Bright = v fullbright(v) end })
 vis2:Button({ Text = "Open cameras", Callback = function() act(openCameras) end })
 
 local moveTab = Window:Tab({ Name = "Movement", Icon = "wind" })
 local mv = moveTab:Section({ Title = "Movement", Column = 1 })
-mv:Toggle({ Text = "Fly", Default = false, Callback = function(v) if v ~= (Hub.Fly or false) then setFly(v) end end })
+Hub.UI.Fly = mv:Toggle({ Text = "Fly", Default = false, Callback = function(v) if v ~= (Hub.Fly or false) then setFly(v) end end })
 mv:Slider({ Text = "Fly speed", Min = 10, Max = 120, Default = 50, Callback = function(v) Opt.FlySpeed = v end })
 local srv = moveTab:Section({ Title = "Server", Column = 2 })
 srv:Button({ Text = "Server hop", Callback = function() act(serverHop) end })
@@ -502,6 +503,6 @@ function Hub.Unload()
 	getgenv().LethalHub = nil
 end
 
-Hub.travel, Hub.sell, Hub.buy, Hub.pick = travel, sell, buy, pickScrap
+Hub.travel, Hub.sell, Hub.buy, Hub.pick, Hub.openShop, Hub.pickColor, Hub.pressPad, Hub.elevator, Hub.openCameras, Hub.goPlace, Hub.serverHop, Hub.monsters = travel, sell, buy, pickScrap, openShop, pickColor, pressPad, elevator, openCameras, goPlace, serverHop, monsters
 say("Loaded")
 return Hub
