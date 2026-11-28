@@ -196,7 +196,8 @@ local function nextScrap()
 end
 
 local function pickScrap(s)
-	local ok = travel(s.Position, 4)
+	local ok, why = travel(s.Position, 4)
+	if not ok and why == "no path" then task.wait(2) return false end
 	if not ok or not s.Parent then
 		blacklist[s] = true
 		local reg = s:GetAttribute("ScrapRegion")
